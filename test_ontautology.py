@@ -5,7 +5,7 @@ from ontautology import build_graph
 def item(repo, number, files=None):
     return {"repo": repo, "n": number, "pr": {"head_sha": "abc"},
             "files": None if files is None else {"filenames": files},
-            "runs": {"workflow_runs": [{"id": number, "name": "CI", "conclusion": "failure"}]}}
+            "runs": {"workflow_runs": [{"id": number, "name": "CI", "head_sha": "abc", "conclusion": "failure"}]}}
 
 
 class GraphTests(unittest.TestCase):
@@ -36,6 +36,18 @@ class GraphTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             build_graph({"result": [item("a", 1, [])], "dependencies": [{"dependent": "a#1", "prerequisite": "a#2"}]})
 
+
+
+    def test_site_export_and_unknown_dependency(self):
+        records = [{"id": "a#1", "repository": "a", "number": 1, "head_sha": "new",
+                    "files": ["x"], "runs": [{"id": 1, "head_sha": "old", "conclusion": "success"}],
+                    "dependencies": ["a#missing"]}]
+        graph = build_graph({"aoi_integration": {"captured_at": "2026-11-14T14:00:00Z", "records": records}})
+        run = next(n for n in graph["nodes"] if n["type"] == "WorkflowRun")
+        self.assertEqual(run["observed_head_sha"], "old")
+        self.assertEqual(run["current_pr_head_sha"], "new")
+        self.assertEqual(graph["integration_batches"], [])
+        self.assertEqual(graph["coverage"]["unresolved_dependencies"][0]["prerequisite"], "a#missing")
 
 if __name__ == "__main__":
     unittest.main()
