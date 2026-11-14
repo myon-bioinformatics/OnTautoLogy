@@ -15,7 +15,19 @@ class GraphTests(unittest.TestCase):
         self.assertEqual(len(overlaps), 1)
         self.assertEqual(overlaps[0]["paths"], ["x"])
         self.assertEqual(len([e for e in graph["edges"] if e["relation"] == "changes"]), 3)
-        self.assertEqual(next(n for n in graph["nodes"] if n["type"] == "WorkflowRun")["observed_head_sha"], "abc")
+        self.assertEqual(next(n for n in graph["nodes"] if n["type"] == "WorkflowRun")["observed_head_sha"], None)
+
+    def test_run_sha_and_attempt_are_evidence_not_assumptions(self):
+        row = item("a", 1, [])
+        row["runs"]["workflow_runs"] = [
+            {"id": 7, "run_attempt": 1, "head_sha": "old", "conclusion": "success"},
+            {"id": 7, "run_attempt": 2, "head_sha": "abc", "conclusion": "failure"},
+            {"id": 8, "conclusion": "success"},
+        ]
+        runs = [n for n in build_graph({"result": [row]})["nodes"] if n["type"] == "WorkflowRun"]
+        self.assertEqual([n["matches_current_head"] for n in runs], [False, True, None])
+        self.assertEqual([n["attempt"] for n in runs], [1, 2, None])
+        self.assertEqual(len({n["id"] for n in runs}), 3)
 
     def test_unknown_files_are_not_treated_as_empty(self):
         graph = build_graph({"result": [item("a", 1), item("a", 2, ["x"])]})
