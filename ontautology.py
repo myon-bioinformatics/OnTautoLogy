@@ -13,6 +13,29 @@ SCHEMA = "ontautology/pr-audit-graph/1"
 
 def build_graph(snapshot: dict) -> dict:
     """Transform observations; only explicit dependencies are treated as ordering."""
+    # The site exports either the integration object or the full observations.
+    audit = snapshot.get("aoi_integration", snapshot)
+    unresolved = []
+    if "records" in audit:
+        items = audit["records"]
+        if not isinstance(items, list):
+            raise ValueError("records must be a list")
+        known = {item["id"] for item in items}
+        deps = []
+        for item in items:
+            for prerequisite in item.get("dependencies", []):
+                if prerequisite in known:
+                    deps.append({"dependent": item["id"], "prerequisite": prerequisite})
+                else:
+                    unresolved.append({"dependent": item["id"], "prerequisite": prerequisite})
+        snapshot = {
+            "timestamp": audit.get("captured_at"),
+            "result": [{"repo": item["repository"], "n": item["number"], "pr": item,
+                        "files": {"filenames": item["files"]} if isinstance(item.get("files"), list) else None,
+                        "runs": {"workflow_runs": item.get("runs", [])}}
+                       for item in items],
+            "dependencies": deps,
+        }
     records = snapshot.get("result")
     if not isinstance(records, list):
         raise ValueError("result must be a list")
@@ -49,7 +72,8 @@ def build_graph(snapshot: dict) -> dict:
         for run in run_result.get("workflow_runs", []):
             wid = f"workflow_run:{repo}:{run['id']}"
             node(wid, "WorkflowRun", name=run.get("name"), conclusion=run.get("conclusion"),
-                 status=run.get("status"), observed_head_sha=pr.get("head_sha"),
+                 status=run.get("status"), observed_head_sha=run.get("head_sha"),
+                 current_pr_head_sha=pr.get("head_sha"), attempt=run.get("run_attempt"),
                  url=f"https://github.com/myon-bioinformatics/{repo}/actions/runs/{run['id']}")
             edge(pid, "has_run", wid)
 
@@ -81,8 +105,11 @@ def build_graph(snapshot: dict) -> dict:
         cycle = None
     except CycleError as exc:
         batches, cycle = [], list(exc.args[1])
+    if unresolved:
+        batches = []  # An incomplete dependency graph cannot justify an order.
     return {"schema": SCHEMA, "observed_at": snapshot.get("timestamp"),
             "coverage": {"file_lists_missing": sorted(k for k, v in paths.items() if v is None),
+                         "unresolved_dependencies": unresolved,
                          "dependency_source": "explicit input only", "workflow_scope": "input snapshot only"},
             "nodes": list(nodes.values()), "edges": edges, "integration_batches": batches,
             "dependency_cycle": cycle}
