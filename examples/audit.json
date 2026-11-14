@@ -1,0 +1,8 @@
+{
+  "timestamp": "2026-01-01T00:00:00Z",
+  "result": [
+    {"repo":"example-project","n":1,"pr":{"head_sha":"aaa","base":"main","state":"open"},"files":{"filenames":["src/tool.py"]},"runs":{"workflow_runs":[{"id":100,"run_attempt":1,"name":"CI","status":"completed","conclusion":"success","head_sha":"aaa"}]}},
+    {"repo":"example-project","n":2,"pr":{"head_sha":"bbb","base":"main","state":"open"},"files":{"filenames":["src/tool.py"]},"runs":{"workflow_runs":[]}}
+  ],
+  "dependencies":[{"dependent":"example-project#2","prerequisite":"example-project#1","evidence":"https://example.org/pr/2"}]
+}
