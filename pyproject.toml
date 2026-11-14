@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ontautology"
+version = "0.1.0"
+description = "Time-scoped repository audit knowledge graph"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+ontautology = "ontautology:cli"
+
+[tool.setuptools]
+py-modules = ["ontautology"]
