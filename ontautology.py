@@ -47,9 +47,13 @@ def build_graph(snapshot: dict) -> dict:
                 edge(pid, "changes", fid)
         run_result = item.get("runs") or {}
         for run in run_result.get("workflow_runs", []):
-            wid = f"workflow_run:{repo}:{run['id']}"
+            wid = f"workflow_run:{repo}:{run['id']}:{run.get('run_attempt') or 'unknown'}"
+            run_head = run.get("head_sha")
+            pr_head = pr.get("head_sha")
             node(wid, "WorkflowRun", name=run.get("name"), conclusion=run.get("conclusion"),
-                 status=run.get("status"), observed_head_sha=pr.get("head_sha"),
+                 status=run.get("status"), observed_head_sha=run_head,
+                 requested_head_sha=pr_head, attempt=run.get("run_attempt"),
+                 matches_current_head=(run_head == pr_head if run_head and pr_head else None),
                  url=f"https://github.com/myon-bioinformatics/{repo}/actions/runs/{run['id']}")
             edge(pid, "has_run", wid)
 
