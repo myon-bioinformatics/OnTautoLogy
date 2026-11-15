@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ontautology"
+version = "0.1.0"
+description = "Cross-repository knowledge graph: core walks and a time-scoped PR audit"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+ontautology = "ontautology:main"
+
+[tool.setuptools]
+py-modules = ["ontautology"]
