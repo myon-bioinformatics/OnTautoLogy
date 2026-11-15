@@ -2,6 +2,8 @@
 
 ナレッジグラフとオントロジーの小さな実験。最初の用途は PR 監査データの関係整理です。Python 3.11 以降の標準ライブラリだけで動きます。
 
+チェックアウトしたディレクトリで `uv tool install .`、または `uv tool install git+https://github.com/myon-bioinformatics/OnTautoLogy.git` で導入できます。導入後は `ontautology snapshot.json -o graph.json` を実行できます。Python からは `from ontautology import build_graph` で呼び出せます。
+
 ```sh
 python -S ontautology.py snapshot.json -o graph.json
 python -S -m unittest -v
