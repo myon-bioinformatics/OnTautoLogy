@@ -114,9 +114,24 @@ def main(argv: list[str] | None = None) -> int:
 KG_SCHEMA = "ontautology/1"
 NAMESPACE = "https://github.com/myon-bioinformatics/OnTautoLogy#"
 STATES = ("調査中", "着手中", "完了", "保留", "ブロッカー")
-CLASSES = ("Repository", "PullRequest", "Commit", "Branch", "File", "WorkflowRun", "Observation")
+CLASSES = ("Repository", "PullRequest", "Commit", "Branch", "File", "WorkflowRun", "Observation", "Issue", "Review", "Job",
+           "FixedSHA", "Artifact", "Evidence", "EvidenceGap", "MainGap", "Task", "CompletionRecord")
 # Relation: (domain, range). Observation links retain temporal head/base facts.
 RELATIONS = {
+    "hasIssue": (("Observation",), "Issue"),
+    "hasReview": (("Observation",), "Review"),
+    "hasJob": (("WorkflowRun",), "Job"),
+    "hasPin": (("Observation",), "FixedSHA"),
+    "pinsCommit": (("FixedSHA",), "Commit"),
+    "hasArtifact": (("Observation",), "Artifact"),
+    "generatedFrom": (("Artifact",), "Commit"),
+    "hasEvidence": (("Observation",), "Evidence"),
+    "missingEvidence": (("Observation",), "EvidenceGap"),
+    "missingFromMain": (("Observation",), "MainGap"),
+    "hasTask": (("Observation",), "Task"),
+    "precedes": (("Task",), "Task"),
+    "hasCompletion": (("Observation",), "CompletionRecord"),
+    "verifiesCommit": (("CompletionRecord", "Task"), "Commit"),
     "belongsTo": (("PullRequest", "Commit", "Branch", "File", "WorkflowRun"), "Repository"),
     "observes": (("Observation",), "PullRequest"),
     "hasHead": (("Observation",), "Commit"),
@@ -207,6 +222,114 @@ class Graph:
                 "edges": sorted(self.edges.values(), key=lambda x: (x["source"], x["relation"], x["target"], digest(x)))}
 
 
+
+def audit_entities(graph, row, observation, repo, observed):
+    """Optional audit facts share one vocabulary and stay scoped to observations.
+
+    Issues/reviews/pins/artifacts/evidence/gaps/tasks/completion_records are lists
+    of objects. Jobs live under each run. No GitHub state is inferred or changed.
+    Complete tasks/records require evidence_url and a full verified_sha.
+    """
+    evidence = {"observation": observation, "observed_at": observed}
+    def entries(name):
+        values = row.get(name, [])
+        if not isinstance(values, list) or any(not isinstance(v, dict) for v in values):
+            raise ValueError(name + " must be a list of objects")
+        return values
+    def entity(kind, value):
+        ident = f"{kind.lower()}:{observation}:{digest(value)}"
+        # JSON-valued details are encoded as a literal, also valid RDF/Turtle.
+        properties = {k:v for k,v in value.items() if k not in ("id", "type", "detail")
+                      and isinstance(v, (str, int, float, bool, type(None)))}
+        if "id" in value:
+            properties["external_id"] = str(value["id"])
+        return graph.node(ident, kind, detail=json.dumps(value, ensure_ascii=False, sort_keys=True), **properties)
+    for key, kind, relation in (("issues", "Issue", "hasIssue"), ("reviews", "Review", "hasReview"),
+                                 ("evidence", "Evidence", "hasEvidence"), ("gaps", "EvidenceGap", "missingEvidence")):
+        for value in entries(key):
+            graph.edge(observation, relation, entity(kind, value), **evidence)
+    for value in entries("pins"):
+        ident = entity("FixedSHA", value)
+        source_repo = repository(value.get("repository", repo))
+        graph.edge(observation, "hasPin", ident, **evidence)
+        graph.edge(ident, "pinsCommit", graph.commit(source_repo, value["sha"]), **evidence)
+    for value in entries("artifacts"):
+        ident = entity("Artifact", value)
+        graph.edge(observation, "hasArtifact", ident, **evidence)
+        if value.get("source_sha"):
+            source_repo = repository(value.get("repository", repo))
+            graph.edge(ident, "generatedFrom", graph.commit(source_repo, value["source_sha"]), **evidence)
+    if row.get("contained_in_main") is False:
+        ident = graph.node("main-gap:" + observation, "MainGap", target_repository=repo,
+                           basis="explicit contained_in_main=false; not inferred from unequal SHAs")
+        graph.edge(observation, "missingFromMain", ident, **evidence)
+    tasks = {}
+    for value in entries("tasks"):
+        key = value.get("id")
+        if not isinstance(key, str) or not key or key in tasks:
+            raise ValueError("task IDs must be nonempty and unique per observation")
+        state = value.get("state", "調査中")
+        if state not in STATES:
+            raise ValueError("invalid task state")
+        phase = value.get("phase", "確認")
+        if phase not in ("確認", "修正", "統合順序", "再検証"):
+            raise ValueError("invalid task phase")
+        ident = graph.node("task:" + observation + ":" + key, "Task", key=key, state=state,
+                           phase=phase, title=value.get("title", key), acceptance=value.get("acceptance"))
+        tasks[key] = ident
+        graph.edge(observation, "hasTask", ident, **evidence)
+        if state == "完了":
+            if not value.get("evidence_url") or not value.get("verified_sha"):
+                raise ValueError("completed task needs evidence_url and verified_sha")
+            graph.edge(ident, "verifiesCommit", graph.commit(repo, value["verified_sha"]),
+                       evidence_url=value["evidence_url"], **evidence)
+    for value in entries("tasks"):
+        for key in value.get("after", []):
+            if key not in tasks:
+                raise ValueError("unknown task predecessor: " + str(key))
+            graph.edge(tasks[key], "precedes", tasks[value["id"]], basis="recommended work order", **evidence)
+    for value in entries("completion_records"):
+        if not value.get("evidence_url") or not value.get("verified_sha"):
+            raise ValueError("completion record needs evidence_url and verified_sha")
+        ident = graph.node("completion:" + observation + ":" + digest(value), "CompletionRecord",
+                           state="完了", evidence_url=value["evidence_url"], title=value.get("title"))
+        graph.edge(observation, "hasCompletion", ident, **evidence)
+        graph.edge(ident, "verifiesCommit", graph.commit(repo, value["verified_sha"]), **evidence)
+
+
+def observation_diff(before, after):
+    """Compare latest PR observations; retain SHA/run/job/evidence differences."""
+    def facts(graph):
+        validate(graph)
+        # Reuse temporal conflict detection rather than silently choosing a tie.
+        plan(graph)
+        nodes = {n["id"]: n for n in graph["nodes"]}
+        latest = {}
+        for edge in graph["edges"]:
+            if edge["relation"] == "observes":
+                obs = nodes[edge["source"]]
+                if edge["target"] not in latest or timestamp(obs["observed_at"]) > timestamp(latest[edge["target"]]["observed_at"]):
+                    latest[edge["target"]] = obs
+        result = {}
+        for pr, obs in latest.items():
+            values = {k:v for k,v in obs.items() if k not in ("id", "snapshot", "observed_at", "source")}
+            def claim(edge):
+                target = nodes[edge["target"]]
+                return {"relation": edge["relation"], "target": {k:v for k,v in target.items() if k != "id"},
+                        "facts": {k:v for k,v in edge.items() if k not in ("source", "target", "observation", "observed_at", "snapshot")}}
+            relevant = [edge for edge in graph["edges"] if edge["source"] == obs["id"] or
+                        edge.get("observation") == obs["id"]]
+            run_ids = {edge["target"] for edge in relevant if edge["relation"] == "hasRun"}
+            relevant.extend(edge for edge in graph["edges"] if edge["source"] in run_ids and edge["relation"] == "runsAt")
+            values["claims"] = sorted((claim(edge) for edge in relevant), key=digest)
+            result[pr] = values
+        return result
+    old, new = facts(before), facts(after)
+    return {"schema": "ontautology/diff/1", "added": sorted(new.keys() - old.keys()),
+            "removed": sorted(old.keys() - new.keys()),
+            "changed": [{"pr": key, "before": old[key], "after": new[key]}
+                        for key in sorted(old.keys() & new.keys()) if old[key] != new[key]]}
+
 def build(documents, *, owner="myon-bioinformatics"):
     """Import integration-audit/3 snapshots; never fetch or mutate GitHub."""
     graph = Graph()
@@ -269,8 +392,18 @@ def build(documents, *, owner="myon-bioinformatics"):
                     graph.edge(rid, "belongsTo", graph.repo(repo))
                     graph.edge(observation, "hasRun", rid, scope=scope, conclusion=run.get("conclusion"),
                                status=run.get("status"), observed_at=observed)
+                    for job in run.get("jobs", []):
+                        job_id = job.get("id")
+                        if not isinstance(job_id, int) or isinstance(job_id, bool) or job_id < 1:
+                            raise ValueError("job id must be a positive integer")
+                        jid = graph.node(f"job:{repo}:{run_id}:attempt:{attempt}:{job_id}", "Job",
+                                         job_id=job_id, run_id=run_id, attempt=attempt, name=job.get("name"))
+                        graph.edge(rid, "hasJob", jid, observation=observation, observed_at=observed,
+                                   conclusion=job.get("conclusion"), status=job.get("status"),
+                                   evidence_url=job.get("html_url"))
                     if run.get("head_sha"):
                         graph.edge(rid, "runsAt", graph.commit(repo, run["head_sha"]))
+            audit_entities(graph, row, observation, repo, observed)
         for file, prs in overlap.items():
             prs = sorted(set(prs))
             for i, left in enumerate(prs):
@@ -291,6 +424,8 @@ def validate(graph):
     for node in nodes.values():
         if node["type"] not in CLASSES:
             raise ValueError("unknown ontology class")
+        if node["type"] in ("Task", "CompletionRecord") and node.get("state") not in STATES:
+            raise ValueError("invalid task/completion state")
         if node["type"] == "Observation":
             timestamp(node["observed_at"])
             if node.get("state") not in STATES:
@@ -405,9 +540,16 @@ def ontology_main(argv=None):
         command = commands.add_parser(name)
         command.add_argument("input", type=Path)
         command.add_argument("-o", "--output", type=Path)
+    diff_cmd = commands.add_parser("diff", help="compare before/after graph JSON")
+    diff_cmd.add_argument("before", type=Path)
+    diff_cmd.add_argument("after", type=Path)
+    diff_cmd.add_argument("-o", "--output", type=Path)
     args = parser.parse_args(argv)
     try:
-        if args.command == "build":
+        if args.command == "diff":
+            result = observation_diff(json.loads(args.before.read_text()), json.loads(args.after.read_text()))
+            text = json.dumps(result, ensure_ascii=False, indent=2) + "\n"
+        elif args.command == "build":
             result = build([json.loads(p.read_text()) for p in args.inputs], owner=args.owner)
             text = turtle(result) if args.format == "turtle" else json.dumps(result, ensure_ascii=False, indent=2) + "\n"
         else:
@@ -426,10 +568,10 @@ def ontology_main(argv=None):
 
 def cli(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
-    if argv and argv[0] in ("build", "check", "plan", "turtle"):
+    if argv and argv[0] in ("build", "check", "plan", "turtle", "diff"):
         return ontology_main(argv)
     if argv and argv[0] in ("-h", "--help"):
-        print("Commands: build, check, plan, turtle; or use the original snapshot.json -o graph.json form.")
+        print("Commands: build, check, plan, turtle, diff; or use the original snapshot.json -o graph.json form.")
     return main(argv)
 
 

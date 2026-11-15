@@ -173,5 +173,67 @@ class TemporalGraphTests(unittest.TestCase):
 
 
 
+
+class ExtendedAuditTests(unittest.TestCase):
+    def test_typed_entities_and_job_attempts(self):
+        run={'id':7,'run_attempt':2,'name':'CI','jobs':[{'id':8,'name':'unit','conclusion':'cancelled'}]}
+        doc=snapshot(row(1,contained_in_main=False,runs=[run],issues=[{'number':10}],
+            reviews=[{'id':11,'commit_id':'a'*40,'state':'COMMENTED'}],pins=[{'sha':'c'*40}],
+            artifacts=[{'name':'dist.py','source_sha':'d'*40}],evidence=[{'url':'https://github.com/o/r'}],
+            gaps=[{'reason':'required checks unknown'}],tasks=[{'id':'verify','phase':'再検証','state':'着手中'}],
+            completion_records=[{'title':'merge verified','evidence_url':'https://github.com/o/r','verified_sha':'e'*40}]))
+        graph=build([doc]);types={n['type'] for n in graph['nodes']}
+        self.assertTrue({'Issue','Review','Job','FixedSHA','Artifact','Evidence','EvidenceGap','MainGap','Task','CompletionRecord'}<=types)
+        edge=next(e for e in graph['edges'] if e['relation']=='hasJob')
+        self.assertEqual(edge['conclusion'],'cancelled');self.assertIn('attempt:2',edge['target'])
+        self.assertFalse(any(e['relation']=='runsAt' for e in graph['edges']))
+        self.assertIn('ot:hasJob',turtle(graph))
+
+    def test_main_gap_is_explicit_and_not_sha_inequality(self):
+        graph=build([snapshot(row(1,contained_in_main=None,head_sha='c'*40))])
+        self.assertFalse(any(n['type']=='MainGap' for n in graph['nodes']))
+
+    def test_complete_needs_verified_sha_and_evidence(self):
+        for changes in ({'tasks':[{'id':'done','state':'完了'}]}, {'completion_records':[{}]}):
+            with self.assertRaisesRegex(ValueError,'needs evidence_url'):
+                build([snapshot(row(1,**changes))])
+
+    def test_task_order_is_distinct_from_pr_dependency(self):
+        graph=build([snapshot(row(1,tasks=[{'id':'fix','phase':'修正'}, {'id':'test','after':['fix'],'phase':'再検証'}]))])
+        self.assertTrue(any(e['relation']=='precedes' for e in graph['edges']))
+        self.assertFalse(any(e['relation']=='dependsOn' for e in graph['edges']))
+        with self.assertRaisesRegex(ValueError,'unknown task'):
+            build([snapshot(row(1,tasks=[{'id':'test','after':['missing']}]))])
+
+    def test_diff_ignores_timestamp_but_reports_job_outcome(self):
+        from ontautology import observation_diff
+        values={'runs':[{'id':7,'run_attempt':1,'head_sha':'a'*40,'name':'CI','jobs':[{'id':8,'conclusion':'failure'}]}]}
+        old=build([snapshot(row(1,**values))])
+        later=snapshot(row(1,**values),at='2026-11-15T01:00:00Z')
+        self.assertFalse(observation_diff(old,build([later]))['changed'])
+        later['records'][0]['runs'][0]['jobs'][0]['conclusion']='success'
+        self.assertEqual(len(observation_diff(old,build([later]))['changed']),1)
+
+    def test_diff_preserves_added_removed(self):
+        from ontautology import observation_diff
+        diff=observation_diff(build([snapshot(row(1))]),build([snapshot(row(2))]))
+        self.assertEqual(diff['added'],['pr:myon-bioinformatics/demo#2'])
+        self.assertEqual(diff['removed'],['pr:myon-bioinformatics/demo#1'])
+
+    def test_history_keeps_review_outcomes_separate(self):
+        doc=snapshot(row(1,reviews=[{'id':1,'state':'APPROVED'}]))
+        later=snapshot(row(1,reviews=[{'id':1,'state':'DISMISSED'}]),at='2026-11-15T01:00:00Z')
+        graph=build([doc,later]);self.assertEqual(sum(n['type']=='Review' for n in graph['nodes']),2)
+        self.assertTrue(all(e.get('observation') for e in graph['edges'] if e['relation']=='hasReview'))
+
+    def test_diff_cli_is_stdlib_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp)/'graph.json';path.write_text(json.dumps(build([snapshot(row(1))])))
+            script=str(Path(__file__).with_name('ontautology.py'))
+            result=subprocess.run([sys.executable,'-S',script,'diff',str(path),str(path)],capture_output=True)
+            self.assertEqual(result.returncode,0,result.stderr)
+            self.assertEqual(json.loads(result.stdout)['changed'],[])
+
+
 if __name__ == "__main__":
     unittest.main()
