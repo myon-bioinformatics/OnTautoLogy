@@ -499,7 +499,8 @@ def audit(documents, *, owner="myon-bioinformatics"):
                                url=f"https://github.com/{repo}/actions/runs/{run_id}")
                     graph.edge(rid, "belongsTo", graph.repo(repo))
                     graph.edge(observation, "hasRun", rid, scope=scope, conclusion=run.get("conclusion"),
-                               status=run.get("status"), observed_at=observed)
+                               status=run.get("status"), event=run.get("event"),
+                               workflow_id=run.get("workflow_id"), observed_at=observed)
                     for job in run.get("jobs", []):
                         job_id = job.get("id")
                         if not isinstance(job_id, int) or isinstance(job_id, bool) or job_id < 1:

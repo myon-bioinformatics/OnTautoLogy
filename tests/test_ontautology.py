@@ -363,6 +363,47 @@ class ExtendedAuditTests(unittest.TestCase):
             self.assertEqual(result.returncode,0,result.stderr)
             self.assertEqual(json.loads(result.stdout)['changed'],[])
 
+class WorkflowProvenance(unittest.TestCase):
+    def example(self):
+        return json.loads((Path(__file__).resolve().parent.parent /
+                           "examples/audit-20261114.json").read_text(encoding="utf-8"))
+
+    def target(self, document):
+        return next(run for row in document["records"] for run in row.get("postmerge_runs", [])
+                    if run["id"] == 43602131802)
+
+    def claim(self, graph):
+        run = next(node for node in graph["nodes"] if node.get("run_id") == 43602131802)
+        return next(edge for edge in graph["edges"]
+                    if edge["relation"] == "hasRun" and edge["target"] == run["id"])
+
+    def test_event_and_workflow_identity_survive_json_and_turtle(self):
+        graph = ot.audit([self.example()])
+        claim = self.claim(json.loads(json.dumps(graph)))
+        self.assertEqual((claim["event"], claim["workflow_id"], claim["scope"]),
+                         ("workflow_run", 401581886, "main"))
+        rdf = ot.turtle(graph)
+        self.assertIn('ot:event "workflow_run"', rdf)
+        self.assertIn('ot:workflow_id 401581886', rdf)
+
+    def test_each_metadata_change_is_a_graph_diff(self):
+        before = self.example()
+        for field, value in (("event", "push"), ("workflow_id", 99)):
+            with self.subTest(field=field):
+                after = copy.deepcopy(before)
+                self.target(after)[field] = value
+                changes = ot.observation_diff(ot.audit([before]), ot.audit([after]))["changed"]
+                self.assertEqual([change["pr"] for change in changes],
+                                 ["pr:myon-bioinformatics/Aoi#207"])
+
+    def test_unobserved_metadata_remains_null_not_inferred_from_main_scope(self):
+        document = self.example()
+        for key in ("event", "workflow_id"):
+            self.target(document).pop(key, None)
+        claim = self.claim(ot.audit([document]))
+        self.assertIsNone(claim["event"])
+        self.assertIsNone(claim["workflow_id"])
+
 
 if __name__ == "__main__":
     unittest.main()
