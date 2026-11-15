@@ -1,0 +1,438 @@
+{
+  "schema": "integration-audit/3",
+  "captured_at": "2026-11-15T13:26:59.399Z",
+  "records": [],
+  "transfer_scope": {
+    "source_repository": "myon-bioinformatics/flutter_navigation_basic",
+    "source_sha": "647fb74c36899e52906cce6db7fe0d1fbbb04bf2",
+    "source_archived_observed": false,
+    "inventory_complete": false,
+    "inventory_basis": "READMEの主要ルート・機能群と固定SHAのツリーに基づく初期棚卸し。全ファイル・全パターンの吸収監査ではない。",
+    "source_evidence_url": "https://github.com/myon-bioinformatics/flutter_navigation_basic/tree/647fb74c36899e52906cce6db7fe0d1fbbb04bf2"
+  },
+  "transfers": [
+    {
+      "id": "flutter-maps-links",
+      "title": "地図URL生成・座標変換",
+      "kind": "feature",
+      "state": "調査中",
+      "source": {
+        "repository": "myon-bioinformatics/flutter_navigation_basic",
+        "sha": "647fb74c36899e52906cce6db7fe0d1fbbb04bf2",
+        "paths": [
+          "lib/features/coordinate_tool/domain/coordinate_formatter.dart",
+          "test/coordinate_tool/coordinate_formatter_test.dart"
+        ]
+      },
+      "target": {
+        "repository": "myon-bioinformatics/myon-bioinformatics.github.io",
+        "sha": null,
+        "paths": [],
+        "basis": "user-requested destination"
+      },
+      "acceptance": [
+        {
+          "id": "maps-links-1",
+          "description": "全角入力・緯度経度範囲・十進度/DMSを検証"
+        },
+        {
+          "id": "maps-links-2",
+          "description": "同じ座標からGoogle Maps/Apple Mapsの共有URLを生成"
+        }
+      ],
+      "verification": null,
+      "notes": "ユーザー指定のポートフォリオへ。移管先の実装ファイル・検証SHAは未確定。"
+    },
+    {
+      "id": "flutter-maps-input",
+      "title": "Maps URLからの座標抽出",
+      "kind": "feature",
+      "state": "調査中",
+      "source": {
+        "repository": "myon-bioinformatics/flutter_navigation_basic",
+        "sha": "647fb74c36899e52906cce6db7fe0d1fbbb04bf2",
+        "paths": [
+          "lib/features/coordinate_tool/domain/coordinate_formatter.dart",
+          "lib/features/coordinate_tool/domain/maps_url_policy.dart",
+          "test/coordinate_tool/maps_url_policy_test.dart"
+        ]
+      },
+      "target": {
+        "repository": "myon-bioinformatics/myon-bioinformatics.github.io",
+        "sha": null,
+        "paths": [],
+        "basis": "user-requested destination"
+      },
+      "acceptance": [
+        {
+          "id": "maps-input-1",
+          "description": "URL形式・place座標優先・エンコード境界の既存ケースを移管"
+        },
+        {
+          "id": "maps-input-2",
+          "description": "短縮リンク展開の許可先・失敗動作を回帰確認"
+        }
+      ],
+      "verification": null,
+      "notes": "元実装には短縮URL展開も存在。過去の対象外説明で吸収範囲を狭めない。"
+    },
+    {
+      "id": "flutter-coordinate-area",
+      "title": "座標領域・範囲・地図形式",
+      "kind": "feature",
+      "state": "調査中",
+      "source": {
+        "repository": "myon-bioinformatics/flutter_navigation_basic",
+        "sha": "647fb74c36899e52906cce6db7fe0d1fbbb04bf2",
+        "paths": [
+          "lib/features/coordinate_tool/domain/bounding_box.dart",
+          "test/coordinate_tool/bounding_box_test.dart"
+        ]
+      },
+      "target": {
+        "repository": "myon-bioinformatics/myon-bioinformatics.github.io",
+        "sha": null,
+        "paths": [],
+        "basis": "hypothesis: destination candidate"
+      },
+      "acceptance": [
+        {
+          "id": "coordinate-area-1",
+          "description": "日付変更線・極付近・領域形式の既存テストを移管"
+        }
+      ],
+      "verification": null,
+      "notes": "ポートフォリオは移管先候補。地図点リンクの吸収と領域処理の吸収を区別。"
+    },
+    {
+      "id": "flutter-photo-studio",
+      "title": "写真スタジオ・画像入出力",
+      "kind": "feature",
+      "state": "調査中",
+      "source": {
+        "repository": "myon-bioinformatics/flutter_navigation_basic",
+        "sha": "647fb74c36899e52906cce6db7fe0d1fbbb04bf2",
+        "paths": [
+          "lib/features/photo_studio/presentation/photo_studio_page.dart",
+          "test/photo_studio/photo_studio_page_test.dart",
+          "docs/testing/ironmate-image-studio-handoff.md"
+        ]
+      },
+      "target": {
+        "repository": null,
+        "sha": null,
+        "paths": [],
+        "basis": "destination unknown"
+      },
+      "acceptance": [
+        {
+          "id": "photo-studio-1",
+          "description": "編集・書出し・履歴・入力形式の移管範囲を決定"
+        },
+        {
+          "id": "photo-studio-2",
+          "description": "移管先で入出力互換・UI・画像内容を検証"
+        }
+      ],
+      "verification": null,
+      "notes": "Ironmateとの画像受渡し証跡はあるが、Flutter機能の吸収完了は示さない。"
+    },
+    {
+      "id": "flutter-http-draft",
+      "title": "HTTPリクエスト下書き・curl",
+      "kind": "feature",
+      "state": "調査中",
+      "source": {
+        "repository": "myon-bioinformatics/flutter_navigation_basic",
+        "sha": "647fb74c36899e52906cce6db7fe0d1fbbb04bf2",
+        "paths": [
+          "lib/features/http_request_draft/presentation/http_request_draft_page.dart",
+          "lib/shared/http/request_draft.dart",
+          "test/shared/http/request_draft_test.dart"
+        ]
+      },
+      "target": {
+        "repository": null,
+        "sha": null,
+        "paths": [],
+        "basis": "destination unknown"
+      },
+      "acceptance": [
+        {
+          "id": "http-draft-1",
+          "description": "下書き・認証・Secretマスク・curl入出力の範囲を確定"
+        },
+        {
+          "id": "http-draft-2",
+          "description": "移管先で実通信と失敗境界を検証"
+        }
+      ],
+      "verification": null,
+      "notes": "移管先未確定。"
+    },
+    {
+      "id": "flutter-mcp",
+      "title": "MCP連携",
+      "kind": "feature",
+      "state": "調査中",
+      "source": {
+        "repository": "myon-bioinformatics/flutter_navigation_basic",
+        "sha": "647fb74c36899e52906cce6db7fe0d1fbbb04bf2",
+        "paths": [
+          "lib/shared/mcp/mcp_session_client.dart",
+          "test/shared/mcp/mcp_integration_test.dart"
+        ]
+      },
+      "target": {
+        "repository": null,
+        "sha": null,
+        "paths": [],
+        "basis": "destination unknown"
+      },
+      "acceptance": [
+        {
+          "id": "mcp-1",
+          "description": "接続・セッション・失敗時の既存ケースと移管先を照合"
+        }
+      ],
+      "verification": null,
+      "notes": "移管先未確定。"
+    },
+    {
+      "id": "flutter-timeline",
+      "title": "複数タイムゾーンのタイムライン",
+      "kind": "feature",
+      "state": "調査中",
+      "source": {
+        "repository": "myon-bioinformatics/flutter_navigation_basic",
+        "sha": "647fb74c36899e52906cce6db7fe0d1fbbb04bf2",
+        "paths": [
+          "lib/features/now_timeline/presentation/now_timeline_page.dart",
+          "test/now_timeline/now_timeline_page_test.dart"
+        ]
+      },
+      "target": {
+        "repository": null,
+        "sha": null,
+        "paths": [],
+        "basis": "destination unknown"
+      },
+      "acceptance": [
+        {
+          "id": "timeline-1",
+          "description": "IANAゾーン・時刻規則・表示の移管範囲と検証を揃える"
+        }
+      ],
+      "verification": null,
+      "notes": "移管先未確定。"
+    },
+    {
+      "id": "flutter-clipboard",
+      "title": "クリップボード棚・Base64画像",
+      "kind": "feature",
+      "state": "調査中",
+      "source": {
+        "repository": "myon-bioinformatics/flutter_navigation_basic",
+        "sha": "647fb74c36899e52906cce6db7fe0d1fbbb04bf2",
+        "paths": [
+          "lib/features/clipboard_shelf/presentation/clipboard_shelf_page.dart",
+          "test/shared/base64_image_bridge_test.dart"
+        ]
+      },
+      "target": {
+        "repository": null,
+        "sha": null,
+        "paths": [],
+        "basis": "destination unknown"
+      },
+      "acceptance": [
+        {
+          "id": "clipboard-1",
+          "description": "テキスト・画像・サイズ境界・権限の受入条件を移管先で確認"
+        }
+      ],
+      "verification": null,
+      "notes": "移管先未確定。"
+    },
+    {
+      "id": "flutter-composition",
+      "title": "作曲補助・コード・ノート",
+      "kind": "feature",
+      "state": "調査中",
+      "source": {
+        "repository": "myon-bioinformatics/flutter_navigation_basic",
+        "sha": "647fb74c36899e52906cce6db7fe0d1fbbb04bf2",
+        "paths": [
+          "lib/features/composition_generator/presentation/composition_generator_page.dart",
+          "test/features/composition_generator/chord_theory_test.dart"
+        ]
+      },
+      "target": {
+        "repository": null,
+        "sha": null,
+        "paths": [],
+        "basis": "destination unknown"
+      },
+      "acceptance": [
+        {
+          "id": "composition-1",
+          "description": "コード理論・ノート・BPMの移管範囲と既存テストを照合"
+        }
+      ],
+      "verification": null,
+      "notes": "移管先未確定。"
+    },
+    {
+      "id": "flutter-examples",
+      "title": "カウンター・フレーズ等のデモ",
+      "kind": "feature",
+      "state": "調査中",
+      "source": {
+        "repository": "myon-bioinformatics/flutter_navigation_basic",
+        "sha": "647fb74c36899e52906cce6db7fe0d1fbbb04bf2",
+        "paths": [
+          "lib/features/counter_playground/presentation/counter_playground_page.dart",
+          "lib/features/irony_generator/presentation/irony_generator_page.dart"
+        ]
+      },
+      "target": {
+        "repository": null,
+        "sha": null,
+        "paths": [],
+        "basis": "destination unknown"
+      },
+      "acceptance": [
+        {
+          "id": "examples-1",
+          "description": "個別デモを移管・参照保持・終了のどれにするか決定"
+        }
+      ],
+      "verification": null,
+      "notes": "デモ群の初期単位。個別の移管判断は未実施。"
+    },
+    {
+      "id": "flutter-common-ui",
+      "title": "ルート・テーマ・共通UI",
+      "kind": "feature",
+      "state": "調査中",
+      "source": {
+        "repository": "myon-bioinformatics/flutter_navigation_basic",
+        "sha": "647fb74c36899e52906cce6db7fe0d1fbbb04bf2",
+        "paths": [
+          "lib/core/navigation/app_route_registry.dart",
+          "lib/shared/widgets/standard_page_shell.dart",
+          "test/shared/standard_page_shell_test.dart"
+        ]
+      },
+      "target": {
+        "repository": null,
+        "sha": null,
+        "paths": [],
+        "basis": "destination unknown"
+      },
+      "acceptance": [
+        {
+          "id": "common-ui-1",
+          "description": "既存のPSWB共通UIとの対応と例外を整理"
+        },
+        {
+          "id": "common-ui-2",
+          "description": "移管対象・参照保持・終了の判断に証跡を付ける"
+        }
+      ],
+      "verification": null,
+      "notes": "PSWBへの吸収を推測で完了にしない。"
+    },
+    {
+      "id": "flutter-pattern-catalog",
+      "title": "4系統のパターンカタログ",
+      "kind": "feature",
+      "state": "調査中",
+      "source": {
+        "repository": "myon-bioinformatics/flutter_navigation_basic",
+        "sha": "647fb74c36899e52906cce6db7fe0d1fbbb04bf2",
+        "paths": [
+          "assets/screens.json",
+          "lib/config/routes.dart",
+          "test/features/catalogue_smoke_patterns/pattern_catalogue_smoke_test.dart"
+        ]
+      },
+      "target": {
+        "repository": null,
+        "sha": null,
+        "paths": [],
+        "basis": "destination unknown"
+      },
+      "acceptance": [
+        {
+          "id": "pattern-catalog-1",
+          "description": "API・遷移・データ処理・UIテーマの個別範囲を棚卸し"
+        },
+        {
+          "id": "pattern-catalog-2",
+          "description": "必要な例とテストの移管・保持判断を記録"
+        }
+      ],
+      "verification": null,
+      "notes": "198番号を含む群。初期登録で全パターンを網羅したとは扱わない。"
+    },
+    {
+      "id": "flutter-map-pins",
+      "title": "地図ピンの保存・共有",
+      "kind": "request",
+      "state": "調査中",
+      "source": {
+        "repository": "myon-bioinformatics/flutter_navigation_basic",
+        "sha": "647fb74c36899e52906cce6db7fe0d1fbbb04bf2",
+        "paths": []
+      },
+      "target": {
+        "repository": "myon-bioinformatics/myon-bioinformatics.github.io",
+        "sha": null,
+        "paths": [],
+        "basis": "user-requested destination"
+      },
+      "acceptance": [
+        {
+          "id": "map-pins-1",
+          "description": "位置とラベルを保存・再読込・削除できる"
+        },
+        {
+          "id": "map-pins-2",
+          "description": "Google/Apple MapsのURLで第三者へ共有できる"
+        }
+      ],
+      "verification": null,
+      "notes": "追加要望。Flutter既存実装の未吸収とは分ける。"
+    },
+    {
+      "id": "flutter-parallel-tokyo",
+      "title": "パラレル東京と地図位置の対応づけ",
+      "kind": "request",
+      "state": "調査中",
+      "source": {
+        "repository": "myon-bioinformatics/flutter_navigation_basic",
+        "sha": "647fb74c36899e52906cce6db7fe0d1fbbb04bf2",
+        "paths": []
+      },
+      "target": {
+        "repository": "myon-bioinformatics/myon-bioinformatics.github.io",
+        "sha": null,
+        "paths": [],
+        "basis": "user-requested destination"
+      },
+      "acceptance": [
+        {
+          "id": "parallel-tokyo-1",
+          "description": "対応先と位置・ラベルのデータ契約を確定"
+        },
+        {
+          "id": "parallel-tokyo-2",
+          "description": "ポートフォリオで対応を表示し共有できる"
+        }
+      ],
+      "verification": null,
+      "notes": "追加要望。対応先の実装・識別子は未確定。"
+    }
+  ]
+}
