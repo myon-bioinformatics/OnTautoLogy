@@ -122,6 +122,30 @@ PR ごとに最新の観測を選び、`contained_in_main=true` の依存先を�
 
 ## 📥 入力
 
+ファイル名を `-` にすると標準入力のUTF-8 JSONを読み、標準出力へ結果を返します。1コマンドにつき標準入力は1回だけです。READMEや設定ファイルの読み込み、外部依存は不要です。
+
+```sh
+python -S ontautology.py audit - < snapshot.json > graph.json
+python -S ontautology.py plan - < graph.json
+```
+
+Pythonからは `audit([snapshot])` と `plan(graph)` を直接呼べます。Nodeは標準モジュールで同じCLIへ渡します。シェルは起動せず、終了コード `0`（回答）、`1`（入力エラー）、`2`（回答あり・要確認）を引き継ぎます。
+
+```js
+const { spawnSync } = require('node:child_process');
+const { readFileSync } = require('node:fs');
+const result = spawnSync('python3', ['-S', 'ontautology.py', 'audit', '-'], {
+  input: readFileSync('snapshot.json'),
+  encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, timeout: 60000,
+});
+if (result.error) throw result.error;
+process.stdout.write(result.stdout);
+process.stderr.write(result.stderr);
+process.exit(result.status ?? 1);
+```
+
+`python3` は利用するPython実行ファイルに置き換えます。GraphQLは取得側で `integration-audit/3` へ変換する境界です。コアから認証・HTTPを呼びません。Rustの計算実装へ切り出す場合も、同じJSONと終了コード・循環／未観測の回帰ケースを維持する案です。Rustは未実装・未測定です。
+
 - `schema=integration-audit/3`、完全な40桁 SHA、タイムゾーン付きの `captured_at`、5種類の作業状態（調査中・着手中・完了・保留・ブロッカー）を確認します。合わなければ終了コード 1 と短いエラーを標準エラーに出します。
 - `examples/audit-20261114.json` は 2026年11月14日 23:12 JST の監査から抜き出した履歴で、現在の GitHub の状態ではありません。
 

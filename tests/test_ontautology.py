@@ -3,8 +3,10 @@ import contextlib
 import copy
 import io
 import json
+import os
 from pathlib import Path
 import random
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -12,6 +14,45 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import ontautology as ot  # noqa: E402
+
+
+class JsonTransport(unittest.TestCase):
+    script = Path(__file__).resolve().parent.parent / 'ontautology.py'
+
+    def run_cli(self, *args, data='{}', seed='1'):
+        return subprocess.run([sys.executable, '-S', str(self.script), *args],
+                              input=data.encode('utf-8'), capture_output=True,
+                              env={**os.environ, 'PYTHONHASHSEED': seed})
+
+    def test_stdin_audit_matches_file_and_preserves_japanese(self):
+        path = self.script.parent / 'examples/audit-20261114.json'
+        document = json.loads(path.read_text(encoding='utf-8'))
+        document['records'][0]['title'] = '監査の入力を保持'
+        p = self.run_cli('audit', '-', data=json.dumps(document, ensure_ascii=False))
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual(json.loads(p.stdout), ot.audit([document]))
+
+    def test_stdin_order_is_stable_across_seeds_and_input_order(self):
+        edges = [e('before', 'a', 'b'), e('before', 'b', 'a'), e('before', 'b', 'c')]
+        answers = []
+        for seed in ('1', '2', '3'):
+            p = self.run_cli('order', '-', data=json.dumps({'edges': edges, 'nodes': ['d','c','b','a']}), seed=seed)
+            self.assertEqual(p.returncode, 2, p.stderr)
+            answers.append(json.loads(p.stdout)); edges.reverse()
+        self.assertEqual(answers, [dict(batches=[['d']], cycle=['a','b','a'], blocked=['a','b','c'])]*3)
+
+    def test_stdin_reuse_and_invalid_json_are_input_errors(self):
+        for args,data in [(('audit','-','-'),'{}'), (('diff','-','-'),'{}'), (('order','-'),'{')]:
+            p=self.run_cli(*args,data=data)
+            self.assertEqual(p.returncode,1);self.assertEqual(p.stdout,b'');self.assertIn(b'ontautology:',p.stderr)
+
+    @unittest.skipUnless(shutil.which('node'), 'Node is optional')
+    def test_node_transports_same_json_and_exit_code_without_shell(self):
+        request=json.dumps({'edges':[e('before','a','b'),e('before','b','a')],'nodes':['d']})
+        direct=self.run_cli('order','-',data=request)
+        js="const {spawnSync}=require('node:child_process');const r=spawnSync(process.argv[1],['-S',process.argv[2],'order','-'],{input:require('node:fs').readFileSync(0)});if(r.error)throw r.error;process.stdout.write(r.stdout);process.stderr.write(r.stderr);process.exit(r.status??1)"
+        p=subprocess.run(['node','-e',js,sys.executable,str(self.script)],input=request.encode(),capture_output=True)
+        self.assertEqual(p.returncode,direct.returncode);self.assertEqual(json.loads(p.stdout),json.loads(direct.stdout))
 
 
 def e(kind, source, target, **more):

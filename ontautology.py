@@ -156,7 +156,7 @@ def order(edges, *, nodes=()):
         waits.setdefault(edge["source"], set())
     cycle, blocked = None, set()
     while True:
-        open_waits = {node: sources - blocked for node, sources in waits.items() if node not in blocked}
+        open_waits = {node: sorted(waits[node] - blocked) for node in sorted(waits) if node not in blocked}
         sorter = TopologicalSorter(open_waits)
         try:
             sorter.prepare()
@@ -651,9 +651,18 @@ def turtle(graph):
 
 # ---------------------------------------------------------------- command line
 
+def _read_json(path):
+    """A file or one UTF-8 JSON document on stdin; no transport dependencies."""
+    if str(path) == "-":
+        stream = getattr(sys.stdin, "buffer", sys.stdin)
+        value = stream.read()
+        return json.loads(value.decode("utf-8") if isinstance(value, bytes) else value)
+    return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
 def _load(path):
     """(data, core edges, node ids or None) from an audit graph or a plain {"edges": [...]} file."""
-    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    data = _read_json(path)
     if data.get("schema") == KG_SCHEMA:
         validate(data)
         return data, edges_of(data), [node["id"] for node in data["nodes"]]
@@ -686,12 +695,15 @@ def main(argv=None):
         command.add_argument("-o", "--output", type=Path, help="write here instead of stdout")
     args = parser.parse_args(argv)
     try:
+        inputs = args.inputs if args.command == "audit" else [args.before, args.after] if args.command == "diff" else [args.graph]
+        if sum(str(path) == "-" for path in inputs) > 1:
+            raise ValueError("stdin '-' may be used only once per command")
         look = False
         if args.command == "audit":
-            answer = audit([json.loads(path.read_text(encoding="utf-8")) for path in args.inputs], owner=args.owner)
+            answer = audit([_read_json(path) for path in args.inputs], owner=args.owner)
             answer = turtle(answer) if args.format == "turtle" else answer
         elif args.command == "diff":
-            answer = observation_diff(*(json.loads(path.read_text(encoding="utf-8")) for path in (args.before, args.after)))
+            answer = observation_diff(*(_read_json(path) for path in (args.before, args.after)))
             look = bool(answer["added"] or answer["removed"] or answer["changed"])
         else:
             data, edges, nodes = _load(args.graph)
