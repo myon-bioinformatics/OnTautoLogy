@@ -20,9 +20,23 @@ python -S ontautology.py audit  examples/audit-20261114.json --format turtle -o 
 python -S -m unittest discover -s tests
 ```
 
-他に `cycles`（🔁 循環）、`order`（順序）、`ladder`（段ごとの本数）、`keys`（🔑 鍵になるか）があります。`reach` などの芯の問いは、監査グラフにも素の `{"edges": [...]}` にも使えます。
+| コマンド | 入力 | 答え |
+| --- | --- | --- |
+| 🔭 `audit FILE...` | 監査スナップショット | グラフ（`--format turtle` で RDF） |
+| 🪜 `plan GRAPH` | 監査グラフ | main 未導入の PR の依存順・ブロック・未観測の依存先 |
+| 🆚 `diff BEFORE AFTER` | 監査グラフ2つ | 追加・削除・変化した PR |
+| 🐢 `turtle GRAPH` | 監査グラフ | RDF/Turtle |
+| 🧪 `check GRAPH` | どちらでも | 所見の一覧（監査グラフはオントロジーも検証） |
+| 💥 `reach GRAPH NODE...` | どちらでも | 変更が届く先 |
+| 🔎 `why GRAPH NODE...` | どちらでも | 判断の根拠 |
+| 🔁 `cycles GRAPH [KIND...]` | どちらでも | 循環の代表例 |
+| 🪜 `order GRAPH [KIND...]` | どちらでも | 並行できる組の順 |
+| 🪜 `ladder GRAPH` | どちらでも | 根拠の段ごとの本数 |
+| 🔑 `keys GRAPH FIELDS...` | `"items"` を持つ JSON | 属性の組（`id+run` など）が鍵になるか |
 
-終了コード: `0` 答えた / `1` 入力エラー / `2` 答えたが要確認（所見・循環・ブロック・未知のノード・差分あり）。
+「どちらでも」は、監査グラフと素の `{"edges": [...], "nodes": [...]}` の両方です。全コマンドに `-o FILE` があります。
+
+終了コード: `0` 答えた / `1` 入力エラー / `2` 答えたが要確認（所見・循環・ブロック・未知のノード・鍵にならない・差分あり）。`2` は道具の失敗ではなく、入力についての答えです。
 
 Python からは関数名で呼べます。Node からは Python ランチャー（`py_launch.cjs`）経由で呼ぶ前提で、JS の実装は置きません。画面が要るときも HTML・CSS・JS は Python 側（`web_ui.py` など）で組み、ここには足しません。`uv tool install .` で `ontautology` コマンドとしても使えます。
 
@@ -83,13 +97,28 @@ flowchart TD
 - run は自分のコミット（`runsAt`）にだけ結び付けます。PR の head と同じだとは仮定せず、head が未取得の run にはコミットを作りません。attempt ごとに別のノードです。
 - 同じリポジトリで変更パスが重なったときだけ `overlapsWith` を導出します（basis は derived）。Git の競合を意味しません。
 - 依存は監査側の主張として取り込み、出典と観測 ID を関係に付けます。Turtle では `rdf:Statement` で表し、古い依存を今も有効な事実に昇格させません。
-- `edges_of(graph)` が監査グラフを芯の辺に直します。芯と向きが逆の `dependsOn` と `changesFile` だけ向きを返します。
+- `edges_of(graph)` が監査グラフを芯の辺に直します。芯と向きが逆の `dependsOn` と `changesFile` は向きを返し、向きのない `overlapsWith` は両向きにします。そのため循環と順序は `cycles GRAPH dependsOn`、`order GRAPH dependsOn` のように依存の辺だけで問います（同じファイルに触れているだけの PR を循環と読まないため）。
 
 ## 🪜 統合順序（`plan`）
 
 PR ごとに最新の観測を選び、`contained_in_main=true` の依存先を消化済みとして、芯の `order` で順序を出します。merged だけでは main への導入を推定しません。未観測の依存先、循環、その下流は `blocked` に残し、独立した部分の順序は出します。同時刻に矛盾するスナップショットがあればエラーにします。
 
 順序は依存関係の制約だけです。CI、未解決レビュー、競合、保留の受入条件は監査ビューで確認してください。
+
+## 📊 例データでの結果
+
+`examples/audit-20261114.json`（15 PR、8 リポジトリ）を実行した結果です。
+
+| 問い | 結果 |
+| --- | --- |
+| `audit` | 719 ノード、1,671 辺（File 542、WorkflowRun 93、Commit 32、PullRequest 15、Observation 14） |
+| `check` | 所見なし |
+| `plan` | 順序 5 件、ブロック 1 件（`SakAnalytics#45` が未観測の `SakAnalytics#44` を待つ）。終了コード 2 |
+| `cycles GRAPH dependsOn` | なし |
+| `reach GRAPH file:myon-bioinformatics/Aoi:README.md` | 96 ノード、うち PR 12 件 |
+| `ladder` | 観測 1,646、導出 50（変更パスの重なり）、候補 0、証明 0 |
+
+証明の段はまだ 0 本です。この監査の入力には「常に成り立つ」と言える関係がないためで、他のリポジトリが証明した関係（ルール間の含意など）を辺として渡したときに埋まります。
 
 ## 📥 入力
 

@@ -293,8 +293,9 @@ class TemporalGraphTests(unittest.TestCase):
         self.assertEqual(prs, {"pr:myon-bioinformatics/demo#%d" % n for n in (1, 2, 3)})  # touched by 1 and 3, and 2 waits on 1
         rests = {r["edge"]["source"] for r in ot.why(edges, "pr:myon-bioinformatics/demo#2", depth=1)["rows"]}
         self.assertIn("pr:myon-bioinformatics/demo#1", rests)
-        self.assertEqual(ot.ladder(edges)["kinds"]["overlapsWith"], {"edges": 1, "proof": 0})
-        self.assertEqual(next(e for e in edges if e["kind"] == "overlapsWith")["basis"], "derived")
+        overlaps = [(e["source"][-1], e["target"][-1], e["basis"]) for e in edges if e["kind"] == "overlapsWith"]
+        self.assertEqual(sorted(overlaps), [("1", "3", "derived"), ("3", "1", "derived")])  # no direction: both ways
+        self.assertEqual(ot.cycles([e for e in edges if e["kind"] == "dependsOn"]), [])  # touching the same file is not a dependency cycle
 
 
 class ExtendedAuditTests(unittest.TestCase):

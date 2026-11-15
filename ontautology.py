@@ -598,8 +598,9 @@ def edges_of(graph):
 
     Core direction is "depended on → look again". Three relations point the other way in the audit vocabulary
     and are turned round: dependsOn (dependent → prerequisite), changesFile (observation → file) and
-    precedes stays as it is (earlier task → later task). Free-text ``basis`` notes become the core basis
-    (a note starting with "derived" → derived, anything else read from the snapshot → observed).
+    precedes stays as it is (earlier task → later task). overlapsWith has no direction — two PRs touch the
+    same path — so it is given both ways; ask cycles and order about dependsOn only. Free-text ``basis``
+    notes become the core basis (a note starting with "derived" → derived, anything else → observed).
     """
     edges = []
     for edge in graph["edges"]:
@@ -609,6 +610,8 @@ def edges_of(graph):
                       "source": edge["target"] if flip else edge["source"], "target": edge["source"] if flip else edge["target"],
                       "basis": "derived" if str(note or "").startswith("derived") else "observed",
                       **({"note": note} if note else {}), **({"lock": edge["observation"]} if edge.get("observation") else {})})
+        if edge["relation"] == "overlapsWith":
+            edges.append({**edges[-1], "source": edge["target"], "target": edge["source"]})
     return edges
 
 
@@ -666,14 +669,15 @@ def main(argv=None):
     add.add_argument("--format", choices=("json", "turtle"), default="json")
     for name, text in (("check", "shape, references, basis, duplicates; an audit graph is validated against its ontology"),
                        ("plan", "audit graph → dependency order of PRs not yet in main"), ("turtle", "audit graph → RDF/Turtle"),
-                       ("cycles", "representative cycles"), ("ladder", "edges per basis")):
+                       ("ladder", "edges per basis")):
         commands.add_parser(name, help=text).add_argument("graph", type=Path)
     for name, text, terms in (("reach", "what a change of these nodes touches", "node ids"), ("why", "what these nodes rest on", "node ids"),
                               ("order", "batches, sources first", "edge kinds that mean 'before' (default: all)"),
+                              ("cycles", "representative cycles", "edge kinds to look at (default: all)"),
                               ("keys", 'can these field sets be the key of "items"', "field sets like id+run")):
         add = commands.add_parser(name, help=text)
         add.add_argument("graph", type=Path)
-        add.add_argument("terms", nargs="*" if name == "order" else "+", help=terms)
+        add.add_argument("terms", nargs="*" if name in ("order", "cycles") else "+", help=terms)
     add = commands.add_parser("diff", help="two audit graphs → what changed between their latest observations")
     add.add_argument("before", type=Path)
     add.add_argument("after", type=Path)
@@ -707,7 +711,7 @@ def main(argv=None):
                 answer = [why(edges, node) for node in args.terms]
                 look = any(not found["rows"] for found in answer)
             elif args.command == "cycles":
-                answer = cycles(edges)
+                answer = cycles([e for e in edges if not args.terms or e["kind"] in args.terms])
                 look = bool(answer)
             elif args.command == "order":
                 answer = order([e for e in edges if not args.terms or e["kind"] in args.terms], nodes=() if args.terms else nodes or ())
