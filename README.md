@@ -160,3 +160,37 @@ process.exit(result.status ?? 1);
 ## 方針メモ（たたき台）
 
 リポジトリのあり方をルールとしてグラフに載せる案は、[docs/policy-rules.md](docs/policy-rules.md) にあります。実装ではなく、見直し前提の設計メモです。
+
+## Open PR inventory (optional `integration-audit/3` coverage)
+
+`open_pr_inventory` is an optional top-level array. Legacy inputs without it keep the
+existing planning behavior; an empty array declares no repository coverage, not zero
+PRs everywhere. Each entry is scoped to one full `owner/name` repository:
+
+```json
+{"repository":"myon-bioinformatics/Ironmate","checked_at":"2026-11-15T12:00:00Z",
+ "complete":true,"open_pr_numbers":[]}
+```
+
+A complete entry lists unique positive PR numbers, including Drafts; `[]` explicitly
+means no open PRs in that repository at that check. A failed/partial check uses
+`"complete":false,"open_pr_numbers":null`, never an empty list.
+
+Every input creates a `Snapshot` node, including inputs with no records. Its digest,
+observation time and explicit inventory remain in the graph; existing `derived_from` links
+its PR observations. Structured metadata in Turtle is a JSON-text string literal.
+
+`plan` uses the newest `checked_at` per repository, even when incomplete. It does not
+schedule stale PRs for an incomplete scope and reports `inventory_uncertainty`.
+Complete coverage controls membership, but every listed PR must have a row from that
+same snapshot digest: otherwise `missing_rows` and `blocked` identify it. Older evidence
+is not promoted to current evidence. Other repositories retain their own coverage or
+legacy behavior. Conflicting checks at the same time are rejected as ambiguous.
+
+Disappearance is not completion: an absent dependency still blocks its dependents
+unless an observation explicitly verifies `contained_in_main: true`. Historical nodes
+and evidence are never deleted. Inventory-aware plans add `inventory_uncertainty` and
+`missing_rows`; legacy plan output fields remain unchanged. The graph schema stays
+`ontautology/1` with #9’s existing `Snapshot` class and `derived_from` relation.
+A partial inventory makes the `plan` CLI return 2, even if no PR rows are available.
+This remains dependency planning, not permission to merge or a complete CI verdict.
