@@ -188,8 +188,8 @@ class Graph:
         self.nodes = {}
         self.edges = {}
 
-    def node(self, ident, kind, **properties):
-        node = {"id": ident, "type": kind, **properties}
+    def node(self, ident, node_type, **properties):
+        node = {"id": ident, "type": node_type, **properties}
         if ident in self.nodes and self.nodes[ident] != node:
             raise ValueError(f"conflicting node identity: {ident}")
         self.nodes[ident] = node
@@ -577,3 +577,4 @@ def cli(argv=None):
 
 if __name__ == "__main__":
     raise SystemExit(cli())
+
