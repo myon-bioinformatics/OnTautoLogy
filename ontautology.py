@@ -221,11 +221,11 @@ STATES = ("調査中", "着手中", "完了", "保留", "ブロッカー")
 RELATIONS = {
     "hasIssue": (("Observation",), "Issue"),
     "hasReview": (("Observation",), "Review"),
-    "hasJob": (("WorkflowRun",), "Job"),
+    "hasJob": (("ActionsRun",), "Job"),
     "hasPin": (("Observation",), "FixedSHA"),
     "pinsCommit": (("FixedSHA",), "Commit"),
-    "hasArtifact": (("Observation",), "Artifact"),
-    "generatedFrom": (("Artifact",), "Commit"),
+    "hasGeneratedArtifact": (("Observation",), "GeneratedArtifact"),
+    "generatedFrom": (("GeneratedArtifact",), "Commit"),
     "hasEvidence": (("Observation",), "Evidence"),
     "missingEvidence": (("Observation",), "EvidenceGap"),
     "missingFromMain": (("Observation",), "MainGap"),
@@ -233,18 +233,89 @@ RELATIONS = {
     "precedes": (("Task",), "Task"),
     "hasCompletion": (("Observation",), "CompletionRecord"),
     "verifiesCommit": (("CompletionRecord", "Task"), "Commit"),
-    "belongsTo": (("PullRequest", "Commit", "Branch", "File", "WorkflowRun"), "Repository"),
+    "belongsTo": (("PullRequest", "Commit", "Branch", "File", "ActionsRun"), "Repository"),
     "observes": (("Observation",), "PullRequest"),
     "hasHead": (("Observation",), "Commit"),
     "hasBase": (("Observation",), "Commit"),
     "hasMain": (("Observation",), "Commit"),
     "targetsBranch": (("Observation",), "Branch"),
     "changesFile": (("Observation",), "File"),
-    "hasRun": (("Observation",), "WorkflowRun"),
-    "runsAt": (("WorkflowRun",), "Commit"),
+    "hasRun": (("Observation",), "ActionsRun"),
+    "runsAt": (("ActionsRun",), "Commit"),
     "dependsOn": (("PullRequest",), "PullRequest"),
     "overlapsWith": (("PullRequest",), "PullRequest"),
 }
+
+# Public audit vocabulary; legacy relation names retain their meaning.
+RELATIONS.update({
+    "depends_on": (("PullRequest",), "PullRequest"),
+    "duplicates": (("PullRequest",), "PullRequest"),
+    "updates": (("Observation",), "File"),
+    "verified_by": (("PullRequest",), "Evidence"),
+    "derived_from": (("Observation",), "Snapshot"),
+    "targets": (("Observation",), "PullRequest"),
+    "blocks": (("PullRequest",), "PullRequest"),
+    "integrates_into": (("PullRequest",), "Branch"),
+    "same_as": (("Repository",), "Repository"),
+    "supersedes": (("Snapshot",), "Snapshot"),
+    "has_status": (("PullRequest", "Repository"), "Observation"),
+})
+RELATIONS['belongsTo'] = ((*RELATIONS['belongsTo'][0], "Issue"), "Repository")
+
+
+def enrich(value, documents, owner):
+    """Project observed inventory and aliases without guessing identity or run SHAs."""
+    graph = Graph()
+    graph.nodes = {n['id']: n for n in value['nodes']}
+    graph.edges = {digest(e): e for e in value['edges']}
+    for doc in documents:
+        sid = graph.node('snapshot:' + digest(doc), 'Snapshot', captured_at=doc['captured_at'])
+        previous = doc.get('previous_snapshot')
+        if previous:
+            old = graph.node('snapshot:' + previous['digest'], 'Snapshot', captured_at=previous['captured_at'])
+            graph.edge(sid, 'supersedes', old, basis='observed: snapshot sequence')
+        for inv in doc.get('inventory', []):
+            name = inv['repo'] if '/' in inv['repo'] else owner + '/' + inv['repo']
+            name = repository(name)
+            state = inv.get('state', '調査中')
+            if state not in STATES:
+                raise ValueError('invalid inventory state')
+            obs = graph.node('repository-observation:' + digest(doc) + ':' + name, 'Observation',
+                             observed_at=doc['captured_at'], snapshot=digest(doc), state=state,
+                             source=inv.get('source_url'))
+            graph.edge(graph.repo(name), 'has_status', obs)
+            graph.edge(obs, 'derived_from', sid)
+            if inv.get('main'):
+                graph.edge(obs, 'hasMain', graph.commit(name, inv['main']))
+            runs = inv.get('main_runs', [])
+            audit_runs(graph, runs, obs, name, doc['captured_at'], 'main')
+            row = {'issues': inv.get('issues', []),
+                   'pins': [dict(repository=p.get('repository', name), sha=p['commit'],
+                                 destination=p.get('destination'))
+                            for p in inv.get('pin_records', []) if p.get('commit')],
+                   'artifacts': [dict(a, source_sha=(a.get('workflow_run') or {}).get('head_sha'))
+                                 for w in runs for a in w.get('artifacts', [])],
+                   'gaps': [g if isinstance(g, dict) else {'reason': g} for g in inv.get('gaps', [])]}
+            audit_entities(graph, row, obs, name, doc['captured_at'])
+    observations = {e['source']: e['target'] for e in graph.edges.values() if e['relation'] == 'observes'}
+    aliases = {'dependsOn': 'depends_on', 'overlapsWith': 'duplicates', 'changesFile': 'updates', 'observes': 'targets'}
+    for e in list(graph.edges.values()):
+        relation = e['relation']
+        props = {k:v for k,v in e.items() if k not in ('source','relation','target')}
+        if relation in aliases:
+            if relation == 'overlapsWith':
+                props.update(basis='hypothesis', interpretation='shared changed path; duplicate-change candidate only')
+            graph.edge(e['source'], aliases[relation], e['target'], **props)
+        if relation == 'dependsOn':
+            graph.edge(e['target'], 'blocks', e['source'], **props)
+        if relation == 'observes':
+            graph.edge(e['target'], 'has_status', e['source'])
+            graph.edge(e['source'], 'derived_from', 'snapshot:' + graph.nodes[e['source']]['snapshot'])
+        if relation == 'targetsBranch':
+            graph.edge(observations[e['source']], 'integrates_into', e['target'], **props)
+        if relation == 'hasEvidence' and e['source'] in observations:
+            graph.edge(observations[e['source']], 'verified_by', e['target'], **props)
+    return validate(graph.export())
 
 
 def _classes():
@@ -329,6 +400,34 @@ class Graph:
 
 
 
+def audit_runs(graph, runs, observation, repo, observed, scope):
+    for run in runs:
+        run_id, attempt = run.get("id"), run.get("run_attempt")
+        if not isinstance(run_id, int) or isinstance(run_id, bool) or run_id < 1:
+            raise ValueError("workflow run id must be a positive integer")
+        if attempt is not None and (not isinstance(attempt, int) or isinstance(attempt, bool) or attempt < 1):
+            raise ValueError("run_attempt must be a positive integer or null")
+        rid = f"run:{repo}:{run_id}:attempt:{attempt if attempt is not None else 'unknown'}"
+        # Run outcomes are observations, not timeless properties of the run.
+        graph.node(rid, "ActionsRun", run_id=run_id, attempt=attempt, name=run.get("name"),
+                   url=f"https://github.com/{repo}/actions/runs/{run_id}")
+        graph.edge(rid, "belongsTo", graph.repo(repo))
+        graph.edge(observation, "hasRun", rid, scope=scope, conclusion=run.get("conclusion"),
+                   status=run.get("status"), event=run.get("event"),
+                   workflow_id=run.get("workflow_id"), observed_at=observed)
+        for job in run.get("jobs", []):
+            job_id = job.get("id")
+            if not isinstance(job_id, int) or isinstance(job_id, bool) or job_id < 1:
+                raise ValueError("job id must be a positive integer")
+            jid = graph.node(f"job:{repo}:{run_id}:attempt:{attempt}:{job_id}", "Job",
+                             job_id=job_id, run_id=run_id, attempt=attempt, name=job.get("name"))
+            graph.edge(rid, "hasJob", jid, observation=observation, observed_at=observed,
+                       conclusion=job.get("conclusion"), status=job.get("status"),
+                       evidence_url=job.get("html_url"))
+        if run.get("head_sha"):
+            graph.edge(rid, "runsAt", graph.commit(repo, run["head_sha"]))
+
+
 def audit_entities(graph, row, observation, repo, observed):
     """Optional audit facts share one vocabulary and stay scoped to observations.
 
@@ -360,8 +459,8 @@ def audit_entities(graph, row, observation, repo, observed):
         graph.edge(observation, "hasPin", ident, **evidence)
         graph.edge(ident, "pinsCommit", graph.commit(source_repo, value["sha"]), **evidence)
     for value in entries("artifacts"):
-        ident = entity("Artifact", value)
-        graph.edge(observation, "hasArtifact", ident, **evidence)
+        ident = entity("GeneratedArtifact", value)
+        graph.edge(observation, "hasGeneratedArtifact", ident, **evidence)
         if value.get("source_sha"):
             source_repo = repository(value.get("repository", repo))
             graph.edge(ident, "generatedFrom", graph.commit(source_repo, value["source_sha"]), **evidence)
@@ -413,9 +512,13 @@ def observation_diff(before, after):
         latest = {}
         for edge in graph["edges"]:
             if edge["relation"] == "observes":
-                obs = nodes[edge["source"]]
-                if edge["target"] not in latest or timestamp(obs["observed_at"]) > timestamp(latest[edge["target"]]["observed_at"]):
-                    latest[edge["target"]] = obs
+                key, obs = edge["target"], nodes[edge["source"]]
+            elif edge["relation"] == "has_status" and nodes[edge["source"]]["type"] == "Repository":
+                key, obs = edge["source"], nodes[edge["target"]]
+            else:
+                continue
+            if key not in latest or timestamp(obs["observed_at"]) > timestamp(latest[key]["observed_at"]):
+                latest[key] = obs
         result = {}
         for pr, obs in latest.items():
             values = {k:v for k,v in obs.items() if k not in ("id", "snapshot", "observed_at", "source")}
@@ -423,8 +526,8 @@ def observation_diff(before, after):
                 target = nodes[edge["target"]]
                 return {"relation": edge["relation"], "target": {k:v for k,v in target.items() if k != "id"},
                         "facts": {k:v for k,v in edge.items() if k not in ("source", "target", "observation", "observed_at", "snapshot")}}
-            relevant = [edge for edge in graph["edges"] if edge["source"] == obs["id"] or
-                        edge.get("observation") == obs["id"]]
+            relevant = [edge for edge in graph["edges"] if (edge["source"] == obs["id"] or edge.get("observation") == obs["id"])
+                        and edge["relation"] != "derived_from"]
             run_ids = {edge["target"] for edge in relevant if edge["relation"] == "hasRun"}
             relevant.extend(edge for edge in graph["edges"] if edge["source"] in run_ids and edge["relation"] == "runsAt")
             values["claims"] = sorted((claim(edge) for edge in relevant), key=digest)
@@ -439,6 +542,7 @@ def observation_diff(before, after):
 def audit(documents, *, owner="myon-bioinformatics"):
     """Cross-repository PR audit: integration-audit/3 snapshots → one graph with history. Never fetches or
     mutates GitHub. A snapshot wrapped as {"aoi_integration": {...}} (the site's observation export) is unwrapped."""
+    documents = [doc.get("aoi_integration", doc) for doc in documents]
     graph = Graph()
     for doc in documents:
         doc = doc.get("aoi_integration", doc)
@@ -467,7 +571,7 @@ def audit(documents, *, owner="myon-bioinformatics"):
                 raise ValueError("files must be a list or null")
             observation = graph.node(f"observation:{snapshot}:{ident}", "Observation", observed_at=observed,
                                      source=source, snapshot=snapshot, state=state,
-                                     files_observed=isinstance(files, list), **facts)
+                                     files_observed=isinstance(files, list), github_state=row.get("github_state"), **facts)
             graph.edge(observation, "observes", ident)
             for key, relation in (("head_sha", "hasHead"), ("base_sha", "hasBase"), ("main_sha", "hasMain")):
                 if row.get(key):
@@ -487,31 +591,7 @@ def audit(documents, *, owner="myon-bioinformatics"):
                 graph.edge(ident, "dependsOn", graph.pr(pr_id(dep, owner)), observation=observation,
                            observed_at=observed, evidence_url=source, basis="audit snapshot; curator claim")
             for scope, runs in (("pr_head", row.get("runs", [])), ("main", row.get("postmerge_runs", []))):
-                for run in runs:
-                    run_id, attempt = run.get("id"), run.get("run_attempt")
-                    if not isinstance(run_id, int) or isinstance(run_id, bool) or run_id < 1:
-                        raise ValueError("workflow run id must be a positive integer")
-                    if attempt is not None and (not isinstance(attempt, int) or isinstance(attempt, bool) or attempt < 1):
-                        raise ValueError("run_attempt must be a positive integer or null")
-                    rid = f"run:{repo}:{run_id}:attempt:{attempt if attempt is not None else 'unknown'}"
-                    # Run outcomes are observations, not timeless properties of the run.
-                    graph.node(rid, "WorkflowRun", run_id=run_id, attempt=attempt, name=run.get("name"),
-                               url=f"https://github.com/{repo}/actions/runs/{run_id}")
-                    graph.edge(rid, "belongsTo", graph.repo(repo))
-                    graph.edge(observation, "hasRun", rid, scope=scope, conclusion=run.get("conclusion"),
-                               status=run.get("status"), event=run.get("event"),
-                               workflow_id=run.get("workflow_id"), observed_at=observed)
-                    for job in run.get("jobs", []):
-                        job_id = job.get("id")
-                        if not isinstance(job_id, int) or isinstance(job_id, bool) or job_id < 1:
-                            raise ValueError("job id must be a positive integer")
-                        jid = graph.node(f"job:{repo}:{run_id}:attempt:{attempt}:{job_id}", "Job",
-                                         job_id=job_id, run_id=run_id, attempt=attempt, name=job.get("name"))
-                        graph.edge(rid, "hasJob", jid, observation=observation, observed_at=observed,
-                                   conclusion=job.get("conclusion"), status=job.get("status"),
-                                   evidence_url=job.get("html_url"))
-                    if run.get("head_sha"):
-                        graph.edge(rid, "runsAt", graph.commit(repo, run["head_sha"]))
+                audit_runs(graph, runs, observation, repo, observed, scope)
             audit_entities(graph, row, observation, repo, observed)
         for file, prs in overlap.items():
             prs = sorted(set(prs))
@@ -521,7 +601,7 @@ def audit(documents, *, owner="myon-bioinformatics"):
                                observed_at=observed, basis="derived: same repository and changed path; not a conflict")
     result = graph.export()
     validate(result)
-    return result
+    return enrich(result, documents, owner)
 
 
 def validate(graph):
@@ -568,7 +648,7 @@ def plan(graph):
                 latest[target] = obs
             elif timestamp(obs["observed_at"]) == timestamp(latest[target]["observed_at"]) and obs["id"] != latest[target]["id"]:
                 raise ValueError("ambiguous observations at the same time; select a snapshot")
-    pending = {key for key, obs in latest.items() if obs.get("contained_in_main") is not True}
+    pending = {key for key, obs in latest.items() if obs.get("contained_in_main") is not True and obs.get("merged") is not True and obs.get("github_state") != "closed"}
     dependencies = {key: set() for key in pending}
     missing = {key: set() for key in pending}
     for edge in graph["edges"]:
@@ -577,7 +657,7 @@ def plan(graph):
             continue
         if edge["observation"] != latest[source]["id"]:
             continue
-        if target not in latest:
+        if target not in latest or (latest[target].get("github_state") == "closed" and latest[target].get("merged") is not True and latest[target].get("contained_in_main") is not True):
             missing[source].add(target)
         elif target in pending:
             dependencies[source].add(target)
@@ -589,7 +669,7 @@ def plan(graph):
     unmet = sorted(key for key, deps in missing.items() if deps)
     blocked = set(found["blocked"]) | set(unmet) | {row["node"] for row in reach(waiting, unmet)["rows"]}
     order_ = [key for batch in found["batches"] for key in batch]
-    return {"order": [key for key in order_ if key not in blocked], "blocked": sorted(blocked),
+    return {"order": [key for key in order_ if key not in blocked], "batches": [[key for key in batch if key not in blocked] for batch in found["batches"] if any(key not in blocked for key in batch)], "blocked": sorted(blocked),
             "missing": {k: sorted(v) for k, v in missing.items() if v}, "cycle": cycle,
             "note": "依存関係だけの順序。CI・レビュー・競合・保留の確認は別途必要。未観測の依存先は完了扱いにしない。"}
 
@@ -605,11 +685,11 @@ def edges_of(graph):
     """
     edges = []
     for edge in graph["edges"]:
-        flip = edge["relation"] in ("dependsOn", "changesFile")
+        flip = edge["relation"] in ("dependsOn", "depends_on", "changesFile", "updates")
         note = edge.get("basis")
         edges.append({**{k: v for k, v in edge.items() if k not in ("relation", "basis")}, "kind": edge["relation"],
                       "source": edge["target"] if flip else edge["source"], "target": edge["source"] if flip else edge["target"],
-                      "basis": "derived" if str(note or "").startswith("derived") else "observed",
+                      "basis": note if note in BASIS else "derived" if str(note or "").startswith("derived") else "observed",
                       **({"note": note} if note else {}), **({"lock": edge["observation"]} if edge.get("observation") else {})})
         if edge["relation"] == "overlapsWith":
             edges.append({**edges[-1], "source": edge["target"], "target": edge["source"]})
@@ -747,3 +827,4 @@ def main(argv=None):
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
