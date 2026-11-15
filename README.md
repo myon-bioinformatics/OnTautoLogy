@@ -194,3 +194,18 @@ and evidence are never deleted. Inventory-aware plans add `inventory_uncertainty
 `ontautology/1` with #9’s existing `Snapshot` class and `derived_from` relation.
 A partial inventory makes the `plan` CLI return 2, even if no PR rows are available.
 This remains dependency planning, not permission to merge or a complete CI verdict.
+
+
+## Flutterの未吸収機能を追跡
+
+`examples/flutter-absorption.json` に、固定SHAの元ファイル、移管先候補、受入条件、検証SHA・Actions証跡を記録します。初期登録は主要機能12群と追加要望2件です。全パターンの棚卸し完了や吸収完了は意味しません。アーカイブ後も元SHAへの紐付けを保持し、Flutterのactive監視とは分けます。
+
+```sh
+python -S ontautology.py transfers examples/flutter-absorption.json
+python -S ontautology.py audit examples/flutter-absorption.json -o graph.json
+node ontautology.mjs transfers examples/flutter-absorption.json
+```
+
+`transfers` は未完了または棚卸し範囲が未確定なら終了コード2、入力不整合なら1です。`state=完了` には元SHAと移管先SHAに一致するreceipt、移管先ファイル、main反映の記録、全受入条件のID、移管先のActions URLが必要です。これは記録の整合性検査であり、CI結果・main包含・機能同等性の独立検証ではありません。移管先が未決でも `target.repository=null` で残せます。
+
+機能はTaskとして `migration_source`（元File）・`migration_target`（移管先Repository）に結び、5状態とSnapshot・Evidenceを保持します。追加要望は `kind=request` で既存機能の未吸収から区別します。GitHubのアーカイブ・マージは行いません。

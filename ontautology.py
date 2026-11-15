@@ -258,7 +258,9 @@ RELATIONS.update({
     "integrates_into": (("PullRequest",), "Branch"),
     "same_as": (("Repository",), "Repository"),
     "supersedes": (("Snapshot",), "Snapshot"),
-    "has_status": (("PullRequest", "Repository"), "Observation"),
+    "has_status": (("PullRequest", "Repository", "Task"), "Observation"),
+    "migration_source": (("Task",), "File"),
+    "migration_target": (("Task",), "Repository"),
 })
 RELATIONS['belongsTo'] = ((*RELATIONS['belongsTo'][0], "Issue"), "Repository")
 
@@ -287,6 +289,112 @@ def inventory_entries(entries):
         elif numbers is not None:
             raise ValueError("incomplete inventory requires null open_pr_numbers")
     return entries
+
+
+def transfer_report(document):
+    """Offline absorption ledger. A recorded receipt is not independent CI verification."""
+    from urllib.parse import urlparse
+    doc = document.get('aoi_integration', document)
+    if doc.get('schema') != 'integration-audit/3':
+        raise ValueError('expected integration-audit/3 transfer ledger')
+    timestamp(doc['captured_at'])
+    rows, seen = [], set()
+    def sha(value):
+        return isinstance(value, str) and len(value) == 40 and all(c in '0123456789abcdef' for c in value)
+    def paths(values):
+        if not isinstance(values, list) or any(not isinstance(v, str) or not v or v.startswith('/') or '\\' in v or '..' in v.split('/') for v in values):
+            raise ValueError('transfer paths must be repository-relative')
+        return values
+    for item in doc.get('transfers', []):
+        key = item['id']
+        if not isinstance(key, str) or not key or key in seen:
+            raise ValueError('transfer IDs must be nonempty and unique')
+        seen.add(key)
+        state = item.get('state', '調査中')
+        if state not in STATES:
+            raise ValueError('invalid transfer state')
+        source, target = item['source'], item.get('target') or {}
+        repository(source['repository'])
+        if not sha(source.get('sha')):
+            raise ValueError('transfer source requires a full SHA')
+        source_paths = paths(source.get('paths', []))
+        kind = item.get('kind', 'feature')
+        if kind not in ('feature', 'request') or (kind == 'feature' and not source_paths):
+            raise ValueError('existing features require source paths; requests may have none')
+        if target.get('repository'):
+            repository(target['repository'])
+        target_paths = paths(target.get('paths', []))
+        if target.get('sha') is not None and not sha(target['sha']):
+            raise ValueError('transfer target SHA must be full or unknown')
+        criteria = item.get('acceptance', [])
+        if not criteria or any(not isinstance(c, dict) or not c.get('id') or not c.get('description') for c in criteria):
+            raise ValueError('transfer acceptance criteria are required')
+        ids = [c['id'] for c in criteria]
+        if any(not isinstance(k, str) for k in ids) or len(ids) != len(set(ids)):
+            raise ValueError('transfer acceptance IDs must be unique strings')
+        receipt = item.get('verification') or {}
+        accepted = receipt.get('accepted', [])
+        if not isinstance(accepted, list) or any(not isinstance(k, str) for k in accepted) or set(accepted) - set(ids):
+            raise ValueError('receipt contains unknown acceptance criteria')
+        url = urlparse(receipt.get('evidence_url', ''))
+        verified = bool(target.get('repository') and target_paths and sha(target.get('sha'))
+                        and receipt.get('source_sha') == source['sha']
+                        and receipt.get('target_sha') == target['sha']
+                        and receipt.get('target_in_main') is True
+                        and set(accepted) == set(ids) and url.scheme == 'https' and url.netloc == 'github.com'
+                        and url.path.startswith('/' + target['repository'] + '/actions/runs/')
+                        and url.path.removeprefix('/' + target['repository'] + '/actions/runs/').split('/')[0].isdigit())
+        if state == '完了' and not verified:
+            raise ValueError('absorbed transfer requires exact source/target SHAs, target paths, main receipt and all acceptance evidence')
+        rows.append(dict(item, state=state, kind=kind, receipt_complete=verified,
+                         source=dict(source, paths=source_paths), target=dict(target, paths=target_paths)))
+    pending = [r['id'] for r in rows if r['state'] != '完了']
+    features = [r['id'] for r in rows if r['kind'] == 'feature' and r['state'] != '完了']
+    scope = doc.get('transfer_scope', {})
+    return {'schema': 'ontautology/transfers/1', 'captured_at': doc['captured_at'], 'records': rows,
+            'pending': pending, 'unabsorbed_features': features,
+            'counts': {state: sum(r['state'] == state for r in rows) for state in sorted(STATES)},
+            'inventory_complete': scope.get('inventory_complete') is True,
+            'archive_readiness': '未確定' if scope.get('inventory_complete') is not True else '未吸収あり' if features else '記録上の未吸収なし',
+            'note': '記録された受入証跡の整合性。GitHubのCI成功・main包含・機能同等性は独立再検証しない。アーカイブ操作は行わない。'}
+
+
+def transfer_entities(graph, doc, sid):
+    for item in transfer_report(doc)['records']:
+        source, target = item['source'], item['target']
+        key = 'transfer:' + source['repository'] + ':' + item['id']
+        obs = graph.node('transfer-observation:' + digest(doc) + ':' + key, 'Observation',
+                         transfer_key=key, observed_at=doc['captured_at'], snapshot=digest(doc),
+                         state=item['state'], source='https://github.com/' + source['repository'])
+        task = graph.node('task:' + digest(doc) + ':' + key, 'Task', key=key, title=item['title'],
+                          phase='再検証', state=item['state'], detail=json.dumps(item, ensure_ascii=False, sort_keys=True))
+        graph.edge(obs, 'hasTask', task)
+        graph.edge(task, 'has_status', obs)
+        graph.edge(obs, 'derived_from', sid)
+        graph.edge(obs, 'hasHead', graph.commit(source['repository'], source['sha']))
+        for path in source['paths']:
+            node = graph.node('file:' + source['repository'] + ':' + path, 'File', path=path)
+            graph.edge(node, 'belongsTo', graph.repo(source['repository']))
+            graph.edge(task, 'migration_source', node, observation=obs, source_sha=source['sha'])
+        if target.get('repository'):
+            graph.edge(task, 'migration_target', graph.repo(target['repository']), observation=obs,
+                       basis=target.get('basis', 'hypothesis: destination not yet verified'))
+            for path in target['paths']:
+                node = graph.node('file:' + target['repository'] + ':' + path, 'File', path=path)
+                graph.edge(node, 'belongsTo', graph.repo(target['repository']))
+                graph.edge(obs, 'updates', node)
+        gaps = []
+        if not target.get('repository'):
+            gaps.append({'reason':'移管先未確定'})
+        if not target['paths']:
+            gaps.append({'reason':'移管先ファイル未確定'})
+        if not item['receipt_complete']:
+            gaps.append({'reason':'全受入条件に対応するmainの検証証跡が未確定'})
+        audit_entities(graph, {'gaps':gaps, 'evidence':[item['verification']] if item.get('verification') else []},
+                       obs, source['repository'], doc['captured_at'])
+        if item['state'] == '完了':
+            graph.edge(task, 'verifiesCommit', graph.commit(target['repository'], target['sha']),
+                       observation=obs, evidence_url=item['verification']['evidence_url'])
 
 
 def enrich(value, documents, owner):
@@ -335,6 +443,7 @@ def enrich(value, documents, owner):
                                  for w in runs for a in w.get('artifacts', [])],
                    'gaps': [g if isinstance(g, dict) else {'reason': g} for g in inv.get('gaps', [])]}
             audit_entities(graph, row, obs, name, doc['captured_at'])
+        transfer_entities(graph, doc, 'snapshot:' + digest(doc))
     observations = {e['source']: e['target'] for e in graph.edges.values() if e['relation'] == 'observes'}
     aliases = {'dependsOn': 'depends_on', 'overlapsWith': 'duplicates', 'changesFile': 'updates', 'observes': 'targets'}
     for e in list(graph.edges.values()):
@@ -553,6 +662,9 @@ def observation_diff(before, after):
                 key, obs = edge["target"], nodes[edge["source"]]
             elif edge["relation"] == "has_status" and nodes[edge["source"]]["type"] == "Repository":
                 key, obs = edge["source"], nodes[edge["target"]]
+            elif edge['relation'] == 'has_status' and nodes[edge['source']]['type'] == 'Task' and nodes[edge['target']].get('transfer_key'):
+                obs = nodes[edge['target']]
+                key = obs['transfer_key']
             else:
                 continue
             if key not in latest or timestamp(obs["observed_at"]) > timestamp(latest[key]["observed_at"]):
@@ -854,6 +966,7 @@ def main(argv=None):
         add = commands.add_parser(name, help=text)
         add.add_argument("graph", type=Path)
         add.add_argument("terms", nargs="*" if name in ("order", "cycles") else "+", help=terms)
+    commands.add_parser("transfers", help="unabsorbed features, destinations and acceptance receipts").add_argument("graph", type=Path)
     add = commands.add_parser("diff", help="two audit graphs → what changed between their latest observations")
     add.add_argument("before", type=Path)
     add.add_argument("after", type=Path)
@@ -868,6 +981,9 @@ def main(argv=None):
         if args.command == "audit":
             answer = audit([_read_json(path) for path in args.inputs], owner=args.owner)
             answer = turtle(answer) if args.format == "turtle" else answer
+        elif args.command == "transfers":
+            answer = transfer_report(_read_json(args.graph))
+            look = bool(answer['pending']) or not answer['inventory_complete']
         elif args.command == "diff":
             answer = observation_diff(*(_read_json(path) for path in (args.before, args.after)))
             look = bool(answer["added"] or answer["removed"] or answer["changed"])

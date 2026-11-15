@@ -622,3 +622,61 @@ class ConvergenceVocabulary(unittest.TestCase):
                               text=True,capture_output=True,cwd=tempfile.gettempdir())
         self.assertEqual(result.returncode,0,result.stderr)
         self.assertEqual(json.loads(result.stdout),ot.audit([self.document()]))
+
+
+class TransferLedgerTests(unittest.TestCase):
+    def example(self):
+        return json.loads((Path(__file__).resolve().parents[1]/'examples/flutter-absorption.json').read_text())
+
+    def completed(self):
+        doc=self.example();doc['transfers']=doc['transfers'][:1];row=doc['transfers'][0]
+        row['state']='完了';row['target'].update(sha='b'*40,paths=['tools/maps.py'])
+        row['verification']={'source_sha':row['source']['sha'],'target_sha':'b'*40,'target_in_main':True,
+                             'accepted':[c['id'] for c in row['acceptance']],
+                             'evidence_url':'https://github.com/'+row['target']['repository']+'/actions/runs/42'}
+        return doc
+
+    def test_partial_inventory_remains_unknown_and_requests_are_separate(self):
+        report=ot.transfer_report(self.example())
+        self.assertEqual(len(report['records']),14)
+        self.assertEqual(len(report['unabsorbed_features']),12)
+        self.assertEqual(report['archive_readiness'],'未確定')
+        self.assertEqual(report['counts']['完了'],0)
+
+    def test_completion_needs_same_source_target_main_and_all_criteria(self):
+        import copy
+        good=self.completed();self.assertEqual(ot.transfer_report(good)['pending'],[])
+        for change in ({'source_sha':'c'*40},{'target_sha':'c'*40},{'target_in_main':False},
+                       {'accepted':[]},{'evidence_url':'https://github.com/other/repo/actions/runs/42'}):
+            with self.subTest(change=change),self.assertRaises(ValueError):
+                bad=copy.deepcopy(good);bad['transfers'][0]['verification'].update(change);ot.transfer_report(bad)
+
+    def test_new_task_graph_preserves_archived_source_file_and_destination(self):
+        doc=self.example();doc['transfer_scope']['source_archived_observed']=True
+        graph=ot.audit([doc]);self.assertEqual(ot.plan(graph)['order'],[])
+        self.assertEqual(sum(n['type']=='Task' for n in graph['nodes']),14)
+        self.assertTrue(any(e['relation']=='migration_source' for e in graph['edges']))
+        self.assertTrue(any(e['relation']=='migration_target' for e in graph['edges']))
+        self.assertFalse(any(e['relation']=='same_as' for e in graph['edges']))
+        self.assertEqual(ot.audit([doc,doc]),graph)
+
+    def test_transfer_diff_tracks_target_and_state_but_ignores_capture_time(self):
+        import copy
+        doc=self.example();later=copy.deepcopy(doc);later['captured_at']='2026-11-16T01:00:00Z'
+        before=ot.audit([doc]);self.assertEqual(ot.observation_diff(before,ot.audit([later]))['changed'],[])
+        later['transfers'][0]['state']='着手中'
+        diff=ot.observation_diff(before,ot.audit([later]))
+        self.assertEqual(len(diff['changed']),1)
+        self.assertIn('flutter-maps-links',diff['changed'][0]['pr'])
+
+    def test_duplicate_ids_and_unanchored_completion_are_rejected(self):
+        doc=self.example();doc['transfers'].append(dict(doc['transfers'][0]))
+        with self.assertRaises(ValueError):ot.transfer_report(doc)
+        doc=self.completed();doc['transfers'][0]['target']['paths']=[]
+        with self.assertRaises(ValueError):ot.transfer_report(doc)
+
+    def test_transfers_cli_works_on_stdin_and_signals_pending(self):
+        result=subprocess.run([sys.executable,'-S',str(Path(ot.__file__)),'transfers','-'],
+                              input=json.dumps(self.example()),text=True,capture_output=True)
+        self.assertEqual(result.returncode,2,result.stderr)
+        self.assertEqual(len(json.loads(result.stdout)['pending']),14)
