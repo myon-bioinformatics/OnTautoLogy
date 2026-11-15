@@ -175,6 +175,13 @@ class TemporalGraphTests(unittest.TestCase):
 
 
 class ExtendedAuditTests(unittest.TestCase):
+    def test_evidence_kind_is_payload_not_node_type(self):
+        graph = build([snapshot(row(1, evidence=[{"kind": "PR metadata", "url": "https://github.com/o/r/pull/1"}]))])
+        evidence = next(n for n in graph["nodes"] if n["type"] == "Evidence")
+        self.assertEqual(evidence["kind"], "PR metadata")
+        self.assertIn("ot:kind", turtle(graph))
+
+
     def test_typed_entities_and_job_attempts(self):
         run={'id':7,'run_attempt':2,'name':'CI','jobs':[{'id':8,'name':'unit','conclusion':'cancelled'}]}
         doc=snapshot(row(1,contained_in_main=False,runs=[run],issues=[{'number':10}],
@@ -237,3 +244,4 @@ class ExtendedAuditTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
