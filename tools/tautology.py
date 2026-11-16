@@ -14,17 +14,21 @@ rules on every truth assignment, so a rewritten rule can be restored without los
 Ladder: a rule with no FN and no FP over every observed concept is ``derived`` (it holds for what was
 collected, one more concept can refute it); an equivalence over every assignment is ``proof``.
 
+CLI: python -S tools/tautology.py rules | judge | equivalent ... (through the core's command line, so the core
+commands and exit codes come along).
+
 Dependency goes one way: tools/ import the core, the core never imports tools/.
 Every function is callable by name from Python, and from Node through vendor/py_launch.cjs (--call).
 """
 import itertools
+import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import ontautology as ot  # noqa: E402
 
-__all__ = ["standing", "gaps", "entailed", "holds", "atoms", "judge", "rules", "equivalent"]
+__all__ = ["standing", "gaps", "entailed", "holds", "atoms", "judge", "rules", "equivalent", "main"]
 OPS = {"AND": all, "OR": any, "NAND": lambda v: not all(v), "NOR": lambda v: not any(v), "NOT": lambda v: not v[0]}
 
 
@@ -119,6 +123,65 @@ def equivalent(left, right, *, limit=16):
         if holds(left, present) != holds(right, present):
             return {"equivalent": False, "counterexample": sorted(present), "atoms": names, "basis": "hypothesis"}
     return {"equivalent": True, "counterexample": None, "atoms": names, "basis": "proof"}
+
+
+# ---------------------------------------------------------------- command line
+
+def _rule(text):
+    """A rule on the command line: JSON (["AND", "a", ["NOR", "b"]]) or a bare feature name."""
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        return text
+
+
+def _corpus(parser):
+    parser.add_argument("graph", type=Path, help="a concept corpus (ontautology-concepts/1) or - for stdin")
+
+
+def _rules_arguments(parser):
+    _corpus(parser)
+    parser.add_argument("terms", nargs="*", help="concepts (default: the corpus seeds, else every concept)")
+
+
+def _judge_arguments(parser):
+    _corpus(parser)
+    parser.add_argument("concept")
+    parser.add_argument("rule", type=_rule, help='JSON such as \'["AND", "弦楽器", ["NOR", "4弦標準"]]\'')
+
+
+def _equivalent_arguments(parser):
+    parser.add_argument("left", type=_rule)
+    parser.add_argument("right", type=_rule)
+
+
+def _rules(args):
+    corpus = ot._read_json(args.graph)
+    names = args.terms or corpus.get("seeds") or sorted(ot.define_concepts(corpus)["concepts"])
+    found = {name: rules(corpus, name) for name in names}
+    return found, any(row["definition"] is None for row in found.values())
+
+
+def _judge(args):
+    found = judge(ot._read_json(args.graph), args.concept, args.rule)
+    return found, found["verdict"] != "reversible"
+
+
+def _equivalent(args):
+    found = equivalent(args.left, args.right)
+    return found, not found["equivalent"]
+
+
+def main(argv=None):
+    """Exit codes as the core: 0 answered, 1 input error, 2 answered and something needs a look."""
+    return ot.main(argv, commands=(
+        ("rules", "⚖️ candidate rules per concept, judged; the first reversible one is the definition", _rules_arguments, _rules),
+        ("judge", "🧮 one rule as the judge of a concept: FN / FP / accuracy / propositions", _judge_arguments, _judge),
+        ("equivalent", "✅ two rules on every truth assignment (proof) or a counterexample", _equivalent_arguments, _equivalent)))
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
 
 
 def standing(edges, node):
