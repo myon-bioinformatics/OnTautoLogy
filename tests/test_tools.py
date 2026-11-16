@@ -160,7 +160,7 @@ class OntologyTests(unittest.TestCase):
         self.assertEqual(triples, {(kinds[e["source"]], e["kind"], kinds[e["target"]]) for e in graph["edges"]})
 
     def test_readme_layer_diagram_draws_only_code_relations_as_solid(self):
-        section = (ROOT / "README.md").read_text(encoding="utf-8").split("## 🧭 全体図（拡張を見込んだ3層）\n", 1)[1].split("\n## ", 1)[0]
+        section = (ROOT / "README.md").read_text(encoding="utf-8").split("## 🧭 全体図（監視・中間・管理の3層）\n", 1)[1].split("\n## ", 1)[0]
         diagram = section.split("```mermaid\n", 1)[1].split("```", 1)[0]
         labels = dict(re.findall(r"(?m)^\s*(\w+)\[(\w+)", diagram))  # node id → class
         graph = ot.concept_edges(concepts())
@@ -179,6 +179,10 @@ class OntologyTests(unittest.TestCase):
                         self.assertIn((labels[source], relation, labels[target]), code)
                         drawn["solid"] += 1
         self.assertTrue(drawn["solid"] and drawn["dashed"], drawn)
+        for box, vocabulary in (("GH", set(ontology.classes(ga.RELATIONS))), ("SIM", set(kinds.values()))):
+            inside = diagram.split(f"subgraph {box}[", 1)[1].split("\n    end", 1)[0]
+            with self.subTest(middle=box):
+                self.assertTrue(set(re.findall(r"(?m)^\s*\w+\[(\w+)", inside)) <= vocabulary)
 
     def test_identity_promotes_the_first_candidate_that_is_a_key(self):
         items = [{"id": 1, "run": 1, "name": "a"}, {"id": 1, "run": 2, "name": "b"}]

@@ -11,26 +11,34 @@
 
 どちらも同じ芯（辿る・循環・順序・根拠の段・鍵の昇格）の上に乗っています。Aoi の命題（逆・裏・対偶と判例）や TalkCompress の往復・判定モデルの延長線です。
 
-## 🧭 全体図（拡張を見込んだ3層）
+## 🧭 全体図（監視・中間・管理の3層）
 
 ```mermaid
 flowchart LR
-  subgraph OBS["👀 観測層 — 観測と履歴"]
+  subgraph WATCH["👀 監視層 — 観測と履歴"]
     O[Observation 観測]
     N[Snapshot スナップショット]
   end
-  subgraph MID["🔁 中間層 — 案件ごとに差し替え（今は 🔭 第一弾 GitHub）"]
-    P[PullRequest]
-    W[ActionsRun]
-    C[Commit]
-    T[Task]
-    R[Repository]
-    F[File]
+  subgraph MID["🔁 中間層 — 案件ごとに差し替え（今は2つ）"]
+    subgraph GH["🔭 第一弾 GitHub（gh_audit/）"]
+      P[PullRequest]
+      W[ActionsRun]
+      C[Commit]
+      T[Task]
+      R[Repository]
+      F[File]
+    end
+    subgraph SIM["🧩 第二弾 類似語集め（examples/concepts-*.json）"]
+      E[Element 要素]
+      K[Concept 概念]
+      S[Concept 類似概念]
+    end
   end
-  subgraph ONT["🧩 概念層 — 第二弾の概念・意味"]
-    E[Element 要素]
-    K[Concept 概念]
-    S[Concept 類似概念]
+  subgraph MGMT["🗂️ 管理層 — オントロジー（本体・tools）"]
+    V["📚 語彙 · classes / violations"]
+    L["🪜 根拠の段 · basis / ladder / why"]
+    D["⚖️ 定義 · define / rules / judge"]
+    Q["✅ 証明 · equivalent"]
   end
   O -->|derived_from| N
   O -->|observes| P
@@ -46,6 +54,11 @@ flowchart LR
   T -->|migration_target| R
   E -->|hasElement / genusElement / differentiaElement| K
   K <-->|similarTo| S
+  GH ==> V
+  GH ==> L
+  SIM ==> L
+  SIM ==> D
+  D ==> Q
   P -.->|represents| K
   T -.->|represents| K
   F -.->|represents| K
@@ -53,14 +66,20 @@ flowchart LR
   O -.->|classifiedAs| K
 ```
 
+| 層 | 役目 | 今あるもの |
+| --- | --- | --- |
+| 👀 監視層 | いつ・何を見たか（観測と履歴） | Observation・Snapshot（🔭 第一弾の語彙。🧩 第二弾は辺の `basis` で観測かどうかを表す） |
+| 🔁 中間層 | 案件ごとの実体。ここだけを差し替える | 🔭 第一弾 GitHub（`gh_audit/`）・🧩 第二弾 類似語集め（`concept_edges` と `examples/concepts-*.json`） |
+| 🗂️ 管理層 | どの案件にも使うオントロジー | 📚 語彙の検査・🪜 根拠の段・⚖️ 定義・✅ 証明（本体と tools） |
+
 | 線 | 意味 |
 | --- | --- |
 | ── 実線 | 今のコードにある関係（🔭 は `gh_audit.RELATIONS`、🧩 は `concept_edges`） |
-| ┄┄ 点線 | 層をまたぐ関係の設計案（`represents`・`relatedConcept`・`classifiedAs`）。まだ実装していない |
+| ══ 太線 | 管理層の関数で扱う（実装済み。🔭 は `validate` が `violations` を使い、🧩 は `define`・`rules` で定義を出す） |
+| ┄┄ 点線 | 中間層どうしをつなぐ関係の設計案（`represents`・`relatedConcept`・`classifiedAs`）。まだ実装していない |
 
-- 🔁 **中間層だけを案件ごとに差し替えます。** 案件ごとにフォルダ（今は `gh_audit/`）を切り、その中に語彙（`RELATIONS`）と読み込み・コマンドを置いて、本体の口 `main(commands=..., load=...)` に差し込みます。語彙を引数で受ける `tools/ontology.violations` で検査できるので、本体と tools は変えずに済みます。
-- 👀 **観測層は今は第一弾の語彙です。** 案件をまたいで共通にしたい層ですが、第二弾はまだ観測のノードを持たず、辺の `basis` で観測かどうかを表しています。
-- 🧪 **図とコードがずれないようにしています。** 実線の関係はコードの語彙にあること、点線の関係はまだ無いことをテストで確かめます。点線を実装したら、図も実線に直さないとテストが落ちます。
+- 🔁 **案件を足すときは中間層を1つ足します。** 🔭 第一弾のやり方にならい、案件ごとにフォルダを切って語彙（`RELATIONS`）と読み込み・コマンドを置き、本体の口 `main(commands=..., load=...)` に差し込みます。語彙を引数で受ける `tools/ontology.violations` で検査できるので、管理層（本体と tools）は変えずに済みます。
+- 🧪 **図とコードがずれないようにしています。** 実線の関係はコードの語彙にあること、点線の関係はまだ無いこと、中間層の2つの枠にそれぞれの語彙のクラスだけが入っていることをテストで確かめます。点線を実装したら、図も実線に直さないとテストが落ちます。
 
 ## 📂 構成
 
