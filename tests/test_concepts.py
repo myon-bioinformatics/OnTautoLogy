@@ -3,8 +3,6 @@ from __future__ import annotations
 
 import copy
 import json
-import os
-import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -12,6 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ontautology as ot  # noqa: E402
+from test_ontautology import run_cli  # noqa: E402
 
 EXAMPLE_PATH = Path(__file__).resolve().parent.parent / "examples/concepts-20261115.json"
 SCRIPT_PATH = Path(__file__).resolve().parent.parent / "ontautology.py"
@@ -109,13 +108,8 @@ class ConceptDefinitionTests(unittest.TestCase):
 
 
 class ConceptCliTests(unittest.TestCase):
-    def run_cli(self, *args, data=None, seed="1"):
-        return subprocess.run(
-            [sys.executable, "-S", str(SCRIPT_PATH), *args],
-            input=None if data is None else data.encode("utf-8"),
-            capture_output=True,
-            env={**os.environ, "PYTHONHASHSEED": seed},
-        )
+    def run_cli(self, *args, data="", seed="1"):
+        return run_cli(SCRIPT_PATH, *args, data=data, seed=seed)
 
     def test_define_and_roundtrip_cli_exit_codes_and_determinism(self):
         corpus = _load_example()

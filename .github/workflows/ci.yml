@@ -28,10 +28,10 @@ jobs:
           version: latest
           python-version: ${{ matrix.python }}
       - run: uv run --no-project python -S -m unittest discover -s tests -v
-      - run: uv run --no-project python -S ontautology.py audit examples/audit-20261114.json -o /tmp/graph.json
-      - run: uv run --no-project python -S ontautology.py check /tmp/graph.json
+      - run: uv run --no-project python -S tools/gh_audit.py audit examples/audit-20261114.json -o /tmp/graph.json
+      - run: uv run --no-project python -S tools/gh_audit.py check /tmp/graph.json
       # plan exits 2 when something is blocked; that is an answer about the snapshot, not a failure of the tool
-      - run: uv run --no-project python -S ontautology.py plan /tmp/graph.json || [ $? -eq 2 ]
+      - run: uv run --no-project python -S tools/gh_audit.py plan /tmp/graph.json || [ $? -eq 2 ]
 
   # Outside modules for trying an idea first: Redis answers the same questions; here a skip is a failure.
   redis:

@@ -7,6 +7,7 @@ and fails instead of skipping in the CI job named redis.
 import json
 import os
 import random
+import re
 import shutil
 import subprocess
 import sys
@@ -18,7 +19,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 import ontautology as ot  # noqa: E402
-from tools import knowledgegraph, ontology, tautology  # noqa: E402
+from tools import gh_audit as ga, knowledgegraph, ontology, tautology  # noqa: E402
 
 
 def edge(source, target, basis="observed", kind="dependsOn"):
@@ -33,20 +34,20 @@ def random_graph(seed, nodes=12, edges=24):
 
 
 class OneWayDependency(unittest.TestCase):
-    def test_core_never_imports_tools_and_tools_never_import_each_other(self):
+    def test_generic_code_never_reads_the_github_audit(self):
         core = (ROOT / "ontautology.py").read_text(encoding="utf-8")
         self.assertNotIn("import tools", core)
         self.assertNotIn("from tools", core)
         for path in sorted((ROOT / "tools").glob("*.py")):
-            text = path.read_text(encoding="utf-8")
+            imports = "\n".join(re.findall(r"(?m)^(?:from|import) .*", path.read_text(encoding="utf-8")))
             with self.subTest(tool=path.name):
-                self.assertIn("import ontautology as ot", text)
-                self.assertNotIn("from tools", text)
-                self.assertNotIn("import tools", text)
+                self.assertIn("import ontautology as ot", imports)
+                if path.stem != "gh_audit":
+                    self.assertIsNone(re.search(r"\b(?:from|import) tools\b", imports))
 
     def test_every_public_name_is_callable(self):
-        for module in (knowledgegraph, ontology, tautology):
-            for name in module.__all__:
+        for module in (ga, knowledgegraph, ontology, tautology):
+            for name in (name for name in module.__all__ if not name.isupper()):  # upper case: a vocabulary, not a call
                 with self.subTest(module=module.__name__, name=name):
                     self.assertTrue(callable(getattr(module, name)))
 
@@ -105,13 +106,13 @@ class OntologyTests(unittest.TestCase):
                 "edges": [{"source": "pr:a#1", "relation": "belongsTo", "target": "repo:a"}]}
 
     def test_classes_come_from_the_relations_only(self):
-        self.assertEqual(ontology.classes(), ot._classes())
+        self.assertIn("PullRequest", ontology.classes(ga.RELATIONS))
         self.assertEqual(ontology.classes({"implies": (("Rule",), "Rule")}), ["Rule"])
 
     def test_a_graph_in_its_vocabulary_has_no_violation(self):
-        self.assertEqual(ontology.violations(self.graph()), [])
-        example = ot.audit([json.loads((ROOT / "examples/audit-20261114.json").read_text(encoding="utf-8"))])
-        self.assertEqual(ontology.violations(example), [])
+        self.assertEqual(ontology.violations(self.graph(), ga.RELATIONS), [])
+        example = ga.audit([json.loads((ROOT / "examples/audit-20261114.json").read_text(encoding="utf-8"))])
+        self.assertEqual(ontology.violations(example, ga.RELATIONS), [])
 
     def test_every_violation_is_listed_and_nothing_is_repaired(self):
         graph = self.graph()
@@ -120,16 +121,16 @@ class OntologyTests(unittest.TestCase):
                            {"source": "pr:a#1", "relation": "mentions", "target": "repo:a"},
                            {"source": "pr:a#1", "relation": "belongsTo", "target": "nowhere"}]
         before = json.dumps(graph, sort_keys=True)
-        kinds = [finding["kind"] for finding in ontology.violations(graph)]
+        kinds = [finding["kind"] for finding in ontology.violations(graph, ga.RELATIONS)]
         self.assertEqual(kinds, ["duplicate-node", "unknown-class", "domain-range", "unknown-relation", "missing-reference"])
         self.assertEqual(json.dumps(graph, sort_keys=True), before)
 
     def test_the_core_validate_rejects_what_violations_lists(self):
         graph = self.graph()
         graph["edges"].append({"source": "repo:a", "relation": "belongsTo", "target": "pr:a#1"})
-        self.assertTrue(ontology.violations(graph))
+        self.assertTrue(ontology.violations(graph, ga.RELATIONS))
         with self.assertRaises(ValueError):
-            ot.validate({"schema": ot.KG_SCHEMA, **graph})
+            ga.validate({"schema": ga.KG_SCHEMA, **graph})
 
     def test_identity_promotes_the_first_candidate_that_is_a_key(self):
         items = [{"id": 1, "run": 1, "name": "a"}, {"id": 1, "run": 2, "name": "b"}]
