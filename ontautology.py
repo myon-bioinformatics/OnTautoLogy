@@ -221,11 +221,11 @@ STATES = ("調査中", "着手中", "完了", "保留", "ブロッカー")
 RELATIONS = {
     "hasIssue": (("Observation",), "Issue"),
     "hasReview": (("Observation",), "Review"),
-    "hasJob": (("WorkflowRun",), "Job"),
+    "hasJob": (("ActionsRun",), "Job"),
     "hasPin": (("Observation",), "FixedSHA"),
     "pinsCommit": (("FixedSHA",), "Commit"),
-    "hasArtifact": (("Observation",), "Artifact"),
-    "generatedFrom": (("Artifact",), "Commit"),
+    "hasGeneratedArtifact": (("Observation",), "GeneratedArtifact"),
+    "generatedFrom": (("GeneratedArtifact",), "Commit"),
     "hasEvidence": (("Observation",), "Evidence"),
     "missingEvidence": (("Observation",), "EvidenceGap"),
     "missingFromMain": (("Observation",), "MainGap"),
@@ -233,18 +233,236 @@ RELATIONS = {
     "precedes": (("Task",), "Task"),
     "hasCompletion": (("Observation",), "CompletionRecord"),
     "verifiesCommit": (("CompletionRecord", "Task"), "Commit"),
-    "belongsTo": (("PullRequest", "Commit", "Branch", "File", "WorkflowRun"), "Repository"),
+    "belongsTo": (("PullRequest", "Commit", "Branch", "File", "ActionsRun"), "Repository"),
     "observes": (("Observation",), "PullRequest"),
     "hasHead": (("Observation",), "Commit"),
     "hasBase": (("Observation",), "Commit"),
     "hasMain": (("Observation",), "Commit"),
     "targetsBranch": (("Observation",), "Branch"),
     "changesFile": (("Observation",), "File"),
-    "hasRun": (("Observation",), "WorkflowRun"),
-    "runsAt": (("WorkflowRun",), "Commit"),
+    "hasRun": (("Observation",), "ActionsRun"),
+    "runsAt": (("ActionsRun",), "Commit"),
     "dependsOn": (("PullRequest",), "PullRequest"),
     "overlapsWith": (("PullRequest",), "PullRequest"),
 }
+
+# Public audit vocabulary; legacy relation names retain their meaning.
+RELATIONS.update({
+    "depends_on": (("PullRequest",), "PullRequest"),
+    "duplicates": (("PullRequest",), "PullRequest"),
+    "updates": (("Observation",), "File"),
+    "verified_by": (("PullRequest",), "Evidence"),
+    "derived_from": (("Observation",), "Snapshot"),
+    "targets": (("Observation",), "PullRequest"),
+    "blocks": (("PullRequest",), "PullRequest"),
+    "integrates_into": (("PullRequest",), "Branch"),
+    "same_as": (("Repository",), "Repository"),
+    "supersedes": (("Snapshot",), "Snapshot"),
+    "has_status": (("PullRequest", "Repository", "Task"), "Observation"),
+    "migration_source": (("Task",), "File"),
+    "migration_target": (("Task",), "Repository"),
+})
+RELATIONS['belongsTo'] = ((*RELATIONS['belongsTo'][0], "Issue"), "Repository")
+
+
+def inventory_entries(entries):
+    """Validate explicit repository coverage; incomplete is never an empty result."""
+    if not isinstance(entries, list):
+        raise ValueError("open_pr_inventory must be an array")
+    seen = set()
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise ValueError("inventory entry must be an object")
+        repo = repository(entry.get("repository"))
+        timestamp(entry.get("checked_at"))
+        if repo in seen:
+            raise ValueError("duplicate repository inventory")
+        seen.add(repo)
+        numbers = entry.get("open_pr_numbers")
+        if type(entry.get("complete")) is not bool:
+            raise ValueError("inventory complete must be boolean")
+        if entry["complete"]:
+            if not isinstance(numbers, list) or any(type(n) is not int or n < 1 for n in numbers):
+                raise ValueError("complete inventory requires positive PR numbers")
+            if len(numbers) != len(set(numbers)):
+                raise ValueError("duplicate inventory PR number")
+        elif numbers is not None:
+            raise ValueError("incomplete inventory requires null open_pr_numbers")
+    return entries
+
+
+def transfer_report(document):
+    """Offline absorption ledger. A recorded receipt is not independent CI verification."""
+    from urllib.parse import urlparse
+    doc = document.get('aoi_integration', document)
+    if doc.get('schema') != 'integration-audit/3':
+        raise ValueError('expected integration-audit/3 transfer ledger')
+    timestamp(doc['captured_at'])
+    rows, seen = [], set()
+    def sha(value):
+        return isinstance(value, str) and len(value) == 40 and all(c in '0123456789abcdef' for c in value)
+    def paths(values):
+        if not isinstance(values, list) or any(not isinstance(v, str) or not v or v.startswith('/') or '\\' in v or '..' in v.split('/') for v in values):
+            raise ValueError('transfer paths must be repository-relative')
+        return values
+    for item in doc.get('transfers', []):
+        key = item['id']
+        if not isinstance(key, str) or not key or key in seen:
+            raise ValueError('transfer IDs must be nonempty and unique')
+        seen.add(key)
+        state = item.get('state', '調査中')
+        if state not in STATES:
+            raise ValueError('invalid transfer state')
+        source, target = item['source'], item.get('target') or {}
+        repository(source['repository'])
+        if not sha(source.get('sha')):
+            raise ValueError('transfer source requires a full SHA')
+        source_paths = paths(source.get('paths', []))
+        kind = item.get('kind', 'feature')
+        if kind not in ('feature', 'request') or (kind == 'feature' and not source_paths):
+            raise ValueError('existing features require source paths; requests may have none')
+        if target.get('repository'):
+            repository(target['repository'])
+        target_paths = paths(target.get('paths', []))
+        if target.get('sha') is not None and not sha(target['sha']):
+            raise ValueError('transfer target SHA must be full or unknown')
+        criteria = item.get('acceptance', [])
+        if not criteria or any(not isinstance(c, dict) or not c.get('id') or not c.get('description') for c in criteria):
+            raise ValueError('transfer acceptance criteria are required')
+        ids = [c['id'] for c in criteria]
+        if any(not isinstance(k, str) for k in ids) or len(ids) != len(set(ids)):
+            raise ValueError('transfer acceptance IDs must be unique strings')
+        receipt = item.get('verification') or {}
+        accepted = receipt.get('accepted', [])
+        if not isinstance(accepted, list) or any(not isinstance(k, str) for k in accepted) or set(accepted) - set(ids):
+            raise ValueError('receipt contains unknown acceptance criteria')
+        url = urlparse(receipt.get('evidence_url', ''))
+        verified = bool(target.get('repository') and target_paths and sha(target.get('sha'))
+                        and receipt.get('source_sha') == source['sha']
+                        and receipt.get('target_sha') == target['sha']
+                        and receipt.get('target_in_main') is True
+                        and set(accepted) == set(ids) and url.scheme == 'https' and url.netloc == 'github.com'
+                        and url.path.startswith('/' + target['repository'] + '/actions/runs/')
+                        and url.path.removeprefix('/' + target['repository'] + '/actions/runs/').split('/')[0].isdigit())
+        if state == '完了' and not verified:
+            raise ValueError('absorbed transfer requires exact source/target SHAs, target paths, main receipt and all acceptance evidence')
+        rows.append(dict(item, state=state, kind=kind, receipt_complete=verified,
+                         source=dict(source, paths=source_paths), target=dict(target, paths=target_paths)))
+    pending = [r['id'] for r in rows if r['state'] != '完了']
+    features = [r['id'] for r in rows if r['kind'] == 'feature' and r['state'] != '完了']
+    scope = doc.get('transfer_scope', {})
+    return {'schema': 'ontautology/transfers/1', 'captured_at': doc['captured_at'], 'records': rows,
+            'pending': pending, 'unabsorbed_features': features,
+            'counts': {state: sum(r['state'] == state for r in rows) for state in sorted(STATES)},
+            'inventory_complete': scope.get('inventory_complete') is True,
+            'archive_readiness': '未確定' if scope.get('inventory_complete') is not True else '未吸収あり' if features else '記録上の未吸収なし',
+            'note': '記録された受入証跡の整合性。GitHubのCI成功・main包含・機能同等性は独立再検証しない。アーカイブ操作は行わない。'}
+
+
+def transfer_entities(graph, doc, sid):
+    for item in transfer_report(doc)['records']:
+        source, target = item['source'], item['target']
+        key = 'transfer:' + source['repository'] + ':' + item['id']
+        obs = graph.node('transfer-observation:' + digest(doc) + ':' + key, 'Observation',
+                         transfer_key=key, observed_at=doc['captured_at'], snapshot=digest(doc),
+                         state=item['state'], source='https://github.com/' + source['repository'])
+        task = graph.node('task:' + digest(doc) + ':' + key, 'Task', key=key, title=item['title'],
+                          phase='再検証', state=item['state'], detail=json.dumps(item, ensure_ascii=False, sort_keys=True))
+        graph.edge(obs, 'hasTask', task)
+        graph.edge(task, 'has_status', obs)
+        graph.edge(obs, 'derived_from', sid)
+        graph.edge(obs, 'hasHead', graph.commit(source['repository'], source['sha']))
+        for path in source['paths']:
+            node = graph.node('file:' + source['repository'] + ':' + path, 'File', path=path)
+            graph.edge(node, 'belongsTo', graph.repo(source['repository']))
+            graph.edge(task, 'migration_source', node, observation=obs, source_sha=source['sha'])
+        if target.get('repository'):
+            graph.edge(task, 'migration_target', graph.repo(target['repository']), observation=obs,
+                       basis=target.get('basis', 'hypothesis: destination not yet verified'))
+            for path in target['paths']:
+                node = graph.node('file:' + target['repository'] + ':' + path, 'File', path=path)
+                graph.edge(node, 'belongsTo', graph.repo(target['repository']))
+                graph.edge(obs, 'updates', node)
+        gaps = []
+        if not target.get('repository'):
+            gaps.append({'reason':'移管先未確定'})
+        if not target['paths']:
+            gaps.append({'reason':'移管先ファイル未確定'})
+        if not item['receipt_complete']:
+            gaps.append({'reason':'全受入条件に対応するmainの検証証跡が未確定'})
+        audit_entities(graph, {'gaps':gaps, 'evidence':[item['verification']] if item.get('verification') else []},
+                       obs, source['repository'], doc['captured_at'])
+        if item['state'] == '完了':
+            graph.edge(task, 'verifiesCommit', graph.commit(target['repository'], target['sha']),
+                       observation=obs, evidence_url=item['verification']['evidence_url'])
+
+
+def enrich(value, documents, owner):
+    """Project observed inventory and aliases without guessing identity or run SHAs."""
+    graph = Graph()
+    graph.nodes = {n['id']: n for n in value['nodes']}
+    graph.edges = {digest(e): e for e in value['edges']}
+    # Create actual snapshots before predecessor stubs, independent of input order.
+    for doc in documents:
+        properties = {"captured_at": doc["captured_at"], "digest": digest(doc)}
+        if "open_pr_inventory" in doc:
+            properties["open_pr_inventory"] = inventory_entries(doc["open_pr_inventory"])
+        graph.node("snapshot:" + digest(doc), "Snapshot", **properties)
+        for entry in properties.get("open_pr_inventory", []):
+            graph.repo(entry["repository"])
+            for number in entry["open_pr_numbers"] or []:
+                graph.pr(pr_id(f"{entry['repository']}#{number}", owner))
+    for doc in documents:
+        sid = 'snapshot:' + digest(doc)
+        previous = doc.get('previous_snapshot')
+        if previous:
+            old = 'snapshot:' + previous['digest']
+            if old not in graph.nodes:
+                graph.node(old, 'Snapshot', captured_at=previous['captured_at'])
+            graph.edge(sid, 'supersedes', old, basis='observed: snapshot sequence')
+        for inv in doc.get('inventory', []):
+            name = inv['repo'] if '/' in inv['repo'] else owner + '/' + inv['repo']
+            name = repository(name)
+            state = inv.get('state', '調査中')
+            if state not in STATES:
+                raise ValueError('invalid inventory state')
+            obs = graph.node('repository-observation:' + digest(doc) + ':' + name, 'Observation',
+                             observed_at=doc['captured_at'], snapshot=digest(doc), state=state,
+                             source=inv.get('source_url'))
+            graph.edge(graph.repo(name), 'has_status', obs)
+            graph.edge(obs, 'derived_from', sid)
+            if inv.get('main'):
+                graph.edge(obs, 'hasMain', graph.commit(name, inv['main']))
+            runs = inv.get('main_runs', [])
+            audit_runs(graph, runs, obs, name, doc['captured_at'], 'main')
+            row = {'issues': inv.get('issues', []),
+                   'pins': [dict(repository=p.get('repository', name), sha=p['commit'],
+                                 destination=p.get('destination'))
+                            for p in inv.get('pin_records', []) if p.get('commit')],
+                   'artifacts': [dict(a, source_sha=(a.get('workflow_run') or {}).get('head_sha'))
+                                 for w in runs for a in w.get('artifacts', [])],
+                   'gaps': [g if isinstance(g, dict) else {'reason': g} for g in inv.get('gaps', [])]}
+            audit_entities(graph, row, obs, name, doc['captured_at'])
+        transfer_entities(graph, doc, 'snapshot:' + digest(doc))
+    observations = {e['source']: e['target'] for e in graph.edges.values() if e['relation'] == 'observes'}
+    aliases = {'dependsOn': 'depends_on', 'overlapsWith': 'duplicates', 'changesFile': 'updates', 'observes': 'targets'}
+    for e in list(graph.edges.values()):
+        relation = e['relation']
+        props = {k:v for k,v in e.items() if k not in ('source','relation','target')}
+        if relation in aliases:
+            if relation == 'overlapsWith':
+                props.update(basis='hypothesis', interpretation='shared changed path; duplicate-change candidate only')
+            graph.edge(e['source'], aliases[relation], e['target'], **props)
+        if relation == 'dependsOn':
+            graph.edge(e['target'], 'blocks', e['source'], **props)
+        if relation == 'observes':
+            graph.edge(e['target'], 'has_status', e['source'])
+            graph.edge(e['source'], 'derived_from', 'snapshot:' + graph.nodes[e['source']]['snapshot'])
+        if relation == 'targetsBranch':
+            graph.edge(observations[e['source']], 'integrates_into', e['target'], **props)
+        if relation == 'hasEvidence' and e['source'] in observations:
+            graph.edge(observations[e['source']], 'verified_by', e['target'], **props)
+    return validate(graph.export())
 
 
 def _classes():
@@ -329,6 +547,34 @@ class Graph:
 
 
 
+def audit_runs(graph, runs, observation, repo, observed, scope):
+    for run in runs:
+        run_id, attempt = run.get("id"), run.get("run_attempt")
+        if not isinstance(run_id, int) or isinstance(run_id, bool) or run_id < 1:
+            raise ValueError("workflow run id must be a positive integer")
+        if attempt is not None and (not isinstance(attempt, int) or isinstance(attempt, bool) or attempt < 1):
+            raise ValueError("run_attempt must be a positive integer or null")
+        rid = f"run:{repo}:{run_id}:attempt:{attempt if attempt is not None else 'unknown'}"
+        # Run outcomes are observations, not timeless properties of the run.
+        graph.node(rid, "ActionsRun", run_id=run_id, attempt=attempt, name=run.get("name"),
+                   url=f"https://github.com/{repo}/actions/runs/{run_id}")
+        graph.edge(rid, "belongsTo", graph.repo(repo))
+        graph.edge(observation, "hasRun", rid, scope=scope, conclusion=run.get("conclusion"),
+                   status=run.get("status"), event=run.get("event"),
+                   workflow_id=run.get("workflow_id"), observed_at=observed)
+        for job in run.get("jobs", []):
+            job_id = job.get("id")
+            if not isinstance(job_id, int) or isinstance(job_id, bool) or job_id < 1:
+                raise ValueError("job id must be a positive integer")
+            jid = graph.node(f"job:{repo}:{run_id}:attempt:{attempt}:{job_id}", "Job",
+                             job_id=job_id, run_id=run_id, attempt=attempt, name=job.get("name"))
+            graph.edge(rid, "hasJob", jid, observation=observation, observed_at=observed,
+                       conclusion=job.get("conclusion"), status=job.get("status"),
+                       evidence_url=job.get("html_url"))
+        if run.get("head_sha"):
+            graph.edge(rid, "runsAt", graph.commit(repo, run["head_sha"]))
+
+
 def audit_entities(graph, row, observation, repo, observed):
     """Optional audit facts share one vocabulary and stay scoped to observations.
 
@@ -360,8 +606,8 @@ def audit_entities(graph, row, observation, repo, observed):
         graph.edge(observation, "hasPin", ident, **evidence)
         graph.edge(ident, "pinsCommit", graph.commit(source_repo, value["sha"]), **evidence)
     for value in entries("artifacts"):
-        ident = entity("Artifact", value)
-        graph.edge(observation, "hasArtifact", ident, **evidence)
+        ident = entity("GeneratedArtifact", value)
+        graph.edge(observation, "hasGeneratedArtifact", ident, **evidence)
         if value.get("source_sha"):
             source_repo = repository(value.get("repository", repo))
             graph.edge(ident, "generatedFrom", graph.commit(source_repo, value["source_sha"]), **evidence)
@@ -413,9 +659,16 @@ def observation_diff(before, after):
         latest = {}
         for edge in graph["edges"]:
             if edge["relation"] == "observes":
-                obs = nodes[edge["source"]]
-                if edge["target"] not in latest or timestamp(obs["observed_at"]) > timestamp(latest[edge["target"]]["observed_at"]):
-                    latest[edge["target"]] = obs
+                key, obs = edge["target"], nodes[edge["source"]]
+            elif edge["relation"] == "has_status" and nodes[edge["source"]]["type"] == "Repository":
+                key, obs = edge["source"], nodes[edge["target"]]
+            elif edge['relation'] == 'has_status' and nodes[edge['source']]['type'] == 'Task' and nodes[edge['target']].get('transfer_key'):
+                obs = nodes[edge['target']]
+                key = obs['transfer_key']
+            else:
+                continue
+            if key not in latest or timestamp(obs["observed_at"]) > timestamp(latest[key]["observed_at"]):
+                latest[key] = obs
         result = {}
         for pr, obs in latest.items():
             values = {k:v for k,v in obs.items() if k not in ("id", "snapshot", "observed_at", "source")}
@@ -423,8 +676,8 @@ def observation_diff(before, after):
                 target = nodes[edge["target"]]
                 return {"relation": edge["relation"], "target": {k:v for k,v in target.items() if k != "id"},
                         "facts": {k:v for k,v in edge.items() if k not in ("source", "target", "observation", "observed_at", "snapshot")}}
-            relevant = [edge for edge in graph["edges"] if edge["source"] == obs["id"] or
-                        edge.get("observation") == obs["id"]]
+            relevant = [edge for edge in graph["edges"] if (edge["source"] == obs["id"] or edge.get("observation") == obs["id"])
+                        and edge["relation"] != "derived_from"]
             run_ids = {edge["target"] for edge in relevant if edge["relation"] == "hasRun"}
             relevant.extend(edge for edge in graph["edges"] if edge["source"] in run_ids and edge["relation"] == "runsAt")
             values["claims"] = sorted((claim(edge) for edge in relevant), key=digest)
@@ -439,6 +692,7 @@ def observation_diff(before, after):
 def audit(documents, *, owner="myon-bioinformatics"):
     """Cross-repository PR audit: integration-audit/3 snapshots → one graph with history. Never fetches or
     mutates GitHub. A snapshot wrapped as {"aoi_integration": {...}} (the site's observation export) is unwrapped."""
+    documents = [doc.get("aoi_integration", doc) for doc in documents]
     graph = Graph()
     for doc in documents:
         doc = doc.get("aoi_integration", doc)
@@ -467,7 +721,7 @@ def audit(documents, *, owner="myon-bioinformatics"):
                 raise ValueError("files must be a list or null")
             observation = graph.node(f"observation:{snapshot}:{ident}", "Observation", observed_at=observed,
                                      source=source, snapshot=snapshot, state=state,
-                                     files_observed=isinstance(files, list), **facts)
+                                     files_observed=isinstance(files, list), github_state=row.get("github_state"), **facts)
             graph.edge(observation, "observes", ident)
             for key, relation in (("head_sha", "hasHead"), ("base_sha", "hasBase"), ("main_sha", "hasMain")):
                 if row.get(key):
@@ -487,31 +741,7 @@ def audit(documents, *, owner="myon-bioinformatics"):
                 graph.edge(ident, "dependsOn", graph.pr(pr_id(dep, owner)), observation=observation,
                            observed_at=observed, evidence_url=source, basis="audit snapshot; curator claim")
             for scope, runs in (("pr_head", row.get("runs", [])), ("main", row.get("postmerge_runs", []))):
-                for run in runs:
-                    run_id, attempt = run.get("id"), run.get("run_attempt")
-                    if not isinstance(run_id, int) or isinstance(run_id, bool) or run_id < 1:
-                        raise ValueError("workflow run id must be a positive integer")
-                    if attempt is not None and (not isinstance(attempt, int) or isinstance(attempt, bool) or attempt < 1):
-                        raise ValueError("run_attempt must be a positive integer or null")
-                    rid = f"run:{repo}:{run_id}:attempt:{attempt if attempt is not None else 'unknown'}"
-                    # Run outcomes are observations, not timeless properties of the run.
-                    graph.node(rid, "WorkflowRun", run_id=run_id, attempt=attempt, name=run.get("name"),
-                               url=f"https://github.com/{repo}/actions/runs/{run_id}")
-                    graph.edge(rid, "belongsTo", graph.repo(repo))
-                    graph.edge(observation, "hasRun", rid, scope=scope, conclusion=run.get("conclusion"),
-                               status=run.get("status"), event=run.get("event"),
-                               workflow_id=run.get("workflow_id"), observed_at=observed)
-                    for job in run.get("jobs", []):
-                        job_id = job.get("id")
-                        if not isinstance(job_id, int) or isinstance(job_id, bool) or job_id < 1:
-                            raise ValueError("job id must be a positive integer")
-                        jid = graph.node(f"job:{repo}:{run_id}:attempt:{attempt}:{job_id}", "Job",
-                                         job_id=job_id, run_id=run_id, attempt=attempt, name=job.get("name"))
-                        graph.edge(rid, "hasJob", jid, observation=observation, observed_at=observed,
-                                   conclusion=job.get("conclusion"), status=job.get("status"),
-                                   evidence_url=job.get("html_url"))
-                    if run.get("head_sha"):
-                        graph.edge(rid, "runsAt", graph.commit(repo, run["head_sha"]))
+                audit_runs(graph, runs, observation, repo, observed, scope)
             audit_entities(graph, row, observation, repo, observed)
         for file, prs in overlap.items():
             prs = sorted(set(prs))
@@ -521,7 +751,7 @@ def audit(documents, *, owner="myon-bioinformatics"):
                                observed_at=observed, basis="derived: same repository and changed path; not a conflict")
     result = graph.export()
     validate(result)
-    return result
+    return enrich(result, documents, owner)
 
 
 def validate(graph):
@@ -536,6 +766,10 @@ def validate(graph):
             raise ValueError("unknown ontology class")
         if node["type"] in ("Task", "CompletionRecord") and node.get("state") not in STATES:
             raise ValueError("invalid task/completion state")
+        if node["type"] == "Snapshot":
+            timestamp(node["captured_at"])
+            if "open_pr_inventory" in node:
+                inventory_entries(node["open_pr_inventory"])
         if node["type"] == "Observation":
             timestamp(node["observed_at"])
             if node.get("state") not in STATES:
@@ -559,39 +793,79 @@ def plan(graph):
     """Dependency order only. Never equates CI success with merge permission."""
     validate(graph)
     nodes = {n["id"]: n for n in graph["nodes"]}
-    latest = {}
+    latest, by_snapshot = {}, {}
     for edge in graph["edges"]:
         if edge["relation"] == "observes":
             obs = nodes[edge["source"]]
             target = edge["target"]
+            by_snapshot[(target, obs.get("snapshot"))] = obs
             if target not in latest or timestamp(obs["observed_at"]) > timestamp(latest[target]["observed_at"]):
                 latest[target] = obs
             elif timestamp(obs["observed_at"]) == timestamp(latest[target]["observed_at"]) and obs["id"] != latest[target]["id"]:
                 raise ValueError("ambiguous observations at the same time; select a snapshot")
-    pending = {key for key, obs in latest.items() if obs.get("contained_in_main") is not True}
+    pending = {key for key, obs in latest.items() if obs.get("contained_in_main") is not True and obs.get("merged") is not True and obs.get("github_state") != "closed"}
+    inventories = {}
+    explicit = False
+    for node in nodes.values():
+        if node["type"] != "Snapshot" or "open_pr_inventory" not in node:
+            continue
+        explicit = True
+        for entry in node["open_pr_inventory"]:
+            repo = entry["repository"]
+            candidate = {**entry, "snapshot": node["digest"]}
+            previous = inventories.get(repo)
+            if previous is None or timestamp(entry["checked_at"]) > timestamp(previous["checked_at"]):
+                inventories[repo] = candidate
+            elif timestamp(entry["checked_at"]) == timestamp(previous["checked_at"]) and candidate != previous:
+                raise ValueError("ambiguous inventory at the same time; select a snapshot")
+    uncertain, missing_rows = {}, set()
+    for repo, entry in inventories.items():
+        prefix = "pr:" + repo + "#"
+        pending = {key for key in pending if not key.startswith(prefix)}
+        if not entry["complete"]:
+            uncertain[repo] = entry
+            continue
+        for number in entry["open_pr_numbers"]:
+            key = prefix + str(number)
+            # Membership and evidence must come from the same source snapshot.
+            observation = by_snapshot.get((key, entry["snapshot"]))
+            if observation is None:
+                missing_rows.add(key)
+            else:
+                latest[key] = observation
+            if observation is None or (observation.get("contained_in_main") is not True
+                                       and observation.get("merged") is not True
+                                       and observation.get("github_state") != "closed"):
+                pending.add(key)
     dependencies = {key: set() for key in pending}
     missing = {key: set() for key in pending}
     for edge in graph["edges"]:
         source, target = edge["source"], edge["target"]
         if edge["relation"] != "dependsOn" or source not in pending:
             continue
-        if edge["observation"] != latest[source]["id"]:
+        if source in missing_rows or edge["observation"] != latest[source]["id"]:
             continue
-        if target not in latest:
+        if target not in latest or (latest[target].get("github_state") == "closed" and latest[target].get("merged") is not True and latest[target].get("contained_in_main") is not True):
             missing[source].add(target)
         elif target in pending:
             dependencies[source].add(target)
+        elif target.removeprefix("pr:").rsplit("#", 1)[0] in inventories and latest[target].get("contained_in_main") is not True:
+            missing[source].add(target)
     # Core order(): prerequisite first; a cycle blocks itself and what waits on it, nothing else.
     found = order([{"kind": "dependsOn", "source": need, "target": key} for key, needs in dependencies.items() for need in sorted(needs)],
                   nodes=sorted(pending))
     cycle = found["cycle"] or []
     waiting = [{"kind": "dependsOn", "source": need, "target": key} for key, needs in dependencies.items() for need in needs]
-    unmet = sorted(key for key, deps in missing.items() if deps)
+    unmet = sorted({key for key, deps in missing.items() if deps} | missing_rows)
     blocked = set(found["blocked"]) | set(unmet) | {row["node"] for row in reach(waiting, unmet)["rows"]}
     order_ = [key for batch in found["batches"] for key in batch]
-    return {"order": [key for key in order_ if key not in blocked], "blocked": sorted(blocked),
+    result = {"order": [key for key in order_ if key not in blocked], "batches": [[key for key in batch if key not in blocked] for batch in found["batches"] if any(key not in blocked for key in batch)], "blocked": sorted(blocked),
             "missing": {k: sorted(v) for k, v in missing.items() if v}, "cycle": cycle,
             "note": "依存関係だけの順序。CI・レビュー・競合・保留の確認は別途必要。未観測の依存先は完了扱いにしない。"}
+
+    if explicit:
+        result.update(inventory_uncertainty=uncertain, missing_rows=sorted(missing_rows))
+    return result
 
 
 def edges_of(graph):
@@ -605,11 +879,11 @@ def edges_of(graph):
     """
     edges = []
     for edge in graph["edges"]:
-        flip = edge["relation"] in ("dependsOn", "changesFile")
+        flip = edge["relation"] in ("dependsOn", "depends_on", "changesFile", "updates")
         note = edge.get("basis")
         edges.append({**{k: v for k, v in edge.items() if k not in ("relation", "basis")}, "kind": edge["relation"],
                       "source": edge["target"] if flip else edge["source"], "target": edge["source"] if flip else edge["target"],
-                      "basis": "derived" if str(note or "").startswith("derived") else "observed",
+                      "basis": note if note in BASIS else "derived" if str(note or "").startswith("derived") else "observed",
                       **({"note": note} if note else {}), **({"lock": edge["observation"]} if edge.get("observation") else {})})
         if edge["relation"] == "overlapsWith":
             edges.append({**edges[-1], "source": edge["target"], "target": edge["source"]})
@@ -619,7 +893,11 @@ def edges_of(graph):
 def turtle(graph):
     validate(graph)
     uri = lambda ident: "<urn:ontautology:" + quote(ident, safe="") + ">"
-    literal = lambda value: json.dumps(value, ensure_ascii=False)
+    def literal(value):
+        # Collections are JSON text literals, not invalid Turtle array/object syntax.
+        if isinstance(value, (list, dict)):
+            value = json.dumps(value, ensure_ascii=False, sort_keys=True)
+        return json.dumps(value, ensure_ascii=False)
     lines = [f"@prefix ot: <{NAMESPACE}> .", "@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .",
              "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .", ""]
     for kind in _classes():
@@ -688,6 +966,7 @@ def main(argv=None):
         add = commands.add_parser(name, help=text)
         add.add_argument("graph", type=Path)
         add.add_argument("terms", nargs="*" if name in ("order", "cycles") else "+", help=terms)
+    commands.add_parser("transfers", help="unabsorbed features, destinations and acceptance receipts").add_argument("graph", type=Path)
     add = commands.add_parser("diff", help="two audit graphs → what changed between their latest observations")
     add.add_argument("before", type=Path)
     add.add_argument("after", type=Path)
@@ -702,6 +981,9 @@ def main(argv=None):
         if args.command == "audit":
             answer = audit([_read_json(path) for path in args.inputs], owner=args.owner)
             answer = turtle(answer) if args.format == "turtle" else answer
+        elif args.command == "transfers":
+            answer = transfer_report(_read_json(args.graph))
+            look = bool(answer['pending']) or not answer['inventory_complete']
         elif args.command == "diff":
             answer = observation_diff(*(_read_json(path) for path in (args.before, args.after)))
             look = bool(answer["added"] or answer["removed"] or answer["changed"])
@@ -714,7 +996,7 @@ def main(argv=None):
                 raise ValueError("the graph has malformed edges; run check")
             elif args.command == "plan":
                 answer = plan(data)
-                look = bool(answer["blocked"] or answer["cycle"])
+                look = bool(answer["blocked"] or answer["cycle"] or answer.get("inventory_uncertainty"))
             elif args.command == "turtle":
                 answer = turtle(data)
             elif args.command == "reach":
@@ -747,3 +1029,4 @@ def main(argv=None):
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

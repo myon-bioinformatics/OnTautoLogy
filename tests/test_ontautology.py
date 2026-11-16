@@ -207,6 +207,117 @@ def snapshot(*rows, at="2026-11-14T14:00:00Z"):
     return {"schema": "integration-audit/3", "captured_at": at, "records": list(rows)}
 
 
+class OpenInventoryTests(unittest.TestCase):
+    repo = "myon-bioinformatics/Ironmate"
+    ident = "pr:" + repo + "#231"
+
+    def doc(self, numbers, *rows, at="2026-11-15T12:00:00Z", complete=True):
+        doc = snapshot(*rows, at=at)
+        doc["open_pr_inventory"] = [{"repository": self.repo, "checked_at": at,
+                                     "complete": complete, "open_pr_numbers": numbers}]
+        return doc
+
+    def test_empty_snapshot_then_new_pr_and_back_to_zero_keeps_history(self):
+        empty = self.doc([])
+        newer = self.doc([231], row(231, repository=self.repo), at="2026-11-15T13:00:00Z")
+        graph = ot.audit([empty, newer])
+        self.assertEqual(ot.plan(graph)["order"], [self.ident])
+        self.assertEqual(len([n for n in graph["nodes"] if n["type"] == "Snapshot"]), 2)
+        self.assertIn("ot:Snapshot", ot.turtle(graph))
+        final = self.doc([], at="2026-11-15T14:00:00Z")
+        graph = ot.audit([empty, newer, final])
+        self.assertEqual(ot.plan(graph)["order"], [])
+        self.assertTrue(any(n["type"] == "Observation" for n in graph["nodes"]))
+        self.assertIs(ot.validate(graph), graph)
+
+    def test_incomplete_latest_suppresses_stale_schedule_and_is_not_zero(self):
+        first = self.doc([231], row(231, repository=self.repo))
+        partial = self.doc(None, at="2026-11-15T13:00:00Z", complete=False)
+        result = ot.plan(ot.audit([first, partial]))
+        self.assertEqual(result["order"], [])
+        self.assertEqual(result["inventory_uncertainty"][self.repo]["open_pr_numbers"], None)
+        self.assertFalse(result["inventory_uncertainty"][self.repo]["complete"])
+
+    def test_membership_requires_row_in_same_snapshot_not_older_evidence(self):
+        first = self.doc([231], row(231, repository=self.repo))
+        second = self.doc([231, 232], at="2026-11-15T13:00:00Z")
+        result = ot.plan(ot.audit([first, second]))
+        self.assertEqual(result["order"], [])
+        self.assertEqual(result["missing_rows"], [self.ident, self.ident[:-3] + "232"])
+        self.assertEqual(result["blocked"], result["missing_rows"])
+        # Collection can precede captured_at: digest, not timestamp equality, binds rows.
+        second["records"] = [row(231, repository=self.repo)]
+        second["captured_at"] = "2026-11-15T14:00:00Z"
+        self.assertEqual(ot.plan(ot.audit([second]))["order"], [self.ident])
+
+    def test_inventory_scope_does_not_erase_other_repositories_or_legacy(self):
+        legacy = snapshot(row(1))
+        result = ot.plan(ot.audit([legacy, self.doc([])]))
+        self.assertEqual(result["order"], ["pr:myon-bioinformatics/demo#1"])
+        baseline = ot.plan(ot.audit([legacy]))
+        self.assertNotIn("missing_rows", baseline)
+        doc = snapshot(row(1)); doc["open_pr_inventory"] = []
+        result = ot.plan(ot.audit([doc]))
+        self.assertEqual(result["order"], baseline["order"])
+
+    def test_absent_dependency_is_not_completion_without_verified_containment(self):
+        for contained in (None, True):
+            old = self.doc([231], row(231, repository=self.repo, contained_in_main=contained))
+            current = self.doc([], row(1, dependencies=[self.repo + "#231"]), at="2026-11-15T13:00:00Z")
+            result = ot.plan(ot.audit([old, current]))
+            dependent = "pr:myon-bioinformatics/demo#1"
+            self.assertEqual(result["order"], [dependent] if contained else [])
+            if not contained:
+                self.assertEqual(result["missing"][dependent], [self.ident])
+
+    def test_missing_row_blocks_dependents_and_partial_scope_blocks_cross_repo(self):
+        for complete, numbers in ((True, [231]), (False, None)):
+            doc = self.doc(numbers, row(1, dependencies=[self.repo + "#231"]), complete=complete)
+            result = ot.plan(ot.audit([doc]))
+            self.assertEqual(result["order"], [])
+            self.assertIn("pr:myon-bioinformatics/demo#1", result["blocked"])
+
+    def test_inventory_turtle_is_json_text_literal_and_partial_cli_requires_attention(self):
+        doc = self.doc(None, complete=False)
+        graph = ot.audit([doc])
+        line = next(line for line in ot.turtle(graph).splitlines() if " ot:open_pr_inventory " in line)
+        literal = line.split(" ot:open_pr_inventory ", 1)[1].removesuffix(" .")
+        self.assertEqual(json.loads(json.loads(literal)), doc["open_pr_inventory"])
+        p = subprocess.run([sys.executable, "-S", str(JsonTransport.script), "plan", "-"],
+                           input=json.dumps(graph).encode(), capture_output=True)
+        self.assertEqual(p.returncode, 2, p.stderr)
+        self.assertEqual(json.loads(p.stdout)["inventory_uncertainty"][self.repo]["complete"], False)
+
+    def test_existing_closed_merged_and_snapshot_aliases_are_retained(self):
+        for facts in ({"merged": True}, {"github_state": "closed"}):
+            doc = self.doc([231], row(231, repository=self.repo, **facts))
+            graph = ot.audit([doc])
+            self.assertEqual(ot.plan(graph)["order"], [])
+            self.assertTrue(any(e["relation"] == "derived_from" for e in graph["edges"]))
+        first = self.doc([231], row(231, repository=self.repo))
+        second = self.doc([], at="2026-11-15T13:00:00Z")
+        second["previous_snapshot"] = {"digest": ot.digest(first), "captured_at": first["captured_at"]}
+        forward = ot.audit([first, second])
+        self.assertEqual(forward, ot.audit([second, first]))
+        self.assertTrue(any(e["relation"] == "supersedes" for e in forward["edges"]))
+        self.assertEqual(ot.plan(forward)["order"], [])
+
+    def test_invalid_inventory_rejected_and_graph_validation_checks_it(self):
+        for entry in (None, [], "bad", {}, {"repository": self.repo}):
+            doc = self.doc([])
+            doc["open_pr_inventory"] = [entry]
+            with self.assertRaises(ValueError):
+                ot.audit([doc])
+        for complete, numbers in ((True, None), (True, [True]), (True, [0]), (True, [1,1]), (False, [])):
+            with self.assertRaises(ValueError):
+                ot.audit([self.doc(numbers, complete=complete)])
+        graph = ot.audit([self.doc([])])
+        snap = next(n for n in graph["nodes"] if n["type"] == "Snapshot")
+        snap["open_pr_inventory"][0]["complete"] = "yes"
+        with self.assertRaises(ValueError):
+            ot.validate(graph)
+
+
 class TemporalGraphTests(unittest.TestCase):
     def test_overlap_is_repository_scoped_and_not_a_conflict(self):
         graph = ot.audit([snapshot(row(1, files=["README.md"]), row(2, files=["README.md"]),
@@ -218,7 +329,7 @@ class TemporalGraphTests(unittest.TestCase):
 
     def test_merge_and_main_containment_are_independent(self):
         graph = ot.audit([snapshot(row(1, merged=True), row(2, contained_in_main=True))])
-        self.assertEqual(ot.plan(graph)["order"], ["pr:myon-bioinformatics/demo#1"])
+        self.assertEqual(ot.plan(graph)["order"], [])  # merged is not rescheduled after squash
         obs = [n for n in graph["nodes"] if n["type"] == "Observation"]
         self.assertIsNone(obs[0]["mergeable"])
 
@@ -256,7 +367,7 @@ class TemporalGraphTests(unittest.TestCase):
                 {"id": 12, "run_attempt": 2, "name": "Minimal stdlib distributions", "head_sha": "a" * 40,
                  "conclusion": "cancelled", "status": "completed"}]
         graph = ot.audit([snapshot(row(1, runs=runs))])
-        nodes = [n for n in graph["nodes"] if n["type"] == "WorkflowRun"]
+        nodes = [n for n in graph["nodes"] if n["type"] == "ActionsRun"]
         self.assertEqual(len(nodes), 2)
         edges = [e for e in graph["edges"] if e["relation"] == "hasRun"]
         self.assertEqual({e["conclusion"] for e in edges}, {"failure", "cancelled"})
@@ -318,7 +429,7 @@ class TemporalGraphTests(unittest.TestCase):
         graph = ot.audit([snapshot(row(1, runs=runs))])
         at = {e["source"]: e["target"].rsplit("@", 1)[1] for e in graph["edges"] if e["relation"] == "runsAt"}
         self.assertEqual(sorted(at.values()), ["a" * 40, "d" * 40])
-        self.assertEqual(sum(n["type"] == "WorkflowRun" for n in graph["nodes"]), 3)
+        self.assertEqual(sum(n["type"] == "ActionsRun" for n in graph["nodes"]), 3)
         self.assertFalse(any("unknown" in source for source in at))  # no commit is invented for the third run
 
     def test_the_site_observation_export_is_unwrapped(self):
@@ -355,7 +466,7 @@ class ExtendedAuditTests(unittest.TestCase):
             gaps=[{'reason':'required checks unknown'}],tasks=[{'id':'verify','phase':'再検証','state':'着手中'}],
             completion_records=[{'title':'merge verified','evidence_url':'https://github.com/o/r','verified_sha':'e'*40}]))
         graph=ot.audit([doc]);types={n['type'] for n in graph['nodes']}
-        self.assertTrue({'Issue','Review','Job','FixedSHA','Artifact','Evidence','EvidenceGap','MainGap','Task','CompletionRecord'}<=types)
+        self.assertTrue({'Issue','Review','Job','FixedSHA','GeneratedArtifact','Evidence','EvidenceGap','MainGap','Task','CompletionRecord'}<=types)
         edge=next(e for e in graph['edges'] if e['relation']=='hasJob')
         self.assertEqual(edge['conclusion'],'cancelled');self.assertIn('attempt:2',edge['target'])
         self.assertFalse(any(e['relation']=='runsAt' for e in graph['edges']))
@@ -448,3 +559,115 @@ class WorkflowProvenance(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+
+class ConvergenceVocabulary(unittest.TestCase):
+    def document(self, **changes):
+        inventory = {'repo':'other/demo', 'main':'a'*40, 'issues':[],
+                     'main_runs':[{'id':7,'run_attempt':None,'name':'CI','conclusion':'failure',
+                                   'status':'completed','head_sha':None,'jobs':[]}],
+                     'pin_records':[], 'gaps':['artifact payload unverified']}
+        inventory.update(changes)
+        return {'schema':'integration-audit/3','captured_at':'2026-11-15T01:00:00Z',
+                'records':[], 'inventory':[inventory]}
+
+    def test_inventory_survives_zero_prs_and_respects_repository_owner(self):
+        graph=ot.audit([self.document()])
+        self.assertTrue(any(n['id']=='repo:other/demo' for n in graph['nodes']))
+        self.assertFalse(any('myon-bioinformatics/other/' in n['id'] for n in graph['nodes']))
+        self.assertEqual(ot.plan(graph)['order'],[])
+        self.assertFalse(any(e['relation']=='same_as' for e in graph['edges']))
+        self.assertTrue(set('depends_on duplicates updates verified_by derived_from targets blocks integrates_into same_as supersedes has_status'.split())<=set(graph['ontology']['relations']))
+        self.assertTrue(set('Repository PullRequest Issue Review ActionsRun Job Commit Branch File FixedSHA GeneratedArtifact Evidence Observation Task Snapshot'.split())<=set(graph['ontology']['classes']))
+
+    def test_unknown_run_sha_and_attempt_are_never_inferred_from_main(self):
+        graph=ot.audit([self.document()]);run=next(n for n in graph['nodes'] if n['type']=='ActionsRun')
+        self.assertIsNone(run['attempt'])
+        self.assertFalse(any(e['source']==run['id'] and e['relation']=='runsAt' for e in graph['edges']))
+        self.assertNotIn('conclusion',run)
+        self.assertEqual(next(e for e in graph['edges'] if e['relation']=='hasRun')['conclusion'],'failure')
+
+    def test_inventory_history_ignores_only_time_and_reports_run_changes(self):
+        import copy
+        first=self.document();later=copy.deepcopy(first);later['captured_at']='2026-11-15T02:00:00Z'
+        before=ot.audit([first]);self.assertFalse(ot.observation_diff(before,ot.audit([later]))['changed'])
+        later['inventory'][0]['main_runs'][0]['conclusion']='success'
+        after=ot.audit([later]);diff=ot.observation_diff(before,after)
+        self.assertEqual([r['pr'] for r in diff['changed']],['repo:other/demo'])
+        history=ot.audit([first,later])
+        self.assertEqual({e['conclusion'] for e in history['edges'] if e['relation']=='hasRun'},{'failure','success'})
+
+    def test_inventory_issue_pins_artifacts_and_actual_run_sha(self):
+        run={'id':7,'run_attempt':2,'name':'CI','head_sha':'b'*40,'conclusion':'failure',
+             'jobs':[{'id':8,'name':'test','conclusion':'failure'}],
+             'artifacts':[{'id':9,'name':'report','workflow_run':{'head_sha':'b'*40}}]}
+        doc=self.document(issues=[{'url':'https://github.com/other/demo/issues/1','title':'Issue'}],
+                          pin_records=[{'repository':'other/source','commit':'c'*40}],main_runs=[run])
+        graph=ot.audit([doc]);kinds={n['type'] for n in graph['nodes']}
+        self.assertTrue({'Issue','FixedSHA','GeneratedArtifact','Job'}<=kinds)
+        byid={n['id']:n for n in graph['nodes']}
+        self.assertEqual({byid[e['target']]['sha'] for e in graph['edges'] if e['relation']=='runsAt'},{'b'*40})
+        self.assertEqual(ot.audit([doc,doc]),graph)
+
+    def test_closed_unmerged_is_excluded_from_integration_order(self):
+        graph=ot.audit([snapshot(row(1,github_state='closed',merged=False,contained_in_main=False))])
+        self.assertFalse(ot.plan(graph)['order'])
+
+
+class TransferLedgerTests(unittest.TestCase):
+    def example(self):
+        return json.loads((Path(__file__).resolve().parents[1]/'examples/flutter-absorption.json').read_text())
+
+    def completed(self):
+        doc=self.example();doc['transfers']=doc['transfers'][:1];row=doc['transfers'][0]
+        row['state']='完了';row['target'].update(sha='b'*40,paths=['tools/maps.py'])
+        row['verification']={'source_sha':row['source']['sha'],'target_sha':'b'*40,'target_in_main':True,
+                             'accepted':[c['id'] for c in row['acceptance']],
+                             'evidence_url':'https://github.com/'+row['target']['repository']+'/actions/runs/42'}
+        return doc
+
+    def test_partial_inventory_remains_unknown_and_requests_are_separate(self):
+        report=ot.transfer_report(self.example())
+        self.assertEqual(len(report['records']),14)
+        self.assertEqual(len(report['unabsorbed_features']),12)
+        self.assertEqual(report['archive_readiness'],'未確定')
+        self.assertEqual(report['counts']['完了'],0)
+
+    def test_completion_needs_same_source_target_main_and_all_criteria(self):
+        import copy
+        good=self.completed();self.assertEqual(ot.transfer_report(good)['pending'],[])
+        for change in ({'source_sha':'c'*40},{'target_sha':'c'*40},{'target_in_main':False},
+                       {'accepted':[]},{'evidence_url':'https://github.com/other/repo/actions/runs/42'}):
+            with self.subTest(change=change),self.assertRaises(ValueError):
+                bad=copy.deepcopy(good);bad['transfers'][0]['verification'].update(change);ot.transfer_report(bad)
+
+    def test_new_task_graph_preserves_archived_source_file_and_destination(self):
+        doc=self.example();doc['transfer_scope']['source_archived_observed']=True
+        graph=ot.audit([doc]);self.assertEqual(ot.plan(graph)['order'],[])
+        self.assertEqual(sum(n['type']=='Task' for n in graph['nodes']),14)
+        self.assertTrue(any(e['relation']=='migration_source' for e in graph['edges']))
+        self.assertTrue(any(e['relation']=='migration_target' for e in graph['edges']))
+        self.assertFalse(any(e['relation']=='same_as' for e in graph['edges']))
+        self.assertEqual(ot.audit([doc,doc]),graph)
+
+    def test_transfer_diff_tracks_target_and_state_but_ignores_capture_time(self):
+        import copy
+        doc=self.example();later=copy.deepcopy(doc);later['captured_at']='2026-11-16T01:00:00Z'
+        before=ot.audit([doc]);self.assertEqual(ot.observation_diff(before,ot.audit([later]))['changed'],[])
+        later['transfers'][0]['state']='着手中'
+        diff=ot.observation_diff(before,ot.audit([later]))
+        self.assertEqual(len(diff['changed']),1)
+        self.assertIn('flutter-maps-links',diff['changed'][0]['pr'])
+
+    def test_duplicate_ids_and_unanchored_completion_are_rejected(self):
+        doc=self.example();doc['transfers'].append(dict(doc['transfers'][0]))
+        with self.assertRaises(ValueError):ot.transfer_report(doc)
+        doc=self.completed();doc['transfers'][0]['target']['paths']=[]
+        with self.assertRaises(ValueError):ot.transfer_report(doc)
+
+    def test_transfers_cli_works_on_stdin_and_signals_pending(self):
+        result=subprocess.run([sys.executable,'-S',str(Path(ot.__file__)),'transfers','-'],
+                              input=json.dumps(self.example()),text=True,capture_output=True)
+        self.assertEqual(result.returncode,2,result.stderr)
+        self.assertEqual(len(json.loads(result.stdout)['pending']),14)
