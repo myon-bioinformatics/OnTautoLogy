@@ -322,19 +322,24 @@ def _normalize_corpus(corpus):
     return concepts, concept_meta, pairs, neighbors
 
 
-def _maybe(corpus, concepts):
-    """``maybe``: elements a concept might have — links allowed to be wrong. {concept: [element, ...]} for known
-    concepts; they are hypotheses, so definitions never rest on them."""
-    raw = corpus.get("maybe", {})
+def _beside(corpus, concepts, key):
+    """A {concept: [element, ...]} list kept beside the observed elements, for known concepts; definitions never
+    rest on it.
+
+    maybe  elements a concept might have — links allowed to be wrong (hypotheses)
+    names  the name side: how it is read, written, translated or called (読み・英名・学名・別名・同音語 …).
+           Asking for a name is calling the answer, so the thing side alone defines and is asked about.
+    """
+    raw = corpus.get(key, {})
     if not isinstance(raw, dict):
-        raise ValueError("maybe must be an object of concept → elements")
+        raise ValueError(f"{key} must be an object of concept → elements")
     found = {}
     for name, elements in raw.items():
         if name not in concepts:
-            raise ValueError(f"maybe names an unknown concept: {name!r}")
+            raise ValueError(f"{key} names an unknown concept: {name!r}")
         if not isinstance(elements, list):
-            raise ValueError(f"maybe for {name!r} must be a list")
-        found[name] = sorted({_nonempty_str(el, f"{name} maybe element") for el in elements} - set(concepts[name] or ()))
+            raise ValueError(f"{key} for {name!r} must be a list")
+        found[name] = sorted({_nonempty_str(el, f"{name} {key} element") for el in elements} - set(concepts[name] or ()))
     return found
 
 
@@ -491,16 +496,17 @@ def concept_edges(corpus):
     (``observes`` the concept, ``derived_from`` the snapshot). Each element edge names that observation as its
     ``lock``. An unobserved concept (elements null) has no observation. ``captured_at``, when given, is the time.
     ``maybe`` elements (links allowed to be wrong) become hasElement edges at the hypothesis level; nothing
-    observed them, so their ``lock`` is the snapshot that wrote them down.
+    observed them, so their ``lock`` is the snapshot that wrote them down. ``names`` become Name nodes with an
+    observed hasName edge (the name side: read, written, translated, called), locked like the elements.
     """
     concepts, concept_meta, pairs, _ = _normalize_corpus(corpus)
-    maybe = _maybe(corpus, concepts)
+    maybe, called = _beside(corpus, concepts, "maybe"), _beside(corpus, concepts, "names")
     defined = define_concepts(corpus)
     seen_at = corpus.get("captured_at")
     if seen_at is not None:
         timestamp(seen_at)
     when = {"observed_at": seen_at} if seen_at else {}
-    snapshot = digest({"concepts": concepts, "similar": sorted(pairs, key=digest)})
+    snapshot = digest({"concepts": concepts, "similar": sorted(pairs, key=digest), **({"names": called} if called else {})})
     sid = "snapshot:" + snapshot
     nodes, edges = {sid: {"id": sid, "type": "Snapshot", **({"captured_at": seen_at} if seen_at else {})}}, []
     for name in sorted(concepts):
@@ -521,6 +527,11 @@ def concept_edges(corpus):
             eid = f"elem:{el}"
             nodes.setdefault(eid, {"id": eid, "type": "Element", "name": el})
             edges.append({"kind": "hasElement", "source": eid, "target": cid, "basis": "hypothesis", "maybe": True, "lock": sid, **when})
+        for el in called.get(name, ()):  # 🏷️ the name side: how it is read, written, translated or called
+            nid = f"name:{el}"
+            nodes.setdefault(nid, {"id": nid, "type": "Name", "name": el})
+            lock = f"observation:{snapshot}:{cid}" if concepts[name] is not None else sid
+            edges.append({"kind": "hasName", "source": nid, "target": cid, "basis": "observed", "lock": lock, **when})
         info = defined["concepts"][name]
         for el in info["definition"]["genus"]:
             eid = f"elem:{el}"

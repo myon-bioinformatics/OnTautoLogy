@@ -308,11 +308,11 @@ class JudgeTests(unittest.TestCase):
 
     def test_the_definition_is_built_from_what_the_concept_has(self):
         corpus = concepts()
-        # four clues, any three; 配管工 is no key (マリオ has it too), and the two name origins are one clue
-        clues = ["主役シリーズ:ルイージマンション", "初登場年:1983", "帽子のマーク:L", ["OR", "名前の由来:イタリアで多い名前", "名前の由来:類似"]]
-        three = [["AND", *(clue for j, clue in enumerate(clues) if j != left)] for left in reversed(range(len(clues)))]
+        # five clues, any four; 配管工 is no key (マリオ has it too), and the name side (series, name origin) is not used
+        clues = ["初登場年:1983", "帽子のマーク:L", "弟", "緑色", "誕生:マリオの2Pカラー"]
+        four = [["AND", *(clue for j, clue in enumerate(clues) if j != left)] for left in reversed(range(len(clues)))]
         self.assertEqual(tautology.rules(corpus, "ルイージ")["definition"],
-                         ["AND", "オーバーオール", "ゲームキャラクター", "人間", "任天堂", "帽子", ["OR", *three]])
+                         ["AND", "オーバーオール", "ゲームキャラクター", "人間", "任天堂", "帽子", ["OR", *four]])
         # ピアノ shares the genus of ギター without being similar, so excluding the neighbours is not enough there
         # three clues, any two: 6弦標準, a model, a riff (the key search stops at five, so 開放弦 is not among them)
         models = ["OR", "代表モデル:ストラトキャスター", "代表モデル:レスポール"]
@@ -415,6 +415,8 @@ class JudgeTests(unittest.TestCase):
         self.assertEqual(masked["concepts"], [{"id": "b", "elements": ["y"]}])
         self.assertEqual(masked["similar"], [{"left": "b", "right": "c"}])
         self.assertEqual(tautology._without({"concepts": {"a": ["x"], "b": ["y"]}}, "b")["concepts"], {"a": ["x"]})
+        beside = tautology._without({"concepts": {"a": ["x"], "b": ["y"]}, "names": {"a": ["英名:A"], "b": ["英名:B"]}, "maybe": {"a": ["z"]}}, "a")
+        self.assertEqual((beside["names"], beside["maybe"]), ({"b": ["英名:B"]}, {}))
 
     def test_counts_add_up_and_fn_refutes_the_converse(self):
         corpus = concepts()
@@ -559,6 +561,62 @@ def _redis_or_skip(case):
         process.wait(timeout=10)
         shutil.rmtree(folder, ignore_errors=True)
     return client, stop
+
+
+class WobbleTests(unittest.TestCase):
+    """🔤 Shaking the names: notation folded as TalkCompress does, one character apart, names in the thing side."""
+
+    def test_notation_folds_width_case_separators_kana_and_long_vowels(self):
+        fold = tautology._notation
+        self.assertEqual({fold(word) for word in ("ピカチュウ", "ピカチュー", "ぴかちゅう", "ﾋﾟｶﾁｭｳ")}, {"ぴかちゅう"})
+        self.assertEqual(fold("メイド イン ワリオ"), fold("メイドインワリオ"))
+        self.assertEqual((fold("ＩＰｈｏｎｅ"), fold("ルイージ"), fold("パーン")), ("iphone", "るいいじ", "ぱあん"))
+        self.assertEqual(fold("ンー"), "んー")  # no vowel before the mark: it stays
+
+    def test_one_character_apart(self):
+        apart = tautology._one_apart
+        self.assertTrue(all(apart(a, b) for a, b in (("まりお", "わりお"), ("ぴちゅう", "ぴかちゅう"), ("るいじ", "るいいじ"))))
+        self.assertFalse(any(apart(a, b) for a, b in (("まりお", "まりお"), ("ab", "ba"), ("abcd", "ab"))))
+
+    def test_the_example_shows_near_names_and_a_name_inside_the_thing_side(self):
+        found = tautology.wobble(concepts())
+        self.assertEqual([(row["pair"], row["similar"]) for row in found["near"]],
+                         [(["ピカチュウ", "ピチュー"], True), (["マリオ", "ワリオ"], False), (["ルイージ", "ワルイージ"], True)])
+        # the genus and the family are named after 鮭 (さけ); in Latin the genus is Oncorhynchus, with no name in it
+        self.assertEqual((found["rephrase"], found["same"]), ({"鮭": ["サケ属", "サケ科"]}, []))
+
+    def test_words_are_looked_up_on_three_tiers(self):
+        words = tautology.wobble(concepts(), ["シャケ", "酒", "salmon", "ﾙｲｰｼﾞ", "るいじ"])["words"]
+        pick = lambda word, tier: [(hit["concept"], hit["via"]) for hit in words[word][tier]]
+        self.assertEqual(pick("シャケ", "notation"), [("鮭", "読み:しゃけ")])
+        self.assertEqual(pick("酒", "exact"), [("鮭", "同音語:酒")])  # a word that sounds the same, not 鮭 itself
+        self.assertEqual(pick("salmon", "notation"), [("鮭", "英名:Salmon")])
+        self.assertEqual((pick("ﾙｲｰｼﾞ", "notation"), pick("ﾙｲｰｼﾞ", "near")), ([("ルイージ", "ルイージ")], [("ワルイージ", "ワルイージ")]))
+        self.assertEqual(pick("るいじ", "near"), [("ルイージ", "ルイージ")])  # 類似 is one character from ルイージ
+
+    def test_a_shared_form_splits_and_words_of_one_character_are_not_near(self):
+        corpus = {"concepts": {"鮭": ["魚", "白鮭"], "酒": ["飲料"], "竹": ["植物"], "笹": ["植物"]},
+                  "names": {"鮭": ["読み:さけ"], "酒": ["読み:さけ"]}}
+        found = tautology.wobble(corpus)
+        self.assertEqual(found["same"], [{"form": "さけ", "concepts": ["酒", "鮭"]}])
+        self.assertEqual(found["near"], [])  # 竹 and 笹 are one character apart, as any two words of one character
+        self.assertEqual(found["rephrase"], {"鮭": ["白鮭"]})
+        from test_ontautology import run_cli
+        script = ROOT / "tools/tautology.py"
+        self.assertEqual(run_cli(script, "wobble", "-", data=json.dumps(corpus, ensure_ascii=False)).returncode, 2)
+        clean = {**corpus, "concepts": {**corpus["concepts"], "鮭": ["魚"]}}
+        done = run_cli(script, "wobble", "-", "さけ", data=json.dumps(clean, ensure_ascii=False))
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual([hit["concept"] for hit in json.loads(done.stdout)["words"]["さけ"]["exact"]], ["酒", "鮭"])
+
+    def test_names_change_neither_definitions_nor_the_guessing_game(self):
+        # asking for a name is calling the answer: the thing side alone defines and is asked about
+        corpus = concepts()
+        without = {k: v for k, v in corpus.items() if k != "names"}
+        for seed in ("鮭", "ルイージ"):
+            with self.subTest(seed=seed):
+                self.assertEqual(tautology.rules(corpus, seed), tautology.rules(without, seed))
+                self.assertEqual(tautology.guess(corpus, seed), tautology.guess(without, seed))
 
 
 class RedisCrossCheck(unittest.TestCase):
