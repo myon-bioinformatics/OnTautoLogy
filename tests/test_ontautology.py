@@ -207,6 +207,117 @@ def snapshot(*rows, at="2026-11-14T14:00:00Z"):
     return {"schema": "integration-audit/3", "captured_at": at, "records": list(rows)}
 
 
+class OpenInventoryTests(unittest.TestCase):
+    repo = "myon-bioinformatics/Ironmate"
+    ident = "pr:" + repo + "#231"
+
+    def doc(self, numbers, *rows, at="2026-11-15T12:00:00Z", complete=True):
+        doc = snapshot(*rows, at=at)
+        doc["open_pr_inventory"] = [{"repository": self.repo, "checked_at": at,
+                                     "complete": complete, "open_pr_numbers": numbers}]
+        return doc
+
+    def test_empty_snapshot_then_new_pr_and_back_to_zero_keeps_history(self):
+        empty = self.doc([])
+        newer = self.doc([231], row(231, repository=self.repo), at="2026-11-15T13:00:00Z")
+        graph = ot.audit([empty, newer])
+        self.assertEqual(ot.plan(graph)["order"], [self.ident])
+        self.assertEqual(len([n for n in graph["nodes"] if n["type"] == "Snapshot"]), 2)
+        self.assertIn("ot:Snapshot", ot.turtle(graph))
+        final = self.doc([], at="2026-11-15T14:00:00Z")
+        graph = ot.audit([empty, newer, final])
+        self.assertEqual(ot.plan(graph)["order"], [])
+        self.assertTrue(any(n["type"] == "Observation" for n in graph["nodes"]))
+        self.assertIs(ot.validate(graph), graph)
+
+    def test_incomplete_latest_suppresses_stale_schedule_and_is_not_zero(self):
+        first = self.doc([231], row(231, repository=self.repo))
+        partial = self.doc(None, at="2026-11-15T13:00:00Z", complete=False)
+        result = ot.plan(ot.audit([first, partial]))
+        self.assertEqual(result["order"], [])
+        self.assertEqual(result["inventory_uncertainty"][self.repo]["open_pr_numbers"], None)
+        self.assertFalse(result["inventory_uncertainty"][self.repo]["complete"])
+
+    def test_membership_requires_row_in_same_snapshot_not_older_evidence(self):
+        first = self.doc([231], row(231, repository=self.repo))
+        second = self.doc([231, 232], at="2026-11-15T13:00:00Z")
+        result = ot.plan(ot.audit([first, second]))
+        self.assertEqual(result["order"], [])
+        self.assertEqual(result["missing_rows"], [self.ident, self.ident[:-3] + "232"])
+        self.assertEqual(result["blocked"], result["missing_rows"])
+        # Collection can precede captured_at: digest, not timestamp equality, binds rows.
+        second["records"] = [row(231, repository=self.repo)]
+        second["captured_at"] = "2026-11-15T14:00:00Z"
+        self.assertEqual(ot.plan(ot.audit([second]))["order"], [self.ident])
+
+    def test_inventory_scope_does_not_erase_other_repositories_or_legacy(self):
+        legacy = snapshot(row(1))
+        result = ot.plan(ot.audit([legacy, self.doc([])]))
+        self.assertEqual(result["order"], ["pr:myon-bioinformatics/demo#1"])
+        baseline = ot.plan(ot.audit([legacy]))
+        self.assertNotIn("missing_rows", baseline)
+        doc = snapshot(row(1)); doc["open_pr_inventory"] = []
+        result = ot.plan(ot.audit([doc]))
+        self.assertEqual(result["order"], baseline["order"])
+
+    def test_absent_dependency_is_not_completion_without_verified_containment(self):
+        for contained in (None, True):
+            old = self.doc([231], row(231, repository=self.repo, contained_in_main=contained))
+            current = self.doc([], row(1, dependencies=[self.repo + "#231"]), at="2026-11-15T13:00:00Z")
+            result = ot.plan(ot.audit([old, current]))
+            dependent = "pr:myon-bioinformatics/demo#1"
+            self.assertEqual(result["order"], [dependent] if contained else [])
+            if not contained:
+                self.assertEqual(result["missing"][dependent], [self.ident])
+
+    def test_missing_row_blocks_dependents_and_partial_scope_blocks_cross_repo(self):
+        for complete, numbers in ((True, [231]), (False, None)):
+            doc = self.doc(numbers, row(1, dependencies=[self.repo + "#231"]), complete=complete)
+            result = ot.plan(ot.audit([doc]))
+            self.assertEqual(result["order"], [])
+            self.assertIn("pr:myon-bioinformatics/demo#1", result["blocked"])
+
+    def test_inventory_turtle_is_json_text_literal_and_partial_cli_requires_attention(self):
+        doc = self.doc(None, complete=False)
+        graph = ot.audit([doc])
+        line = next(line for line in ot.turtle(graph).splitlines() if " ot:open_pr_inventory " in line)
+        literal = line.split(" ot:open_pr_inventory ", 1)[1].removesuffix(" .")
+        self.assertEqual(json.loads(json.loads(literal)), doc["open_pr_inventory"])
+        p = subprocess.run([sys.executable, "-S", str(JsonTransport.script), "plan", "-"],
+                           input=json.dumps(graph).encode(), capture_output=True)
+        self.assertEqual(p.returncode, 2, p.stderr)
+        self.assertEqual(json.loads(p.stdout)["inventory_uncertainty"][self.repo]["complete"], False)
+
+    def test_existing_closed_merged_and_snapshot_aliases_are_retained(self):
+        for facts in ({"merged": True}, {"github_state": "closed"}):
+            doc = self.doc([231], row(231, repository=self.repo, **facts))
+            graph = ot.audit([doc])
+            self.assertEqual(ot.plan(graph)["order"], [])
+            self.assertTrue(any(e["relation"] == "derived_from" for e in graph["edges"]))
+        first = self.doc([231], row(231, repository=self.repo))
+        second = self.doc([], at="2026-11-15T13:00:00Z")
+        second["previous_snapshot"] = {"digest": ot.digest(first), "captured_at": first["captured_at"]}
+        forward = ot.audit([first, second])
+        self.assertEqual(forward, ot.audit([second, first]))
+        self.assertTrue(any(e["relation"] == "supersedes" for e in forward["edges"]))
+        self.assertEqual(ot.plan(forward)["order"], [])
+
+    def test_invalid_inventory_rejected_and_graph_validation_checks_it(self):
+        for entry in (None, [], "bad", {}, {"repository": self.repo}):
+            doc = self.doc([])
+            doc["open_pr_inventory"] = [entry]
+            with self.assertRaises(ValueError):
+                ot.audit([doc])
+        for complete, numbers in ((True, None), (True, [True]), (True, [0]), (True, [1,1]), (False, [])):
+            with self.assertRaises(ValueError):
+                ot.audit([self.doc(numbers, complete=complete)])
+        graph = ot.audit([self.doc([])])
+        snap = next(n for n in graph["nodes"] if n["type"] == "Snapshot")
+        snap["open_pr_inventory"][0]["complete"] = "yes"
+        with self.assertRaises(ValueError):
+            ot.validate(graph)
+
+
 class TemporalGraphTests(unittest.TestCase):
     def test_overlap_is_repository_scoped_and_not_a_conflict(self):
         graph = ot.audit([snapshot(row(1, files=["README.md"]), row(2, files=["README.md"]),

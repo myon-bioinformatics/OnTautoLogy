@@ -265,6 +265,32 @@ RELATIONS.update({
 RELATIONS['belongsTo'] = ((*RELATIONS['belongsTo'][0], "Issue"), "Repository")
 
 
+def inventory_entries(entries):
+    """Validate explicit repository coverage; incomplete is never an empty result."""
+    if not isinstance(entries, list):
+        raise ValueError("open_pr_inventory must be an array")
+    seen = set()
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise ValueError("inventory entry must be an object")
+        repo = repository(entry.get("repository"))
+        timestamp(entry.get("checked_at"))
+        if repo in seen:
+            raise ValueError("duplicate repository inventory")
+        seen.add(repo)
+        numbers = entry.get("open_pr_numbers")
+        if type(entry.get("complete")) is not bool:
+            raise ValueError("inventory complete must be boolean")
+        if entry["complete"]:
+            if not isinstance(numbers, list) or any(type(n) is not int or n < 1 for n in numbers):
+                raise ValueError("complete inventory requires positive PR numbers")
+            if len(numbers) != len(set(numbers)):
+                raise ValueError("duplicate inventory PR number")
+        elif numbers is not None:
+            raise ValueError("incomplete inventory requires null open_pr_numbers")
+    return entries
+
+
 def transfer_report(document):
     """Offline absorption ledger. A recorded receipt is not independent CI verification."""
     from urllib.parse import urlparse
@@ -376,11 +402,23 @@ def enrich(value, documents, owner):
     graph = Graph()
     graph.nodes = {n['id']: n for n in value['nodes']}
     graph.edges = {digest(e): e for e in value['edges']}
+    # Create actual snapshots before predecessor stubs, independent of input order.
     for doc in documents:
-        sid = graph.node('snapshot:' + digest(doc), 'Snapshot', captured_at=doc['captured_at'])
+        properties = {"captured_at": doc["captured_at"], "digest": digest(doc)}
+        if "open_pr_inventory" in doc:
+            properties["open_pr_inventory"] = inventory_entries(doc["open_pr_inventory"])
+        graph.node("snapshot:" + digest(doc), "Snapshot", **properties)
+        for entry in properties.get("open_pr_inventory", []):
+            graph.repo(entry["repository"])
+            for number in entry["open_pr_numbers"] or []:
+                graph.pr(pr_id(f"{entry['repository']}#{number}", owner))
+    for doc in documents:
+        sid = 'snapshot:' + digest(doc)
         previous = doc.get('previous_snapshot')
         if previous:
-            old = graph.node('snapshot:' + previous['digest'], 'Snapshot', captured_at=previous['captured_at'])
+            old = 'snapshot:' + previous['digest']
+            if old not in graph.nodes:
+                graph.node(old, 'Snapshot', captured_at=previous['captured_at'])
             graph.edge(sid, 'supersedes', old, basis='observed: snapshot sequence')
         for inv in doc.get('inventory', []):
             name = inv['repo'] if '/' in inv['repo'] else owner + '/' + inv['repo']
@@ -728,6 +766,10 @@ def validate(graph):
             raise ValueError("unknown ontology class")
         if node["type"] in ("Task", "CompletionRecord") and node.get("state") not in STATES:
             raise ValueError("invalid task/completion state")
+        if node["type"] == "Snapshot":
+            timestamp(node["captured_at"])
+            if "open_pr_inventory" in node:
+                inventory_entries(node["open_pr_inventory"])
         if node["type"] == "Observation":
             timestamp(node["observed_at"])
             if node.get("state") not in STATES:
@@ -751,39 +793,79 @@ def plan(graph):
     """Dependency order only. Never equates CI success with merge permission."""
     validate(graph)
     nodes = {n["id"]: n for n in graph["nodes"]}
-    latest = {}
+    latest, by_snapshot = {}, {}
     for edge in graph["edges"]:
         if edge["relation"] == "observes":
             obs = nodes[edge["source"]]
             target = edge["target"]
+            by_snapshot[(target, obs.get("snapshot"))] = obs
             if target not in latest or timestamp(obs["observed_at"]) > timestamp(latest[target]["observed_at"]):
                 latest[target] = obs
             elif timestamp(obs["observed_at"]) == timestamp(latest[target]["observed_at"]) and obs["id"] != latest[target]["id"]:
                 raise ValueError("ambiguous observations at the same time; select a snapshot")
     pending = {key for key, obs in latest.items() if obs.get("contained_in_main") is not True and obs.get("merged") is not True and obs.get("github_state") != "closed"}
+    inventories = {}
+    explicit = False
+    for node in nodes.values():
+        if node["type"] != "Snapshot" or "open_pr_inventory" not in node:
+            continue
+        explicit = True
+        for entry in node["open_pr_inventory"]:
+            repo = entry["repository"]
+            candidate = {**entry, "snapshot": node["digest"]}
+            previous = inventories.get(repo)
+            if previous is None or timestamp(entry["checked_at"]) > timestamp(previous["checked_at"]):
+                inventories[repo] = candidate
+            elif timestamp(entry["checked_at"]) == timestamp(previous["checked_at"]) and candidate != previous:
+                raise ValueError("ambiguous inventory at the same time; select a snapshot")
+    uncertain, missing_rows = {}, set()
+    for repo, entry in inventories.items():
+        prefix = "pr:" + repo + "#"
+        pending = {key for key in pending if not key.startswith(prefix)}
+        if not entry["complete"]:
+            uncertain[repo] = entry
+            continue
+        for number in entry["open_pr_numbers"]:
+            key = prefix + str(number)
+            # Membership and evidence must come from the same source snapshot.
+            observation = by_snapshot.get((key, entry["snapshot"]))
+            if observation is None:
+                missing_rows.add(key)
+            else:
+                latest[key] = observation
+            if observation is None or (observation.get("contained_in_main") is not True
+                                       and observation.get("merged") is not True
+                                       and observation.get("github_state") != "closed"):
+                pending.add(key)
     dependencies = {key: set() for key in pending}
     missing = {key: set() for key in pending}
     for edge in graph["edges"]:
         source, target = edge["source"], edge["target"]
         if edge["relation"] != "dependsOn" or source not in pending:
             continue
-        if edge["observation"] != latest[source]["id"]:
+        if source in missing_rows or edge["observation"] != latest[source]["id"]:
             continue
         if target not in latest or (latest[target].get("github_state") == "closed" and latest[target].get("merged") is not True and latest[target].get("contained_in_main") is not True):
             missing[source].add(target)
         elif target in pending:
             dependencies[source].add(target)
+        elif target.removeprefix("pr:").rsplit("#", 1)[0] in inventories and latest[target].get("contained_in_main") is not True:
+            missing[source].add(target)
     # Core order(): prerequisite first; a cycle blocks itself and what waits on it, nothing else.
     found = order([{"kind": "dependsOn", "source": need, "target": key} for key, needs in dependencies.items() for need in sorted(needs)],
                   nodes=sorted(pending))
     cycle = found["cycle"] or []
     waiting = [{"kind": "dependsOn", "source": need, "target": key} for key, needs in dependencies.items() for need in needs]
-    unmet = sorted(key for key, deps in missing.items() if deps)
+    unmet = sorted({key for key, deps in missing.items() if deps} | missing_rows)
     blocked = set(found["blocked"]) | set(unmet) | {row["node"] for row in reach(waiting, unmet)["rows"]}
     order_ = [key for batch in found["batches"] for key in batch]
-    return {"order": [key for key in order_ if key not in blocked], "batches": [[key for key in batch if key not in blocked] for batch in found["batches"] if any(key not in blocked for key in batch)], "blocked": sorted(blocked),
+    result = {"order": [key for key in order_ if key not in blocked], "batches": [[key for key in batch if key not in blocked] for batch in found["batches"] if any(key not in blocked for key in batch)], "blocked": sorted(blocked),
             "missing": {k: sorted(v) for k, v in missing.items() if v}, "cycle": cycle,
             "note": "依存関係だけの順序。CI・レビュー・競合・保留の確認は別途必要。未観測の依存先は完了扱いにしない。"}
+
+    if explicit:
+        result.update(inventory_uncertainty=uncertain, missing_rows=sorted(missing_rows))
+    return result
 
 
 def edges_of(graph):
@@ -811,7 +893,11 @@ def edges_of(graph):
 def turtle(graph):
     validate(graph)
     uri = lambda ident: "<urn:ontautology:" + quote(ident, safe="") + ">"
-    literal = lambda value: json.dumps(value, ensure_ascii=False)
+    def literal(value):
+        # Collections are JSON text literals, not invalid Turtle array/object syntax.
+        if isinstance(value, (list, dict)):
+            value = json.dumps(value, ensure_ascii=False, sort_keys=True)
+        return json.dumps(value, ensure_ascii=False)
     lines = [f"@prefix ot: <{NAMESPACE}> .", "@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .",
              "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .", ""]
     for kind in _classes():
@@ -910,7 +996,7 @@ def main(argv=None):
                 raise ValueError("the graph has malformed edges; run check")
             elif args.command == "plan":
                 answer = plan(data)
-                look = bool(answer["blocked"] or answer["cycle"])
+                look = bool(answer["blocked"] or answer["cycle"] or answer.get("inventory_uncertainty"))
             elif args.command == "turtle":
                 answer = turtle(data)
             elif args.command == "reach":
