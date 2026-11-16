@@ -1,4 +1,4 @@
-"""Tests for Phase 2 concept similarity, genus/differentia definitions, roundtrip checks, and Redis test helpers."""
+"""第二弾 (phase 2) — concept similarity, genus/differentia definitions and roundtrip checks (ontautology.py)."""
 from __future__ import annotations
 
 import copy

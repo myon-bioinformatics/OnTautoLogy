@@ -1,4 +1,7 @@
-"""GitHub audit dashboard: PR audit snapshots of many repositories → one graph with history (Python 3.11+, stdlib).
+"""第一弾 (phase 1) — GitHub audit dashboard: PR audit snapshots of many repositories → one graph with history.
+
+Python 3.11+, standard library only. Phase 1 lives in this folder alone; phase 2 (concept definitions) is the
+core and tools/tautology.py, and neither reads this file.
 
 The use of the core for the parent's continuous audit pages (integration-audit/3) and the Flutter absorption
 ledger. Everything GitHub-shaped lives here — repositories, PRs, commits, runs, jobs, tasks, transfers — so the
@@ -780,11 +783,11 @@ def _diff(args):
 def main(argv=None):
     """Exit codes as the core: 0 answered, 1 input error, 2 answered and something needs a look."""
     return ot.main(argv, load=_load, commands=(
-        ("audit", "🔭 integration-audit/3 snapshots (one or more, kept as history) → graph", _inputs, _audit),
-        ("plan", "🪜 audit graph → dependency order of PRs not yet in main", _graph, _plan),
-        ("turtle", "🐢 audit graph → RDF/Turtle", _graph, lambda args: (turtle(ot._read_json(args.graph)), False)),
-        ("diff", "🆚 two audit graphs → what changed between their latest observations", _pair, _diff),
-        ("transfers", "📦 unabsorbed features, destinations and acceptance receipts", _graph, _transfers)))
+        ("audit", "🔭 第一弾 · integration-audit/3 snapshots (one or more, kept as history) → graph", _inputs, _audit),
+        ("plan", "🔭 第一弾 · 🪜 audit graph → dependency order of PRs not yet in main", _graph, _plan),
+        ("turtle", "🔭 第一弾 · 🐢 audit graph → RDF/Turtle", _graph, lambda args: (turtle(ot._read_json(args.graph)), False)),
+        ("diff", "🔭 第一弾 · 🆚 two audit graphs → what changed between their latest observations", _pair, _diff),
+        ("transfers", "🔭 第一弾 · 📦 unabsorbed features, destinations and acceptance receipts", _graph, _transfers)))
 
 
 if __name__ == "__main__":

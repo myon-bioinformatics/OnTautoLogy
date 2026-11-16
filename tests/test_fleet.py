@@ -61,6 +61,14 @@ class NodeEntry(unittest.TestCase):
                 self.assertEqual(via_python[0], expected, via_python[2])
                 self.assertEqual(via_node, via_python)
 
+    def test_concept_definitions_through_node_are_the_python_answer(self):
+        corpus = str(ROOT / "examples/concepts-20261115.json")
+        for tool, args in (("ontautology.py", ("define", corpus, "ギター")), ("tools/tautology.py", ("rules", corpus))):
+            with self.subTest(tool=tool):
+                via_node, via_python = fleet.node_parity(ROOT, tool, "PYTHON", *args)
+                self.assertEqual(via_python[0], 0, via_python[2])
+                self.assertEqual(via_node, via_python)
+
     def test_stdin_audit_through_node_is_the_python_answer(self):
         document = EXAMPLE.read_text(encoding="utf-8")
         via_node, via_python = fleet.node_parity(ROOT, "gh_audit/gh_audit.py", "PYTHON", "audit", "-", input=document)
