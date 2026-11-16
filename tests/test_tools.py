@@ -485,9 +485,9 @@ class GuessTests(unittest.TestCase):
         corpus = concepts()
         strict, lenient = tautology.guess_report(corpus), tautology.guess_report(corpus, lies=1)
         self.assertLess(strict["summary"]["forget"]["rate"], 1.0)
-        self.assertEqual(lenient["summary"]["forget"]["rate"], 1.0)
+        self.assertGreater(lenient["summary"]["forget"]["rate"], strict["summary"]["forget"]["rate"])
         self.assertGreater(lenient["summary"]["honest"]["mean_questions"], strict["summary"]["honest"]["mean_questions"])
-        # one more confirming question than the answers it forgives: tolerance no longer lets an unseen one through
+        # answers the candidate failed count against its confidence: tolerance no longer lets an unseen one through
         self.assertGreaterEqual(lenient["summary"]["unseen"]["rate"], strict["summary"]["unseen"]["rate"])
         self.assertEqual(lenient["summary"]["unseen"]["rate"], 1.0)
 
@@ -500,12 +500,18 @@ class GuessTests(unittest.TestCase):
         self.assertEqual([(q["ask"], q["answer"]) for q in confirm], [("料理:?", ["ちゃんちゃん焼き", "ルイベ", "塩焼き"])])
         self.assertTrue(tautology.guess(corpus, "ピアノ", known=True)["reached"])
 
-    def test_confirming_asks_one_more_than_it_forgives_and_misses_a_hidden_twin(self):
+    def test_confirming_stops_at_the_confidence_asked_for_and_misses_a_hidden_twin(self):
         corpus = concepts()
-        for lies in (0, 1):
-            with self.subTest(lies=lies):
-                game = tautology.guess(corpus, "ルイージ", lies=lies)
-                self.assertEqual((game["guess"], sum(bool(q.get("confirm")) for q in game["questions"])), ("ルイージ", lies + 1))
+        for sure, confirms in ((0, []), (1, ["帽子のマーク:?"]), (2, ["帽子のマーク:?", "誕生:?"])):
+            with self.subTest(sure=sure):  # each answer no one else gives is one whole identification
+                game = tautology.guess(corpus, "ルイージ", sure=sure)
+                self.assertEqual((game["guess"], game["confidence"], [q["ask"] for q in game["questions"] if q.get("confirm")]),
+                                 ("ルイージ", sure, confirms))
+        self.assertEqual(tautology.guess(corpus, "鮭", known=False, sure=0)["guess"], "サクラマス")  # no confirming: the old trap
+        # ピカチュウ unseen: ライチュウ survives one failed answer (lies 1), and that failure counts against it, so a
+        # hidden-twin answer (初登場世代: 第1世代) is not enough; the next one fails too
+        failed = tautology.guess(corpus, "ピカチュウ", known=False, lies=1)
+        self.assertEqual((failed["guess"], failed["confidence"]), (None, -1.0))
         # カフェイン含有 is shared only with the unseen エナジードリンク, so it looks like コーヒー's own: confirmed wrongly
         twin = tautology.guess(corpus, "エナジードリンク", known=False)
         self.assertEqual((twin["guess"], [q["ask"] for q in twin["questions"] if q.get("confirm")]), ("コーヒー", ["カフェイン含有"]))
@@ -542,7 +548,9 @@ class GuessTests(unittest.TestCase):
         done = run_cli(script, "guess", corpus_path, "ギター", "ピカチュウ", "--lies", "1")
         self.assertEqual(done.returncode, 0, done.stderr)
         answer = json.loads(done.stdout)
-        self.assertEqual((answer["lies"], sorted(answer["honest"])), (1, ["ギター", "ピカチュウ"]))
+        self.assertEqual((answer["lies"], answer["sure"], sorted(answer["honest"])), (1, 1.0, ["ギター", "ピカチュウ"]))
+        sure = json.loads(run_cli(script, "guess", corpus_path, "ルイージ", "--sure", "2").stdout)
+        self.assertEqual((sure["sure"], len([q for q in sure["honest"]["ルイージ"]["questions"] if q.get("confirm")])), (2.0, 2))
         self.assertEqual(run_cli(script, "guess", corpus_path, "存在しない").returncode, 1)
 
 
