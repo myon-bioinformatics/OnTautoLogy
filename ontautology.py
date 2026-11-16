@@ -9,7 +9,7 @@ fetches nothing and is all a vendoring repository needs:
 2. Concepts — from similar pairs (guitar ↔ bass) to the common part and what tells them apart.
      define_concepts  roundtrip_elements  concept_edges
 The GitHub audit dashboard (PR audit snapshots, plan, diff, Turtle, transfers) is a use of this file and lives in
-tools/gh_audit.py; it adds its commands to main() through ``commands`` and ``load``.
+gh_audit/gh_audit.py; it adds its commands to main() through ``commands`` and ``load``.
 
 A core edge is a dict {"kind", "source", "target"} plus what the caller has:
   basis   hypothesis | derived | observed | proof   (absent means observed)
@@ -511,7 +511,7 @@ def _load(path, load=None):
 def main(argv=None, *, commands=(), load=None):
     """0 = answered, 1 = input error, 2 = answered and something needs a look (findings, a cycle, blocked or unknown).
 
-    A use of the core (tools/gh_audit.py) passes ``commands`` — (name, help, add_arguments(parser), run(args) →
+    A use of the core (gh_audit/gh_audit.py) passes ``commands`` — (name, help, add_arguments(parser), run(args) →
     (answer, needs_a_look)) — and ``load(data)`` → (data, edges, node ids) or None for its own files, so the
     core commands read those files too and there is one command line, one stdin rule and one set of exit codes.
     """

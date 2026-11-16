@@ -1,4 +1,4 @@
-"""The GitHub audit dashboard (tools/gh_audit.py): snapshots → graph, plan, diff, Turtle, transfers. Standard library only."""
+"""The GitHub audit dashboard (gh_audit/gh_audit.py): snapshots → graph, plan, diff, Turtle, transfers. Standard library only."""
 import copy
 import json
 from pathlib import Path
@@ -9,12 +9,12 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import ontautology as ot  # noqa: E402
-from tools import gh_audit as ga  # noqa: E402
+from gh_audit import gh_audit as ga  # noqa: E402
 from test_ontautology import run_cli  # noqa: E402
 
 
 class AuditTransport(unittest.TestCase):
-    script = Path(__file__).resolve().parent.parent / 'tools/gh_audit.py'
+    script = Path(__file__).resolve().parent.parent / 'gh_audit/gh_audit.py'
 
     def run_cli(self, *args, **options):
         return run_cli(self.script, *args, **options)
@@ -260,7 +260,7 @@ class TemporalGraphTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             source, output = Path(tmp) / "audit.json", Path(tmp) / "graph.json"
             source.write_text(json.dumps(snapshot(row(1))))
-            script = str(Path(__file__).resolve().parent.parent / "tools/gh_audit.py")
+            script = str(Path(__file__).resolve().parent.parent / "gh_audit/gh_audit.py")
             result = subprocess.run([sys.executable, "-S", script, "audit", str(source), "-o", str(output)], capture_output=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(json.loads(output.read_text())["schema"], "ontautology/1")
@@ -357,7 +357,7 @@ class ExtendedAuditTests(unittest.TestCase):
     def test_diff_cli_is_stdlib_only(self):
         with tempfile.TemporaryDirectory() as tmp:
             path=Path(tmp)/'graph.json';path.write_text(json.dumps(ga.audit([snapshot(row(1))])))
-            script=str(Path(__file__).resolve().parent.parent / 'tools/gh_audit.py')
+            script=str(Path(__file__).resolve().parent.parent / 'gh_audit/gh_audit.py')
             result=subprocess.run([sys.executable,'-S',script,'diff',str(path),str(path)],capture_output=True)
             self.assertEqual(result.returncode,0,result.stderr)
             self.assertEqual(json.loads(result.stdout)['changed'],[])

@@ -19,7 +19,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 import ontautology as ot  # noqa: E402
-from tools import gh_audit as ga, knowledgegraph, ontology, tautology  # noqa: E402
+from gh_audit import gh_audit as ga  # noqa: E402
+from tools import knowledgegraph, ontology, tautology  # noqa: E402
 
 
 def edge(source, target, basis="observed", kind="dependsOn"):
@@ -35,15 +36,15 @@ def random_graph(seed, nodes=12, edges=24):
 
 class OneWayDependency(unittest.TestCase):
     def test_generic_code_never_reads_the_github_audit(self):
-        core = (ROOT / "ontautology.py").read_text(encoding="utf-8")
-        self.assertNotIn("import tools", core)
-        self.assertNotIn("from tools", core)
-        for path in sorted((ROOT / "tools").glob("*.py")):
+        for path in [ROOT / "ontautology.py", *sorted((ROOT / "tools").glob("*.py"))]:
             imports = "\n".join(re.findall(r"(?m)^(?:from|import) .*", path.read_text(encoding="utf-8")))
-            with self.subTest(tool=path.name):
-                self.assertIn("import ontautology as ot", imports)
-                if path.stem != "gh_audit":
-                    self.assertIsNone(re.search(r"\b(?:from|import) tools\b", imports))
+            with self.subTest(file=path.name):
+                self.assertNotIn("gh_audit", imports)
+                self.assertIsNone(re.search(r"\b(?:from|import) tools\b", imports))
+                if path.parent.name == "tools":
+                    self.assertIn("import ontautology as ot", imports)
+        audit = "\n".join(re.findall(r"(?m)^(?:from|import) .*", (ROOT / "gh_audit/gh_audit.py").read_text(encoding="utf-8")))
+        self.assertIn("import ontautology as ot", audit)
 
     def test_every_public_name_is_callable(self):
         for module in (ga, knowledgegraph, ontology, tautology):

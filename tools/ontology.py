@@ -1,6 +1,6 @@
 """Ontology tool: what a vocabulary allows, and which attributes may become an identity. Standard library only.
 
-A vocabulary is a mapping ``relation -> (domains, range)`` — such as ``tools/gh_audit.RELATIONS``, passed in. The classes
+A vocabulary is a mapping ``relation -> (domains, range)`` — such as ``gh_audit.RELATIONS``, passed in. The classes
 are exactly the types the relations name. ``violations`` lists every place a graph leaves its vocabulary and
 repairs nothing; the core ``validate`` stops at the first one and also knows the audit's own rules.
 

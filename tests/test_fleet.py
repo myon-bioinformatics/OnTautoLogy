@@ -12,7 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 import ontautology as ot  # noqa: E402
-from tools import gh_audit as ga  # noqa: E402
+from gh_audit import gh_audit as ga  # noqa: E402
 from vendor import fleet_check as fleet  # noqa: E402
 
 EXAMPLE = ROOT / "examples/audit-20261114.json"
@@ -63,7 +63,7 @@ class NodeEntry(unittest.TestCase):
 
     def test_stdin_audit_through_node_is_the_python_answer(self):
         document = EXAMPLE.read_text(encoding="utf-8")
-        via_node, via_python = fleet.node_parity(ROOT, "tools/gh_audit.py", "PYTHON", "audit", "-", input=document)
+        via_node, via_python = fleet.node_parity(ROOT, "gh_audit/gh_audit.py", "PYTHON", "audit", "-", input=document)
         self.assertEqual(via_node, via_python)
         self.assertEqual(json.loads(via_node[1]), ga.audit([json.loads(document)]))
 

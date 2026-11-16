@@ -4,10 +4,11 @@ The use of the core for the parent's continuous audit pages (integration-audit/3
 ledger. Everything GitHub-shaped lives here — repositories, PRs, commits, runs, jobs, tasks, transfers — so the
 core (ontautology.py) and the generic tools stay free of it. Never fetches or mutates GitHub.
 
-CLI: python -S tools/gh_audit.py audit | plan | turtle | diff | transfers ...; the core commands (check, reach,
+CLI: python -S gh_audit/gh_audit.py audit | plan | turtle | diff | transfers ...; the core commands (check, reach,
 why, cycles, order, ladder, keys) read an audit graph here too, through the core's own command line.
 
 Dependency goes one way: this file imports the core and tools/ontology.py; nothing generic imports it.
+Audit enhancements go into this folder (gh_audit/), not into the core or tools/.
 Every function is callable by name from Python, and from Node through vendor/py_launch.cjs (--call).
 """
 from __future__ import annotations
