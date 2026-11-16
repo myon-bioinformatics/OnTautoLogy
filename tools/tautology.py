@@ -193,6 +193,9 @@ def guess(corpus, target, *, lies=0, forget=(), known=True):
     (links allowed to be wrong) never count against it. The answerer answers from the target's elements but
     says no to the ones in ``forget`` (a person who forgot). With ``known=False`` the target is not among the
     candidates: the honest end is no guess. ``estimate`` is ceil(log2 candidates), the yes / no ideal.
+
+    ✅ One candidate left is not the answer yet: the game confirms it with what only it has — its rarest answers
+    not asked yet, one more than the answers it may get wrong (``lies + 1``) — and guesses nothing if they fail.
     """
     concepts, _, _, _ = ot._normalize_corpus(corpus)
     if concepts.get(target) is None:
@@ -203,6 +206,21 @@ def guess(corpus, target, *, lies=0, forget=(), known=True):
             if found is not None and (known or name != target)}
     strikes, asked, log = dict.fromkeys(book, 0), set(), []
     alive = lambda: [name for name in sorted(book) if strikes[name] <= lies]
+
+    def ask(kind, question, confirm=False):
+        """kind 1: does it have the element (yes / no); kind 0: what is its attribute (the values)."""
+        asked.add(question)
+        if kind:
+            answer = question in truth
+            against = [n for n in book if question not in book[n][1] and (question in book[n][0]) != answer]
+            log.append({"ask": question, "answer": answer})
+        else:
+            answer = _attribute(truth, question)
+            against = [n for n in book if not _attribute(book[n][1], question) and _attribute(book[n][0], question) != answer]
+            log.append({"ask": question + ":?", "answer": list(answer)})
+        for name in against:
+            strikes[name] += 1
+        log[-1].update({"left": len(alive())}, **({"confirm": True} if confirm else {}))
     while len(alive()) > 1:
         live, options = alive(), []
         for element in sorted({e for name in live for e in book[name][0] | book[name][1]} - asked):
@@ -218,23 +236,19 @@ def guess(corpus, target, *, lies=0, forget=(), known=True):
                 options.append((max(map(len, groups.values())), 0, name))
         if not options:
             break
-        _, kind, question = min(options)
-        asked.add(question)
-        if kind:
-            answer = question in truth
-            against = [n for n in book if question not in book[n][1] and (question in book[n][0]) != answer]
-            log.append({"ask": question, "answer": answer})
-        else:
-            answer = _attribute(truth, question)
-            against = [n for n in book if not _attribute(book[n][1], question) and _attribute(book[n][0], question) != answer]
-            log.append({"ask": question + ":?", "answer": list(answer)})
-        for name in against:
-            strikes[name] += 1
-        log[-1]["left"] = len(alive())
+        ask(*min(options)[1:])
     live = alive()
     fewest = min((strikes[n] for n in live), default=None)
     best = [n for n in live if strikes[n] == fewest]
     picked = best[0] if len(best) == 1 else None
+    if picked is not None:  # ✅ confirm with the rarest answers of the one left (in the whole corpus), not asked yet
+        found = book[picked][0]
+        rare = [(sum(e in book[n][0] for n in book), 1, e) for e in found - asked if ":" not in e]
+        rare += [(sum(_attribute(book[n][0], a) == _attribute(found, a) for n in book), 0, a)
+                 for a in {e.split(":", 1)[0] for e in found if ":" in e} - asked]
+        for _, kind, question in sorted(rare)[:lies + 1]:
+            ask(kind, question, confirm=True)
+        picked = picked if strikes[picked] <= lies else None
     return {"target": target, "known": known, "lies": lies, "forget": sorted(forget), "questions": log,
             "count": len(log), "estimate": math.ceil(math.log2(len(book))) if len(book) > 1 else 0,
             "guess": picked, "reached": picked == target if known else picked is None}

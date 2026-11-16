@@ -487,14 +487,31 @@ class GuessTests(unittest.TestCase):
         self.assertLess(strict["summary"]["forget"]["rate"], 1.0)
         self.assertEqual(lenient["summary"]["forget"]["rate"], 1.0)
         self.assertGreater(lenient["summary"]["honest"]["mean_questions"], strict["summary"]["honest"]["mean_questions"])
-        self.assertLessEqual(lenient["summary"]["unseen"]["rate"], strict["summary"]["unseen"]["rate"])
+        # one more confirming question than the answers it forgives: tolerance no longer lets an unseen one through
+        self.assertGreaterEqual(lenient["summary"]["unseen"]["rate"], strict["summary"]["unseen"]["rate"])
+        self.assertEqual(lenient["summary"]["unseen"]["rate"], 1.0)
 
     def test_an_unseen_target_should_end_in_no_guess(self):
         corpus = concepts()
         unseen = tautology.guess(corpus, "鮭", known=False)
-        # one question (産卵: 一生に一度) leaves サクラマス alone, and the game stops there without checking it
-        self.assertEqual((unseen["guess"], unseen["reached"]), ("サクラマス", False))
+        # 産卵: 一生に一度 leaves サクラマス alone; asking for what only it has (料理: ます寿司) tells it is not サクラマス
+        self.assertEqual((unseen["guess"], unseen["reached"]), (None, True))
+        confirm = [q for q in unseen["questions"] if q.get("confirm")]
+        self.assertEqual([(q["ask"], q["answer"]) for q in confirm], [("料理:?", ["ちゃんちゃん焼き", "ルイベ", "塩焼き"])])
         self.assertTrue(tautology.guess(corpus, "ピアノ", known=True)["reached"])
+
+    def test_confirming_asks_one_more_than_it_forgives_and_misses_a_hidden_twin(self):
+        corpus = concepts()
+        for lies in (0, 1):
+            with self.subTest(lies=lies):
+                game = tautology.guess(corpus, "ルイージ", lies=lies)
+                self.assertEqual((game["guess"], sum(bool(q.get("confirm")) for q in game["questions"])), ("ルイージ", lies + 1))
+        # カフェイン含有 is shared only with the unseen エナジードリンク, so it looks like コーヒー's own: confirmed wrongly
+        twin = tautology.guess(corpus, "エナジードリンク", known=False)
+        self.assertEqual((twin["guess"], [q["ask"] for q in twin["questions"] if q.get("confirm")]), ("コーヒー", ["カフェイン含有"]))
+        # forgetting the element it confirms with is the price: with no tolerance the right one is not named
+        forgot = tautology.guess(corpus, "ルイージ", forget=["帽子のマーク:L"])
+        self.assertEqual(forgot["guess"], None)
 
     def test_a_maybe_link_never_counts_against_a_candidate(self):
         corpus = {"concepts": {"a": ["x", "y"], "b": ["x"], "c": ["z"]}, "maybe": {"b": ["y"]}}
