@@ -159,6 +159,27 @@ class OntologyTests(unittest.TestCase):
         self.assertEqual(classes, set(kinds.values()))
         self.assertEqual(triples, {(kinds[e["source"]], e["kind"], kinds[e["target"]]) for e in graph["edges"]})
 
+    def test_readme_layer_diagram_draws_only_code_relations_as_solid(self):
+        section = (ROOT / "README.md").read_text(encoding="utf-8").split("## 🧭 全体図（拡張を見込んだ3層）\n", 1)[1].split("\n## ", 1)[0]
+        diagram = section.split("```mermaid\n", 1)[1].split("```", 1)[0]
+        labels = dict(re.findall(r"(?m)^\s*(\w+)\[(\w+)", diagram))  # node id → class
+        graph = ot.concept_edges(concepts())
+        kinds = {node["id"]: node["type"] for node in graph["nodes"]}
+        code = ({(domain, relation, target) for relation, (domains, target) in ga.RELATIONS.items() for domain in domains}
+                | {(kinds[e["source"]], e["kind"], kinds[e["target"]]) for e in graph["edges"]})
+        self.assertLessEqual(set(labels.values()), set(ontology.classes(ga.RELATIONS)) | set(kinds.values()))
+        drawn = {"solid": 0, "dashed": 0}
+        for source, arrow, relations, target in re.findall(r"(?m)^\s*(\w+) (<?-->|-\.->)\|([^|]+)\| (\w+)", diagram):
+            for relation in (name.strip() for name in relations.split("/")):
+                with self.subTest(edge=(source, relation, target)):
+                    if arrow == "-.->":  # a design not yet in the code
+                        self.assertNotIn(relation, {name for _, name, _ in code})
+                        drawn["dashed"] += 1
+                    else:
+                        self.assertIn((labels[source], relation, labels[target]), code)
+                        drawn["solid"] += 1
+        self.assertTrue(drawn["solid"] and drawn["dashed"], drawn)
+
     def test_identity_promotes_the_first_candidate_that_is_a_key(self):
         items = [{"id": 1, "run": 1, "name": "a"}, {"id": 1, "run": 2, "name": "b"}]
         found = ontology.identity(items, [("id",), ("id", "run"), ("name",)])

@@ -11,6 +11,57 @@
 
 どちらも同じ芯（辿る・循環・順序・根拠の段・鍵の昇格）の上に乗っています。Aoi の命題（逆・裏・対偶と判例）や TalkCompress の往復・判定モデルの延長線です。
 
+## 🧭 全体図（拡張を見込んだ3層）
+
+```mermaid
+flowchart LR
+  subgraph OBS["👀 観測層 — 観測と履歴"]
+    O[Observation 観測]
+    N[Snapshot スナップショット]
+  end
+  subgraph MID["🔁 中間層 — 案件ごとに差し替え（今は 🔭 第一弾 GitHub）"]
+    P[PullRequest]
+    W[ActionsRun]
+    C[Commit]
+    T[Task]
+    R[Repository]
+    F[File]
+  end
+  subgraph ONT["🧩 概念層 — 第二弾の概念・意味"]
+    E[Element 要素]
+    K[Concept 概念]
+    S[Concept 類似概念]
+  end
+  O -->|derived_from| N
+  O -->|observes| P
+  O -->|hasHead / hasBase / hasMain| C
+  O -->|hasRun| W
+  O -->|changesFile| F
+  O -->|hasTask| T
+  P -->|dependsOn| P
+  W -->|runsAt| C
+  P -->|belongsTo| R
+  C -->|belongsTo| R
+  T -->|migration_source| F
+  T -->|migration_target| R
+  E -->|hasElement / genusElement / differentiaElement| K
+  K <-->|similarTo| S
+  P -.->|represents| K
+  T -.->|represents| K
+  F -.->|represents| K
+  R -.->|relatedConcept| K
+  O -.->|classifiedAs| K
+```
+
+| 線 | 意味 |
+| --- | --- |
+| ── 実線 | 今のコードにある関係（🔭 は `gh_audit.RELATIONS`、🧩 は `concept_edges`） |
+| ┄┄ 点線 | 層をまたぐ関係の設計案（`represents`・`relatedConcept`・`classifiedAs`）。まだ実装していない |
+
+- 🔁 **中間層だけを案件ごとに差し替えます。** 案件ごとにフォルダ（今は `gh_audit/`）を切り、その中に語彙（`RELATIONS`）と読み込み・コマンドを置いて、本体の口 `main(commands=..., load=...)` に差し込みます。語彙を引数で受ける `tools/ontology.violations` で検査できるので、本体と tools は変えずに済みます。
+- 👀 **観測層は今は第一弾の語彙です。** 案件をまたいで共通にしたい層ですが、第二弾はまだ観測のノードを持たず、辺の `basis` で観測かどうかを表しています。
+- 🧪 **図とコードがずれないようにしています。** 実線の関係はコードの語彙にあること、点線の関係はまだ無いことをテストで確かめます。点線を実装したら、図も実線に直さないとテストが落ちます。
+
 ## 📂 構成
 
 ```
