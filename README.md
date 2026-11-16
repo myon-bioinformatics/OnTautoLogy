@@ -42,6 +42,7 @@ flowchart LR
   end
   O -->|derived_from| N
   O -->|observes| P
+  O -->|observes| K
   O -->|hasHead / hasBase / hasMain| C
   O -->|hasRun| W
   O -->|changesFile| F
@@ -68,7 +69,7 @@ flowchart LR
 
 | 層 | 役目 | 今あるもの |
 | --- | --- | --- |
-| 👀 監視層 | いつ・何を見たか（観測と履歴） | Observation・Snapshot（🔭 第一弾の語彙。🧩 第二弾は辺の `basis` で観測かどうかを表す） |
+| 👀 監視層 | いつ・何を見たか（観測と履歴） | Observation・Snapshot（🔭 第一弾と 🧩 第二弾で共通。同じ関係 `observes`・`derived_from` を使い、`digest`・`timestamp` は本体にある） |
 | 🔁 中間層 | 案件ごとの実体。ここだけを差し替える | 🔭 第一弾 GitHub（`gh_audit/`）・🧩 第二弾 類似語集め（`concept_edges` と `examples/concepts-*.json`） |
 | 🗂️ 管理層 | どの案件にも使うオントロジー | 📚 語彙の検査・🪜 根拠の段・⚖️ 定義・✅ 証明（本体と tools） |
 
@@ -132,6 +133,7 @@ node vendor/py_launch.cjs --call equivalent -- tools/tautology.py '["NOR","a","b
 | | 🧩 第二弾（本体・`tools/tautology.py`） | 🔭 第一弾（`gh_audit/`） |
 | --- | --- | --- |
 | 入力 | `ontautology-concepts/1`（seeds・similar・concepts） | `integration-audit/3`（監査スナップショット） |
+| 👀 監視層 | Observation（観測した概念ごと）・Snapshot（コーパスごと） | Observation（PR ごと）・Snapshot（スナップショットごと） |
 | 語彙の置き場 | `ontautology.concept_edges` | `gh_audit.RELATIONS`（domain と range） |
 | 芯の辺への写し | `concept_edges` | `edges_of` |
 | 検証 | `check` | `check` ＋ `tools/ontology.violations` ＋ 監査固有の規則 |
@@ -144,18 +146,22 @@ node vendor/py_launch.cjs --call equivalent -- tools/tautology.py '["NOR","a","b
 
 | クラス | 識別子 | 出ていく関係 → 先 |
 | --- | --- | --- |
+| `Observation` | `observation:` コーパスの digest ＋ `concept:` 語 | `observes` → Concept・`derived_from` → Snapshot |
+| `Snapshot` | `snapshot:` コーパスの digest | — |
 | `Concept` | `concept:` ＋ 語 | `similarTo` → Concept |
 | `Element` | `elem:` ＋ 要素 | `hasElement` / `genusElement` / `differentiaElement` → Concept |
 
 ```mermaid
 flowchart LR
-  E[Element 要素] -->|hasElement 観測| C[Concept 〇〇]
+  O[Observation 観測] -->|observes| C[Concept 〇〇]
+  O -->|derived_from| N[Snapshot コーパス]
+  E[Element 要素] -->|hasElement 観測| C
   E -->|genusElement 類| C
   E -->|differentiaElement 種差| C
   C <-->|similarTo| S[Concept 類似]
 ```
 
-向きは芯と同じで、要素（依存される側）→ 概念（要素が変わったら見直す側）です。`hasElement` は観察の段（observed）、`genusElement`・`differentiaElement` は `define` の結果（derived、類似先が未観測なら hypothesis）です。
+向きは芯と同じで、要素（依存される側）→ 概念（要素が変わったら見直す側）です。監視層は第一弾と同じ形で、コーパス1つが Snapshot（中身の digest なので入力の並び順では変わらない）、要素を見た概念ごとに Observation が1つできます。`hasElement` はその観測を `lock`（主張した記録）として持ち、`captured_at` があれば `observed_at` に入ります。要素が未観測（`null`）の概念には観測がありません。`hasElement` は観察の段（observed）、`genusElement`・`differentiaElement` は `define` の結果（derived、類似先が未観測なら hypothesis）です。
 
 ### 🔭 第一弾のクラスと関係
 
@@ -227,10 +233,10 @@ flowchart TD
 
 | 問い | 🧩 第二弾 `examples/concepts-20261115.json` | 🔭 第一弾 `examples/audit-20261114.json` |
 | --- | --- | --- |
-| グラフ | 65 ノード・155 辺（Element 53・Concept 12） | 720 ノード・2,342 辺（File 542・ActionsRun 93・Commit 32・PullRequest 15・Observation 14 ほか） |
+| グラフ | 78 ノード・179 辺（Element 53・Concept 12・Observation 12・Snapshot 1） | 720 ノード・2,342 辺（File 542・ActionsRun 93・Commit 32・PullRequest 15・Observation 14 ほか） |
 | `check` | 所見なし | 所見なし |
 | `reach` | `elem:カフェイン含有` → エナジードリンク・コーヒー | `file:myon-bioinformatics/Aoi:README.md` → 159 ノード（PR 12） |
-| `ladder` | 観測 91・導出 64・候補 0・証明 0 | 観測 2,292・導出 50・候補 25・証明 0 |
+| `ladder` | 観測 115・導出 64・候補 0・証明 0 | 観測 2,292・導出 50・候補 25・証明 0 |
 | 手順 | `rules`: 6 つの〇〇すべてに可逆な定義（終了コード 0） | `plan`: 順序 5・ブロック 1（`SakAnalytics#45` が未観測の `#44` を待つ。終了コード 2） |
 
 🔭 の例は 2026年11月14日 23:12 JST の監査から抜き出した履歴（8 リポジトリ、観測した PR は 14 件）で、今の GitHub の状態ではありません。
