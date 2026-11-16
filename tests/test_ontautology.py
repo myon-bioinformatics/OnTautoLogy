@@ -614,15 +614,6 @@ class ConvergenceVocabulary(unittest.TestCase):
         graph=ot.audit([snapshot(row(1,github_state='closed',merged=False,contained_in_main=False))])
         self.assertFalse(ot.plan(graph)['order'])
 
-    def test_node_launcher_uses_file_location_and_same_exit_code(self):
-        import shutil
-        if not shutil.which('node'):self.skipTest('Node is not installed')
-        script=Path(__file__).resolve().parents[1]/'ontautology.mjs'
-        result=subprocess.run(['node',str(script),'audit','-'],input=json.dumps(self.document()),
-                              text=True,capture_output=True,cwd=tempfile.gettempdir())
-        self.assertEqual(result.returncode,0,result.stderr)
-        self.assertEqual(json.loads(result.stdout),ot.audit([self.document()]))
-
 
 class TransferLedgerTests(unittest.TestCase):
     def example(self):

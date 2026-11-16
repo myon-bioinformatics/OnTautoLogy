@@ -1,5 +1,7 @@
 name: CI
 on: [push, pull_request]
+permissions:
+  contents: read
 jobs:
   test:
     runs-on: ubuntu-24.04
@@ -7,8 +9,21 @@ jobs:
       matrix:
         python: ['3.11', '3.15']
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '26'
+      - name: Verify Node major
+        shell: bash
+        run: |
+          node_major=$(node -p "process.versions.node.split('.')[0]")
+          if [[ "$node_major" -lt 26 ]]; then
+            echo "node ${node_major} is older than 26" >&2
+            exit 1
+          fi
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           version: latest
           python-version: ${{ matrix.python }}
@@ -17,3 +32,17 @@ jobs:
       - run: uv run --no-project python -S ontautology.py check /tmp/graph.json
       # plan exits 2 when something is blocked; that is an answer about the snapshot, not a failure of the tool
       - run: uv run --no-project python -S ontautology.py plan /tmp/graph.json || [ $? -eq 2 ]
+
+  # Outside modules for trying an idea first: Redis answers the same questions; here a skip is a failure.
+  redis:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends redis-server
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: latest
+          python-version: '3.15'
+      - run: uv run --no-project --with redis python -m unittest discover -s tests -p test_tools.py -k RedisCrossCheck -v
