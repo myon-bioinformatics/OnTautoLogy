@@ -107,6 +107,7 @@ python -S tools/tautology.py rules examples/concepts-20261115.json             #
 python -S tools/tautology.py judge examples/concepts-20261115.json ギター '["AND", "弦楽器", "撥弦", "フレット"]'   # 🧮 1本の規則の FN・FP
 python -S tools/tautology.py equivalent '["NOR", "a", "b"]' '["AND", ["NOT", "a"], ["NOT", "b"]]'          # ✅ 書き換えが全通りで同じか
 python -S tools/tautology.py holdout examples/concepts-20261115.json           # 🙈 初見・🎭 マスクで定義を測る
+python -S tools/tautology.py guess examples/concepts-20261115.json --lies 1     # 🎯 当てっこ（食い違いを1回まで許す）
 python -S ontautology.py define examples/concepts-20261115.json ギター ピカチュウ 鮭 iPhone エナジードリンク ルイージ   # 🧩 類と種差
 python -S ontautology.py roundtrip examples/concepts-20261115.json カフェイン含有 飲料                     # 🔁 要素 → 語の往復
 
@@ -213,7 +214,7 @@ flowchart TD
 | 4 当てる | 全概念に当てて FN・FP | 芯の `order`（graphlib） |
 | 5 止める | FP・FN → `refuted`、未観測 → `to_model` | 循環・その下流・未観測の依存先 → `blocked` |
 | 6 答える | 可逆な最初の規則 = 定義（`derived`） | 依存の順（CI・レビュー・競合は別に確認） |
-| 7 確かめる | `holdout`: 概念を1つ隠して作り直し、隠した概念で測る（🙈 初見）・要素を1つ隠して測る（🎭 マスク） | ➖ |
+| 7 確かめる | `holdout`: 概念を1つ隠して作り直し、隠した概念で測る（🙈 初見）・要素を1つ隠して測る（🎭 マスク）。`guess`: 何問で当たるか（🎯 当てっこ） | ➖ |
 | 終了コード 2 | 可逆な定義が無い〇〇がある | ブロック・循環・棚卸しが不確か |
 
 どちらも「見ていないものを完了・成立と読まない」点が同じです。未観測は第二弾では `to_model`、第一弾では `blocked` に残ります。
@@ -224,7 +225,7 @@ flowchart TD
 
 | ファイル | 関数 | 🧩 第二弾で | 🔭 第一弾（`gh_audit/`）で |
 | --- | --- | --- | --- |
-| ⚖️ `tautology.py` | `holds` `judge` `rules` `holdout` `equivalent` | 規則での判定・定義・初見とマスクでの評価・真理値表（CLI あり） | ➖ |
+| ⚖️ `tautology.py` | `holds` `judge` `rules` `holdout` `guess` `guess_report` `equivalent` | 規則での判定・定義・初見とマスクでの評価・当てっこ・真理値表（CLI あり） | ➖ |
 | ✅ `tautology.py` | `standing` `gaps` `entailed` | 定義が立つ段・証明未満の辺 | 監査の辺が立つ段・証明未満の辺 |
 | 📚 `ontology.py` | `classes` `violations` `identity` | 鍵に昇格できる属性の組（種差と同じ考え方） | 語彙の検査（`validate` が使う）・クラス一覧 |
 | 🕸️ `knowledgegraph.py` | `relation_cycles` `topological_order` | ➖ | 親の `fleet_records` / `vendor_fleet_plan` と同じ名前・形 |
@@ -235,11 +236,11 @@ flowchart TD
 
 | 問い | 🧩 第二弾 `examples/concepts-20261115.json` | 🔭 第一弾 `examples/audit-20261114.json` |
 | --- | --- | --- |
-| グラフ | 129 ノード・283 辺（Element 94・Concept 17・Observation 17・Snapshot 1） | 720 ノード・2,342 辺（File 542・ActionsRun 93・Commit 32・PullRequest 15・Observation 14 ほか） |
+| グラフ | 132 ノード・286 辺（Element 97・Concept 17・Observation 17・Snapshot 1） | 720 ノード・2,342 辺（File 542・ActionsRun 93・Commit 32・PullRequest 15・Observation 14 ほか） |
 | `check` | 所見なし | 所見なし |
 | `reach` | `elem:カフェイン含有` → エナジードリンク・コーヒー | `file:myon-bioinformatics/Aoi:README.md` → 159 ノード（PR 12） |
-| `ladder` | 観測 198・導出 84・候補 1・証明 0 | 観測 2,292・導出 50・候補 25・証明 0 |
-| 手順 | `rules`: 6 つの〇〇すべてに可逆な定義（終了コード 0）。`holdout`: 初見の誤り 4/96 | `plan`: 順序 5・ブロック 1（`SakAnalytics#45` が未観測の `#44` を待つ。終了コード 2） |
+| `ladder` | 観測 198・導出 84・候補 4・証明 0 | 観測 2,292・導出 50・候補 25・証明 0 |
+| 手順 | `rules`: 6 つの〇〇すべてに可逆な定義（終了コード 0）。`holdout`: 初見の誤り 4/96。`guess`: 17 概念すべて平均 3.5 問で当たる | `plan`: 順序 5・ブロック 1（`SakAnalytics#45` が未観測の `#44` を待つ。終了コード 2） |
 
 🔭 の例は 2026年11月14日 23:12 JST の監査から抜き出した履歴（8 リポジトリ、観測した PR は 14 件）で、今の GitHub の状態ではありません。
 
@@ -252,6 +253,7 @@ flowchart TD
   "schema": "ontautology-concepts/1",
   "seeds": ["ギター", "ピカチュウ", "鮭", "iPhone", "エナジードリンク", "ルイージ"],
   "similar": [{"left": "ギター", "right": "ベース", "basis": "observed"}],
+  "maybe": {"ギター": ["金属弦"]},
   "concepts": {
     "ギター": ["楽器", "弦楽器", "撥弦", "フレット", "ボディ", "6弦標準", "中高音主体"],
     "ベース": ["楽器", "弦楽器", "撥弦", "フレット", "ボディ", "4弦標準", "低音主体"]
@@ -261,6 +263,7 @@ flowchart TD
 
 - 🌱 `seeds`: 定義したい〇〇。増やすときは `seeds` と `similar`・`concepts` に足すだけです。
 - 🔗 `similar`: 「〇〇は🔳🔳の類似」。1つの〇〇に何本でも足せます。`[left, right]` の短い形も可。
+- 🤷 `maybe`: 外れているかもしれない紐付け（人がうろ覚えで付けるようなもの）。根拠の段は `hypothesis` で、定義や判定には使わず、当てっこで食い違っても減点しません。
 - 🧺 `concepts`: 観察した要素。まだ見ていない概念は `null`（判定モデルへ回る）。値を持つ要素は `開放弦:EADGBE`・`進化の段:たね`・`種族値合計:320` のように「属性:値」で書くと、値が違うことがそのまま見分けになります。
 
 ### 🔄 流れ
@@ -317,6 +320,25 @@ TalkCompress の判定モデルと同じ分け方で、まず規則が決め、�
 - 🎸 **ギターは、OR を最短の種差だけにして直りました。** ウクレレを隠すと、`中高音主体 ∧ 撥弦` のような長い種差まで OR でつながり、ウクレレがその枝で通っていました。最短の `6弦標準`・`開放弦:EADGBE` だけにすると弾け、2つあるので片方が欠けても認められます。
 - 🎭 **マスクに弱いのは AND です。** 類として AND で並べた要素は、1つ欠けるだけで落ちます。
 - 🐟 **残る4件は、類似が1つしかない〇〇です。** 鮭・iPhone・エナジードリンク・ルイージは、その1つを隠すと比べる相手がいなくなります。
+
+### 🎯 当てっこ（`guess`）
+
+ヌメロンやワードウルフのように、問い合わせの回数で正解に着けるかを測ります。厳しく見分けられるかより、「人が当てっこするときのように、少ない質問で着くか」を見ます。
+
+- ❓ **質問は2種類です。** 「その要素がある？」（はい／いいえ）と、`属性:値` の要素に対する「開放弦は？」のような値で返る質問です。値で返る分、ヌメロンのように二択より多くを1問で知れます。
+- ✂️ **毎回、残った候補をいちばん均等に割る質問を選びます。** 見込みは二択で理想的に割れたときの回数（log₂ 候補数）です。
+- 🧍 **人間らしい失敗を許せます。** `--lies N` で、食い違いを N 回までは候補を残します。`maybe` の紐付けは食い違っても減点しません。
+
+`examples/concepts-20261115.json`（17 概念、二択での見込み 5 問）の結果です。
+
+| 許す食い違い | 😊 正直に答える | 🎭 1つ忘れる | 🙈 知らない相手を出す |
+| --- | --- | --- | --- |
+| 0 回 | 17 / 17 当たる・平均 3.5 問（最大 6） | 120 / 144 当たる（83%） | 8 / 17 で「知らない」と言えた（47%） |
+| 1 回 | 17 / 17 当たる・平均 7.5 問（最大 11） | 144 / 144 当たる（100%） | 3 / 17（18%） |
+
+- ⚡ **正直なら見込みより少ない問いで着きます。** 「開放弦は？」「種族値HPは？」のような値で返る質問が効いています。ギターもピカチュウも2問です。
+- 🎭 **忘れても当てたいなら、食い違いを許します。** その代わり質問は倍になり、知らない相手を近い誰かと取り違えやすくなります。人間の当てっこと同じ引き換えです。
+- 🙈 **知らない相手で取り違えるのは、`holdout` と同じ所です。** 鮭を知らないと、サクラマスと答えてしまいます（類似1つの罠）。
 
 ### ⚖️ 判定の読み方
 
@@ -429,6 +451,7 @@ PR ごとに最新の観測を選び、`contained_in_main=true` の依存先を�
 | ⚖️ `rules CORPUS [CONCEPT...]` | 類似コーパス | 〇〇ごとの規則の候補と判定、可逆な定義（既定は `seeds`） |
 | 🧮 `judge CORPUS CONCEPT RULE` | 類似コーパス | 1本の規則の FN・FP・精度・命題／逆／裏／対偶 |
 | 🙈 `holdout CORPUS [CONCEPT...]` | 類似コーパス | 🙈 初見（概念を隠して作り直す）と 🎭 マスク（要素を隠す）での誤り。初見の誤りがあれば終了コード 2 |
+| 🎯 `guess CORPUS [CONCEPT...] [--lies N]` | 類似コーパス | 当てっこ: 何問で当たるか（正直・1つ忘れる・知らない相手）。正直に答えて当たらない〇〇があれば終了コード 2 |
 | ✅ `equivalent RULE RULE` | 規則2本 | 全通りで同じか（`proof`）、違う場合の反例 |
 | 🧩 `define CORPUS [CONCEPT...]` | 類似コーパス | 類・種差・往復判定 |
 | 🔁 `roundtrip CORPUS ELEM...` | 類似コーパス | 要素をすべて満たす概念（一意・衝突・空） |

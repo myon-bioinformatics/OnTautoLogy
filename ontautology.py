@@ -322,6 +322,22 @@ def _normalize_corpus(corpus):
     return concepts, concept_meta, pairs, neighbors
 
 
+def _maybe(corpus, concepts):
+    """``maybe``: elements a concept might have — links allowed to be wrong. {concept: [element, ...]} for known
+    concepts; they are hypotheses, so definitions never rest on them."""
+    raw = corpus.get("maybe", {})
+    if not isinstance(raw, dict):
+        raise ValueError("maybe must be an object of concept → elements")
+    found = {}
+    for name, elements in raw.items():
+        if name not in concepts:
+            raise ValueError(f"maybe names an unknown concept: {name!r}")
+        if not isinstance(elements, list):
+            raise ValueError(f"maybe for {name!r} must be a list")
+        found[name] = sorted({_nonempty_str(el, f"{name} maybe element") for el in elements} - set(concepts[name] or ()))
+    return found
+
+
 def _minimal_hitting_sets(requirements, *, max_keys=5, max_key_size=5):
     """Minimal subsets of elements that intersect every non-empty difference set."""
     if not requirements:
@@ -474,8 +490,11 @@ def concept_edges(corpus):
     the order of the input does not change it) and every concept whose elements were seen gets one Observation
     (``observes`` the concept, ``derived_from`` the snapshot). Each element edge names that observation as its
     ``lock``. An unobserved concept (elements null) has no observation. ``captured_at``, when given, is the time.
+    ``maybe`` elements (links allowed to be wrong) become hasElement edges at the hypothesis level; nothing
+    observed them, so their ``lock`` is the snapshot that wrote them down.
     """
     concepts, concept_meta, pairs, _ = _normalize_corpus(corpus)
+    maybe = _maybe(corpus, concepts)
     defined = define_concepts(corpus)
     seen_at = corpus.get("captured_at")
     if seen_at is not None:
@@ -498,6 +517,10 @@ def concept_edges(corpus):
                 eid = f"elem:{el}"
                 nodes.setdefault(eid, {"id": eid, "type": "Element", "name": el})
                 edges.append({"kind": "hasElement", "source": eid, "target": cid, "basis": c_basis, "lock": oid, **when})
+        for el in maybe.get(name, ()):  # 🤷 a link allowed to be wrong: walked by nothing, decides nothing
+            eid = f"elem:{el}"
+            nodes.setdefault(eid, {"id": eid, "type": "Element", "name": el})
+            edges.append({"kind": "hasElement", "source": eid, "target": cid, "basis": "hypothesis", "maybe": True, "lock": sid, **when})
         info = defined["concepts"][name]
         for el in info["definition"]["genus"]:
             eid = f"elem:{el}"

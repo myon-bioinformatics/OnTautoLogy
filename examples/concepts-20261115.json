@@ -2,6 +2,7 @@
   "schema": "ontautology-concepts/1",
   "note": "Phase 2 similarity pairs. ギター has four similar concepts and one near miss (ピアノ, no similar link); ピカチュウ has ピチュー. Used for definitions, roundtrip and holdout (unseen / masked) checks.",
   "seeds": ["ギター", "ピカチュウ", "鮭", "iPhone", "エナジードリンク", "ルイージ"],
+  "maybe": {"ギター": ["金属弦"], "ベース": ["エレキ"], "エナジードリンク": ["缶入り"]},
   "similar": [
     {"left": "ギター", "right": "ベース", "basis": "observed", "note": "撥弦・フレット付き弦楽器のペア"},
     {"left": "マリオ", "right": "ルイージ", "basis": "observed", "note": "任天堂・配管工兄弟のペア"},

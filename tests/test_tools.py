@@ -426,6 +426,61 @@ class JudgeTests(unittest.TestCase):
                 self.assertEqual(tautology.judge(corpus, seed, rewrite)["matched"], tautology.judge(corpus, seed, rule)["matched"])
 
 
+class GuessTests(unittest.TestCase):
+    """🎯 The guessing game: questions until one candidate is left, honest / forgetting / unseen."""
+
+    def test_honest_play_reaches_every_concept_and_uses_attribute_questions(self):
+        corpus = concepts()
+        report = tautology.guess_report(corpus)
+        honest = report["summary"]["honest"]
+        self.assertEqual((honest["reached"], honest["games"]), (len(corpus["concepts"]), len(corpus["concepts"])))
+        self.assertLessEqual(honest["mean_questions"], report["estimate"])
+        self.assertIn("開放弦:?", [q["ask"] for q in report["honest"]["ギター"]["questions"]])
+        self.assertEqual(tautology.guess_report(corpus), report)  # the same questions every time
+
+    def test_forgetting_needs_tolerance_and_tolerance_costs_questions(self):
+        corpus = concepts()
+        strict, lenient = tautology.guess_report(corpus), tautology.guess_report(corpus, lies=1)
+        self.assertLess(strict["summary"]["forget"]["rate"], 1.0)
+        self.assertEqual(lenient["summary"]["forget"]["rate"], 1.0)
+        self.assertGreater(lenient["summary"]["honest"]["mean_questions"], strict["summary"]["honest"]["mean_questions"])
+        self.assertLessEqual(lenient["summary"]["unseen"]["rate"], strict["summary"]["unseen"]["rate"])
+
+    def test_an_unseen_target_should_end_in_no_guess(self):
+        corpus = concepts()
+        unseen = tautology.guess(corpus, "鮭", known=False)
+        self.assertEqual((unseen["guess"], unseen["reached"]), ("サクラマス", False))  # the one-similar trap again
+        self.assertTrue(tautology.guess(corpus, "ピアノ", known=True)["reached"])
+
+    def test_a_maybe_link_never_counts_against_a_candidate(self):
+        corpus = {"concepts": {"a": ["x", "y"], "b": ["x"], "c": ["z"]}, "maybe": {"b": ["y"]}}
+        game = tautology.guess(corpus, "a")
+        self.assertIsNone(game["guess"])  # b might have y, so nothing tells a from b
+        self.assertEqual(tautology.guess({**corpus, "maybe": {}}, "a")["guess"], "a")
+        with self.assertRaises(ValueError):
+            tautology.guess({**corpus, "maybe": {"ghost": ["y"]}}, "a")
+
+    def test_maybe_links_are_hypotheses_in_the_graph_and_change_no_definition(self):
+        corpus = concepts()
+        graph = ot.concept_edges(corpus)
+        maybe = [e for e in graph["edges"] if e.get("maybe")]
+        self.assertEqual(sorted((e["source"], e["target"]) for e in maybe),
+                         [("elem:エレキ", "concept:ベース"), ("elem:缶入り", "concept:エナジードリンク"), ("elem:金属弦", "concept:ギター")])
+        self.assertTrue(all(e["basis"] == "hypothesis" for e in maybe))
+        self.assertEqual(ot.reach(graph["edges"], ["elem:金属弦"])["rows"], [])
+        without = {k: v for k, v in corpus.items() if k != "maybe"}
+        self.assertEqual(ot.define_concepts(corpus), ot.define_concepts(without))
+
+    def test_command_line_guess(self):
+        from test_ontautology import run_cli
+        script, corpus_path = ROOT / "tools/tautology.py", str(ROOT / "examples/concepts-20261115.json")
+        done = run_cli(script, "guess", corpus_path, "ギター", "ピカチュウ", "--lies", "1")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        answer = json.loads(done.stdout)
+        self.assertEqual((answer["lies"], sorted(answer["honest"])), (1, ["ギター", "ピカチュウ"]))
+        self.assertEqual(run_cli(script, "guess", corpus_path, "存在しない").returncode, 1)
+
+
 def _redis_or_skip(case):
     """A throwaway redis-server on a unix socket in a temporary directory: no port, nothing saved."""
     try:

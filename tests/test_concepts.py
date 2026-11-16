@@ -126,7 +126,8 @@ class WatchLayerTests(unittest.TestCase):
                          {oid: snapshots[0]["id"] for oid in observed.values()})
         for edge in (e for e in graph["edges"] if e["kind"] == "hasElement"):
             with self.subTest(edge=(edge["source"], edge["target"])):
-                self.assertEqual(edge["lock"], observed[edge["target"]])
+                # seen elements rest on the observation; a maybe link only on the snapshot that wrote it down
+                self.assertEqual(edge["lock"], snapshots[0]["id"] if edge.get("maybe") else observed[edge["target"]])
         self.assertEqual(ot.check(graph["edges"], list(nodes)), [])
 
     def test_an_unobserved_concept_has_no_observation(self):

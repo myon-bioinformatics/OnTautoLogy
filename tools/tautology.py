@@ -22,13 +22,14 @@ Every function is callable by name from Python, and from Node through vendor/py_
 """
 import itertools
 import json
+import math
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import ontautology as ot  # noqa: E402
 
-__all__ = ["standing", "gaps", "entailed", "holds", "atoms", "judge", "rules", "holdout", "equivalent", "main"]
+__all__ = ["standing", "gaps", "entailed", "holds", "atoms", "judge", "rules", "holdout", "guess", "guess_report", "equivalent", "main"]
 OPS = {"AND": all, "OR": any, "NAND": lambda v: not all(v), "NOR": lambda v: not any(v), "NOT": lambda v: not v[0]}
 
 
@@ -160,6 +161,90 @@ def holdout(corpus, names=None):
         "masked": {"tested": tested("masked"), "fn": count("masked", "fn"), "rate": rate("masked", "fn")}}}
 
 
+def _attribute(elements, name):
+    """The values an element set gives for one attribute (``属性:値``), as a sorted tuple; () when it has none."""
+    return tuple(sorted(e.split(":", 1)[1] for e in elements if e.startswith(name + ":")))
+
+
+def guess(corpus, target, *, lies=0, forget=(), known=True):
+    """🎯 A guessing game over the corpus: ask until one candidate is left, like twenty questions or Numeron.
+
+    Two kinds of question: "does it have e?" (yes / no) and, for ``属性:値`` elements, "what is its 属性?" (the
+    values, as Numeron answers more than yes or no). Each turn takes the question whose worst answer leaves the
+    fewest candidates. A candidate dies after more than ``lies`` answers against it; its ``maybe`` elements
+    (links allowed to be wrong) never count against it. The answerer answers from the target's elements but
+    says no to the ones in ``forget`` (a person who forgot). With ``known=False`` the target is not among the
+    candidates: the honest end is no guess. ``estimate`` is ceil(log2 candidates), the yes / no ideal.
+    """
+    concepts, _, _, _ = ot._normalize_corpus(corpus)
+    if concepts.get(target) is None:
+        raise ValueError(f"unknown or unobserved concept: {target!r}")
+    maybe = ot._maybe(corpus, concepts)
+    truth = set(concepts[target]) - set(forget)
+    book = {name: (set(found), set(maybe.get(name, ()))) for name, found in concepts.items()
+            if found is not None and (known or name != target)}
+    strikes, asked, log = dict.fromkeys(book, 0), set(), []
+    alive = lambda: [name for name in sorted(book) if strikes[name] <= lies]
+    while len(alive()) > 1:
+        live, options = alive(), []
+        for element in sorted({e for name in live for e in book[name][0] | book[name][1]} - asked):
+            yes = sum(element in book[n][0] or element in book[n][1] for n in live)
+            no = sum(element not in book[n][0] or element in book[n][1] for n in live)
+            if yes < len(live) and no < len(live):
+                options.append((max(yes, no), 1, element))
+        for name in sorted({e.split(":", 1)[0] for n in live for e in book[n][0] if ":" in e} - asked):
+            groups = {}
+            for n in live:
+                groups.setdefault(_attribute(book[n][0], name), []).append(n)
+            if len(groups) > 1:
+                options.append((max(map(len, groups.values())), 0, name))
+        if not options:
+            break
+        _, kind, question = min(options)
+        asked.add(question)
+        if kind:
+            answer = question in truth
+            against = [n for n in book if question not in book[n][1] and (question in book[n][0]) != answer]
+            log.append({"ask": question, "answer": answer})
+        else:
+            answer = _attribute(truth, question)
+            against = [n for n in book if not _attribute(book[n][1], question) and _attribute(book[n][0], question) != answer]
+            log.append({"ask": question + ":?", "answer": list(answer)})
+        for name in against:
+            strikes[name] += 1
+        log[-1]["left"] = len(alive())
+    live = alive()
+    fewest = min((strikes[n] for n in live), default=None)
+    best = [n for n in live if strikes[n] == fewest]
+    picked = best[0] if len(best) == 1 else None
+    return {"target": target, "known": known, "lies": lies, "forget": sorted(forget), "questions": log,
+            "count": len(log), "estimate": math.ceil(math.log2(len(book))) if len(book) > 1 else 0,
+            "guess": picked, "reached": picked == target if known else picked is None}
+
+
+def guess_report(corpus, names=None, *, lies=0):
+    """🎯 The guessing game for every observed concept (or ``names``), in three scenes.
+
+    honest  the answerer knows the target and answers truly
+    forget  the answerer forgets one element of the target at a time (🎭 a mask)
+    unseen  the target is not among the questioner's candidates (🙈); reached means it said "I do not know"
+    """
+    concepts, _, _, _ = ot._normalize_corpus(corpus)
+    names = names or [name for name in sorted(concepts) if concepts[name] is not None]
+    scenes = {"honest": [guess(corpus, n, lies=lies) for n in names],
+              "forget": [guess(corpus, n, lies=lies, forget=[e]) for n in names for e in sorted(concepts[n] or ())],
+              "unseen": [guess(corpus, n, lies=lies, known=False) for n in names]}
+    def tally(games):
+        reached = [g for g in games if g["reached"]]
+        return {"games": len(games), "reached": len(reached), "rate": round(len(reached) / len(games), 4) if games else None,
+                "mean_questions": round(sum(g["count"] for g in games) / len(games), 2) if games else None,
+                "max_questions": max((g["count"] for g in games), default=None),
+                "missed": sorted({g["target"] for g in games if not g["reached"]})}
+    return {"lies": lies, "estimate": scenes["honest"][0]["estimate"] if names else 0,
+            "summary": {scene: tally(games) for scene, games in scenes.items()},
+            "honest": {g["target"]: {"count": g["count"], "guess": g["guess"], "questions": g["questions"]} for g in scenes["honest"]}}
+
+
 def equivalent(left, right, *, limit=16):
     """Do two rules agree on every truth assignment of their features (at most ``limit`` of them).
 
@@ -223,6 +308,16 @@ def _equivalent(args):
     return found, not found["equivalent"]
 
 
+def _guess_arguments(parser):
+    _rules_arguments(parser)
+    parser.add_argument("--lies", type=int, default=0, help="answers against a candidate it survives (default 0)")
+
+
+def _guess(args):
+    found = guess_report(ot._read_json(args.graph), args.terms or None, lies=args.lies)
+    return found, found["summary"]["honest"]["reached"] < found["summary"]["honest"]["games"]
+
+
 def _holdout(args):
     found = holdout(ot._read_json(args.graph), args.terms or None)
     summary = found["summary"]
@@ -235,7 +330,8 @@ def main(argv=None):
         ("rules", "🧩 第二弾 · ⚖️ candidate rules per concept, judged; the first reversible one is the definition", _rules_arguments, _rules),
         ("judge", "🧩 第二弾 · 🧮 one rule as the judge of a concept: FN / FP / accuracy / propositions", _judge_arguments, _judge),
         ("equivalent", "🧩 第二弾 · ✅ two rules on every truth assignment (proof) or a counterexample", _equivalent_arguments, _equivalent),
-        ("holdout", "🧩 第二弾 · 🙈 unseen concepts and 🎭 masked elements: how definitions hold on what they were not built from", _rules_arguments, _holdout)))
+        ("holdout", "🧩 第二弾 · 🙈 unseen concepts and 🎭 masked elements: how definitions hold on what they were not built from", _rules_arguments, _holdout),
+        ("guess", "🧩 第二弾 · 🎯 guessing game: questions to reach each concept, honest / forgetting / unseen", _guess_arguments, _guess)))
 
 
 if __name__ == "__main__":
