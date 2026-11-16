@@ -184,7 +184,7 @@ def _attribute(elements, name):
     return tuple(sorted(e.split(":", 1)[1] for e in elements if e.startswith(name + ":")))
 
 
-def guess(corpus, target, *, lies=0, forget=(), known=True):
+def guess(corpus, target, *, lies=0, forget=(), known=True, sure=1):
     """🎯 A guessing game over the corpus: ask until one candidate is left, like twenty questions or Numeron.
 
     Two kinds of question: "does it have e?" (yes / no) and, for ``属性:値`` elements, "what is its 属性?" (the
@@ -193,6 +193,14 @@ def guess(corpus, target, *, lies=0, forget=(), known=True):
     (links allowed to be wrong) never count against it. The answerer answers from the target's elements but
     says no to the ones in ``forget`` (a person who forgot). With ``known=False`` the target is not among the
     candidates: the honest end is no guess. ``estimate`` is ceil(log2 candidates), the yes / no ideal.
+
+    ✅ One candidate left is not the answer yet. The answers that isolated it may be shared with someone the game
+    does not know, so they count for nothing; the game asks what only the candidate has — its rarest answers not
+    asked yet. Each answer weighs log2(candidates / sharers) over log2(candidates), so an answer no one else
+    gives is one whole identification; ``confidence`` gains the weight when the answer fits and loses it when it
+    does not, and starts below zero by the answers the candidate already failed. It answers once ``confidence``
+    reaches ``sure`` (0: confirm only to make up for answers it failed), or when nothing is left to ask and nothing
+    stands against it; it guesses nothing if the candidate fails more than ``lies`` answers or falls short.
     """
     concepts, _, _, _ = ot._normalize_corpus(corpus)
     if concepts.get(target) is None:
@@ -201,8 +209,24 @@ def guess(corpus, target, *, lies=0, forget=(), known=True):
     truth = set(concepts[target]) - set(forget)
     book = {name: (set(found), set(maybe.get(name, ()))) for name, found in concepts.items()
             if found is not None and (known or name != target)}
-    strikes, asked, log = dict.fromkeys(book, 0), set(), []
+    strikes, asked, log, missed = dict.fromkeys(book, 0), set(), [], {name: [] for name in book}
     alive = lambda: [name for name in sorted(book) if strikes[name] <= lies]
+
+    def ask(kind, question, confirm=False):
+        """kind 1: does it have the element (yes / no); kind 0: what is its attribute (the values)."""
+        asked.add(question)
+        if kind:
+            answer = question in truth
+            against = [n for n in book if question not in book[n][1] and (question in book[n][0]) != answer]
+            log.append({"ask": question, "answer": answer})
+        else:
+            answer = _attribute(truth, question)
+            against = [n for n in book if not _attribute(book[n][1], question) and _attribute(book[n][0], question) != answer]
+            log.append({"ask": question + ":?", "answer": list(answer)})
+        for name in against:
+            strikes[name] += 1
+            missed[name].append((kind, question))
+        log[-1].update({"left": len(alive())}, **({"confirm": True} if confirm else {}))
     while len(alive()) > 1:
         live, options = alive(), []
         for element in sorted({e for name in live for e in book[name][0] | book[name][1]} - asked):
@@ -218,29 +242,35 @@ def guess(corpus, target, *, lies=0, forget=(), known=True):
                 options.append((max(map(len, groups.values())), 0, name))
         if not options:
             break
-        _, kind, question = min(options)
-        asked.add(question)
-        if kind:
-            answer = question in truth
-            against = [n for n in book if question not in book[n][1] and (question in book[n][0]) != answer]
-            log.append({"ask": question, "answer": answer})
-        else:
-            answer = _attribute(truth, question)
-            against = [n for n in book if not _attribute(book[n][1], question) and _attribute(book[n][0], question) != answer]
-            log.append({"ask": question + ":?", "answer": list(answer)})
-        for name in against:
-            strikes[name] += 1
-        log[-1]["left"] = len(alive())
+        ask(*min(options)[1:])
     live = alive()
     fewest = min((strikes[n] for n in live), default=None)
     best = [n for n in live if strikes[n] == fewest]
     picked = best[0] if len(best) == 1 else None
+    confidence = 0.0
+    if picked is not None:  # ✅ confirm with the rarest answers of the one left (in the whole corpus), not asked yet
+        found = book[picked][0]
+        same = lambda kind, q: sum((q in book[n][0]) == (q in found) if kind else _attribute(book[n][0], q) == _attribute(found, q) for n in book)
+        weight = lambda kind, q: math.log2(len(book) / same(kind, q)) / math.log2(len(book)) if len(book) > 1 else 1.0
+        confidence -= sum(weight(*miss) for miss in missed[picked])  # answers it already failed count against it
+        rare = sorted((same(kind, q), kind, q) for kind, q in [*((1, e) for e in found - asked if ":" not in e),
+                                                                 *((0, a) for a in {e.split(":", 1)[0] for e in found if ":" in e} - asked)])
+        left = len(rare)
+        for _, kind, question in rare:
+            if confidence >= sure or strikes[picked] > lies:
+                break
+            before, left = strikes[picked], left - 1
+            ask(kind, question, confirm=True)
+            confidence += weight(kind, question) if strikes[picked] == before else -weight(kind, question)
+        # nothing left to ask and nothing against it: the best answer there is, with the confidence it has
+        enough = confidence >= sure or (not left and confidence >= 0)
+        picked = picked if strikes[picked] <= lies and enough else None
     return {"target": target, "known": known, "lies": lies, "forget": sorted(forget), "questions": log,
             "count": len(log), "estimate": math.ceil(math.log2(len(book))) if len(book) > 1 else 0,
-            "guess": picked, "reached": picked == target if known else picked is None}
+            "guess": picked, "confidence": round(confidence, 2), "reached": picked == target if known else picked is None}
 
 
-def guess_report(corpus, names=None, *, lies=0):
+def guess_report(corpus, names=None, *, lies=0, sure=1):
     """🎯 The guessing game for every observed concept (or ``names``), in three scenes.
 
     honest  the answerer knows the target and answers truly
@@ -249,16 +279,16 @@ def guess_report(corpus, names=None, *, lies=0):
     """
     concepts, _, _, _ = ot._normalize_corpus(corpus)
     names = names or [name for name in sorted(concepts) if concepts[name] is not None]
-    scenes = {"honest": [guess(corpus, n, lies=lies) for n in names],
-              "forget": [guess(corpus, n, lies=lies, forget=[e]) for n in names for e in sorted(concepts[n] or ())],
-              "unseen": [guess(corpus, n, lies=lies, known=False) for n in names]}
+    scenes = {"honest": [guess(corpus, n, lies=lies, sure=sure) for n in names],
+              "forget": [guess(corpus, n, lies=lies, sure=sure, forget=[e]) for n in names for e in sorted(concepts[n] or ())],
+              "unseen": [guess(corpus, n, lies=lies, sure=sure, known=False) for n in names]}
     def tally(games):
         reached = [g for g in games if g["reached"]]
         return {"games": len(games), "reached": len(reached), "rate": round(len(reached) / len(games), 4) if games else None,
                 "mean_questions": round(sum(g["count"] for g in games) / len(games), 2) if games else None,
                 "max_questions": max((g["count"] for g in games), default=None),
                 "missed": sorted({g["target"] for g in games if not g["reached"]})}
-    return {"lies": lies, "estimate": scenes["honest"][0]["estimate"] if names else 0,
+    return {"lies": lies, "sure": sure, "estimate": scenes["honest"][0]["estimate"] if names else 0,
             "summary": {scene: tally(games) for scene, games in scenes.items()},
             "honest": {g["target"]: {"count": g["count"], "guess": g["guess"], "questions": g["questions"]} for g in scenes["honest"]}}
 
@@ -404,10 +434,12 @@ def _equivalent(args):
 def _guess_arguments(parser):
     _rules_arguments(parser)
     parser.add_argument("--lies", type=int, default=0, help="answers against a candidate it survives (default 0)")
+    parser.add_argument("--sure", type=float, default=1.0,
+                        help="confidence to reach before answering, in identifications (1: one answer no one else gives, the default)")
 
 
 def _guess(args):
-    found = guess_report(ot._read_json(args.graph), args.terms or None, lies=args.lies)
+    found = guess_report(ot._read_json(args.graph), args.terms or None, lies=args.lies, sure=args.sure)
     return found, found["summary"]["honest"]["reached"] < found["summary"]["honest"]["games"]
 
 
