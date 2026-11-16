@@ -22,13 +22,14 @@ Every function is callable by name from Python, and from Node through vendor/py_
 """
 import itertools
 import json
+import math
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import ontautology as ot  # noqa: E402
 
-__all__ = ["standing", "gaps", "entailed", "holds", "atoms", "judge", "rules", "equivalent", "main"]
+__all__ = ["standing", "gaps", "entailed", "holds", "atoms", "judge", "rules", "holdout", "guess", "guess_report", "equivalent", "main"]
 OPS = {"AND": all, "OR": any, "NAND": lambda v: not all(v), "NOR": lambda v: not any(v), "NOT": lambda v: not v[0]}
 
 
@@ -81,14 +82,17 @@ def judge(corpus, concept, rule):
 
 
 def rules(corpus, concept):
-    """Candidate rules for ``concept`` from set operations, each judged; reversible first, then fewer features,
-    then the order below.
+    """Candidate rules for ``concept`` from set operations, each judged; reversible first, then accuracy, then
+    what the concept has before what it lacks, then fewer features, then the order below.
 
-    genus                  AND of the common part with the similar concepts (the control: it also lets them in)
-    genus-nor-neighbours   genus AND NOR(what only the similar concepts have)
-    genus-nand-neighbours  genus AND NAND(what only the similar concepts have) — weaker: not all of it
-    genus-or-differentia   genus AND OR(each minimal distinguishing key)
-    all-elements           AND of every observed element
+    genus                   AND of the common part with the similar concepts (the control: it also lets them in)
+    genus-most-differentia  genus AND all but one of the shortest distinguishing keys (one may be missing);
+                            the values of one attribute are one clue (any of them)
+    genus-nor-neighbours    genus AND NOR(what only the similar concepts have) — knows only the neighbours it saw
+    genus-nand-neighbours   genus AND NAND(what only the similar concepts have) — weaker: not all of it
+    all-elements            AND of every observed element
+    What the concept has comes before what it lacks (the -neighbours shapes): an unseen neighbour lacks the seen
+    neighbours' features too, so a NOR of them lets it in. Those two are the fallback.
     ``definition`` is the first reversible rule, or None while every candidate is refuted or undecided.
     """
     info = ot.define_concepts(corpus, [concept])["concepts"].get(concept)
@@ -96,17 +100,163 @@ def rules(corpus, concept):
         return {"concept": concept, "candidates": [], "definition": None, "to_model": [concept]}
     genus = info["definition"]["genus"]
     neighbours = sorted({el for side in info["differentia"]["vs_similar"].values() for el in side["only_similar"]})
-    keys = [["AND", *key] for key in info["differentia"]["minimal_keys"] if key]
+    # Only the shortest keys: a longer key is a combination of features others share, and it lets unseen neighbours in.
+    shortest = min((len(key) for key in info["differentia"]["minimal_keys"] if key), default=0)
+    keys = [key for key in info["differentia"]["minimal_keys"] if key and len(key) == shortest]
+    # One attribute is one clue, as it is one question in guess: 別名:アキアジ or 別名:トキシラズ counts once.
+    clues = {}
+    for key in keys:
+        clues.setdefault(key[0].split(":", 1)[0] if len(key) == 1 and ":" in key[0] else tuple(key), []).append(key)
+    clues = [key[0] if len(key) == 1 else ["AND", *key] for key, *more in clues.values() if not more] + \
+            [["OR", *(key[0] for key in group)] for group in clues.values() if len(group) > 1]
+    # All but one: a masked observation may take one clue away, but one clue an unseen neighbour shares is not enough.
+    flat = lambda group: [*sorted({el for clue in group if not isinstance(clue, list) or clue[0] == "AND" for el in ([clue] if isinstance(clue, str) else clue[1:])}),
+                          *(clue for clue in group if isinstance(clue, list) and clue[0] == "OR")]
+    most = ["OR", *(["AND", *flat(group)] for group in itertools.combinations(clues, max(1, len(clues) - 1)))]
     shapes = [("genus", ["AND", *genus], genus),
+              ("genus-most-differentia", ["AND", *genus, most], keys),
               ("genus-nor-neighbours", ["AND", *genus, ["NOR", *neighbours]], genus and neighbours),
               ("genus-nand-neighbours", ["AND", *genus, ["NAND", *neighbours]], genus and neighbours),
-              ("genus-or-differentia", ["AND", *genus, ["OR", *keys]], keys),
               ("all-elements", ["AND", *info["elements"]], True)]
     found = [{"shape": shape, "atoms": len(atoms(rule)), **judge(corpus, concept, rule)} for shape, rule, usable in shapes if usable]
     rank = [shape for shape, _, _ in shapes]  # on a tie, the genus-built shapes come before listing every element
-    found.sort(key=lambda row: (row["verdict"] != "reversible", -(row["accuracy"] or 0), row["atoms"], rank.index(row["shape"])))
+    found.sort(key=lambda row: (row["verdict"] != "reversible", -(row["accuracy"] or 0), row["shape"].endswith("-neighbours"),
+                                row["atoms"], rank.index(row["shape"])))
     definition = next((row["rule"] for row in found if row["verdict"] == "reversible"), None)
     return {"concept": concept, "candidates": found, "definition": definition, "to_model": found[0]["to_model"] if found else []}
+
+
+def _without(corpus, name):
+    """The corpus with one concept masked out: its elements and every similar pair that names it."""
+    concepts = corpus.get("concepts", {})
+    concepts = ({k: v for k, v in concepts.items() if k != name} if isinstance(concepts, dict)
+                else [entry for entry in concepts if entry.get("id") != name])
+    ends = lambda e: e if isinstance(e, (list, tuple)) else (e.get("left", e.get("source")), e.get("right", e.get("target")))
+    return {**corpus, "concepts": concepts, "similar": [e for e in corpus.get("similar", []) if name not in ends(e)]}
+
+
+def holdout(corpus, names=None):
+    """How each definition behaves on what it was not built from: 🙈 unseen concepts and 🎭 masked elements.
+
+    unseen  for every other observed concept x: mask x out of the corpus, build the definition again, then judge x
+            with it. A pass is an FP on unseen data — the collection looked enough only because x was missing.
+    masked  for every element e of the concept: judge the concept itself with e hidden. A miss means the
+            definition needs e and breaks when that observation is missing (an AND keeps every element it names).
+    Defaults to the corpus seeds. ``summary`` adds the counts up; ``rate`` is misses per test.
+    """
+    defined = ot.define_concepts(corpus)["concepts"]
+    names = names or corpus.get("seeds") or sorted(defined)
+    observed = [name for name, info in sorted(defined.items()) if info["elements"] is not None]
+    found = {}
+    for name in names:
+        info = defined.get(name)
+        if info is None or info["elements"] is None:
+            found[name] = {"concept": name, "definition": None, "to_model": [name]}
+            continue
+        elements, definition = set(info["elements"]), rules(corpus, name)["definition"]
+        fp, undefined = [], []
+        for other in (x for x in observed if x != name):
+            rule = rules(_without(corpus, other), name)["definition"]
+            if rule is None:
+                undefined.append(other)
+            elif holds(rule, set(defined[other]["elements"])):
+                fp.append(other)
+        fn = [] if definition is None else [e for e in sorted(elements) if not holds(definition, elements - {e})]
+        found[name] = {"concept": name, "definition": definition,
+                       "unseen": {"tested": len(observed) - 1 - len(undefined), "fp": fp, "undefined": undefined},
+                       "masked": {"tested": len(elements) if definition else 0, "fn": fn}}
+    rows = [row for row in found.values() if row["definition"] is not None]
+    count = lambda part, key: sum(len(row[part][key]) for row in rows)
+    tested = lambda part: sum(row[part]["tested"] for row in rows)
+    rate = lambda part, key: round(count(part, key) / tested(part), 4) if tested(part) else None
+    return {"concepts": found, "summary": {
+        "seeds": len(names), "defined": len(rows),
+        "unseen": {"tested": tested("unseen"), "fp": count("unseen", "fp"), "rate": rate("unseen", "fp")},
+        "masked": {"tested": tested("masked"), "fn": count("masked", "fn"), "rate": rate("masked", "fn")}}}
+
+
+def _attribute(elements, name):
+    """The values an element set gives for one attribute (``属性:値``), as a sorted tuple; () when it has none."""
+    return tuple(sorted(e.split(":", 1)[1] for e in elements if e.startswith(name + ":")))
+
+
+def guess(corpus, target, *, lies=0, forget=(), known=True):
+    """🎯 A guessing game over the corpus: ask until one candidate is left, like twenty questions or Numeron.
+
+    Two kinds of question: "does it have e?" (yes / no) and, for ``属性:値`` elements, "what is its 属性?" (the
+    values, as Numeron answers more than yes or no). Each turn takes the question whose worst answer leaves the
+    fewest candidates. A candidate dies after more than ``lies`` answers against it; its ``maybe`` elements
+    (links allowed to be wrong) never count against it. The answerer answers from the target's elements but
+    says no to the ones in ``forget`` (a person who forgot). With ``known=False`` the target is not among the
+    candidates: the honest end is no guess. ``estimate`` is ceil(log2 candidates), the yes / no ideal.
+    """
+    concepts, _, _, _ = ot._normalize_corpus(corpus)
+    if concepts.get(target) is None:
+        raise ValueError(f"unknown or unobserved concept: {target!r}")
+    maybe = ot._maybe(corpus, concepts)
+    truth = set(concepts[target]) - set(forget)
+    book = {name: (set(found), set(maybe.get(name, ()))) for name, found in concepts.items()
+            if found is not None and (known or name != target)}
+    strikes, asked, log = dict.fromkeys(book, 0), set(), []
+    alive = lambda: [name for name in sorted(book) if strikes[name] <= lies]
+    while len(alive()) > 1:
+        live, options = alive(), []
+        for element in sorted({e for name in live for e in book[name][0] | book[name][1]} - asked):
+            yes = sum(element in book[n][0] or element in book[n][1] for n in live)
+            no = sum(element not in book[n][0] or element in book[n][1] for n in live)
+            if yes < len(live) and no < len(live):
+                options.append((max(yes, no), 1, element))
+        for name in sorted({e.split(":", 1)[0] for n in live for e in book[n][0] if ":" in e} - asked):
+            groups = {}
+            for n in live:
+                groups.setdefault(_attribute(book[n][0], name), []).append(n)
+            if len(groups) > 1:
+                options.append((max(map(len, groups.values())), 0, name))
+        if not options:
+            break
+        _, kind, question = min(options)
+        asked.add(question)
+        if kind:
+            answer = question in truth
+            against = [n for n in book if question not in book[n][1] and (question in book[n][0]) != answer]
+            log.append({"ask": question, "answer": answer})
+        else:
+            answer = _attribute(truth, question)
+            against = [n for n in book if not _attribute(book[n][1], question) and _attribute(book[n][0], question) != answer]
+            log.append({"ask": question + ":?", "answer": list(answer)})
+        for name in against:
+            strikes[name] += 1
+        log[-1]["left"] = len(alive())
+    live = alive()
+    fewest = min((strikes[n] for n in live), default=None)
+    best = [n for n in live if strikes[n] == fewest]
+    picked = best[0] if len(best) == 1 else None
+    return {"target": target, "known": known, "lies": lies, "forget": sorted(forget), "questions": log,
+            "count": len(log), "estimate": math.ceil(math.log2(len(book))) if len(book) > 1 else 0,
+            "guess": picked, "reached": picked == target if known else picked is None}
+
+
+def guess_report(corpus, names=None, *, lies=0):
+    """🎯 The guessing game for every observed concept (or ``names``), in three scenes.
+
+    honest  the answerer knows the target and answers truly
+    forget  the answerer forgets one element of the target at a time (🎭 a mask)
+    unseen  the target is not among the questioner's candidates (🙈); reached means it said "I do not know"
+    """
+    concepts, _, _, _ = ot._normalize_corpus(corpus)
+    names = names or [name for name in sorted(concepts) if concepts[name] is not None]
+    scenes = {"honest": [guess(corpus, n, lies=lies) for n in names],
+              "forget": [guess(corpus, n, lies=lies, forget=[e]) for n in names for e in sorted(concepts[n] or ())],
+              "unseen": [guess(corpus, n, lies=lies, known=False) for n in names]}
+    def tally(games):
+        reached = [g for g in games if g["reached"]]
+        return {"games": len(games), "reached": len(reached), "rate": round(len(reached) / len(games), 4) if games else None,
+                "mean_questions": round(sum(g["count"] for g in games) / len(games), 2) if games else None,
+                "max_questions": max((g["count"] for g in games), default=None),
+                "missed": sorted({g["target"] for g in games if not g["reached"]})}
+    return {"lies": lies, "estimate": scenes["honest"][0]["estimate"] if names else 0,
+            "summary": {scene: tally(games) for scene, games in scenes.items()},
+            "honest": {g["target"]: {"count": g["count"], "guess": g["guess"], "questions": g["questions"]} for g in scenes["honest"]}}
 
 
 def equivalent(left, right, *, limit=16):
@@ -172,12 +322,30 @@ def _equivalent(args):
     return found, not found["equivalent"]
 
 
+def _guess_arguments(parser):
+    _rules_arguments(parser)
+    parser.add_argument("--lies", type=int, default=0, help="answers against a candidate it survives (default 0)")
+
+
+def _guess(args):
+    found = guess_report(ot._read_json(args.graph), args.terms or None, lies=args.lies)
+    return found, found["summary"]["honest"]["reached"] < found["summary"]["honest"]["games"]
+
+
+def _holdout(args):
+    found = holdout(ot._read_json(args.graph), args.terms or None)
+    summary = found["summary"]
+    return found, bool(summary["unseen"]["fp"]) or summary["defined"] < summary["seeds"]
+
+
 def main(argv=None):
     """Exit codes as the core: 0 answered, 1 input error, 2 answered and something needs a look."""
     return ot.main(argv, commands=(
         ("rules", "🧩 第二弾 · ⚖️ candidate rules per concept, judged; the first reversible one is the definition", _rules_arguments, _rules),
         ("judge", "🧩 第二弾 · 🧮 one rule as the judge of a concept: FN / FP / accuracy / propositions", _judge_arguments, _judge),
-        ("equivalent", "🧩 第二弾 · ✅ two rules on every truth assignment (proof) or a counterexample", _equivalent_arguments, _equivalent)))
+        ("equivalent", "🧩 第二弾 · ✅ two rules on every truth assignment (proof) or a counterexample", _equivalent_arguments, _equivalent),
+        ("holdout", "🧩 第二弾 · 🙈 unseen concepts and 🎭 masked elements: how definitions hold on what they were not built from", _rules_arguments, _holdout),
+        ("guess", "🧩 第二弾 · 🎯 guessing game: questions to reach each concept, honest / forgetting / unseen", _guess_arguments, _guess)))
 
 
 if __name__ == "__main__":

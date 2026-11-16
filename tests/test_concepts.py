@@ -22,18 +22,18 @@ def _load_example():
 
 
 class ConceptDefinitionTests(unittest.TestCase):
-    def test_six_example_pairs_derive_genus_differentia_and_unique_roundtrip(self):
+    def test_example_pairs_derive_genus_differentia_and_unique_roundtrip(self):
         corpus = _load_example()
         defined = ot.define_concepts(corpus)
-        self.assertEqual(defined["similar_pairs"], 6)
+        self.assertEqual(defined["similar_pairs"], 21)
         self.assertEqual(defined["unknown"], [])
         concepts = defined["concepts"]
         expected_genus = {
-            "ギター": ["フレット", "ボディ", "弦楽器", "撥弦", "楽器"],
-            "ピカチュウ": ["でんきタイプ", "ねずみ分類", "ポケモン"],
+            "ギター": ["ボディ", "弦楽器", "楽器"],  # with ウクレレ・三味線・バイオリン the common part narrows
+            "ピカチュウ": ["ポケモン"],  # ミミッキュ is no electric type, and only ライチュウ is a mouse too
             "鮭": ["サケ属", "サケ科", "遡河回遊魚", "食用", "魚類"],
-            "iPhone": ["アプリ実行環境", "スマートフォン", "タッチパネル", "モバイル通信"],
-            "エナジードリンク": ["カフェイン含有", "覚醒目的", "飲料"],
+            "iPhone": ["アプリ実行環境", "タッチパネル"],  # iPad is no smartphone, and its mobile link is only maybe
+            "エナジードリンク": ["飲料"],  # カクテル has no caffeine
             "マリオ": ["オーバーオール", "ゲームキャラクター", "人間", "任天堂", "帽子", "配管工"],
         }
         for name, genus in expected_genus.items():
@@ -62,7 +62,10 @@ class ConceptDefinitionTests(unittest.TestCase):
         after = ot.define_concepts(with_counter, ["ギター"])["concepts"]["ギター"]
         self.assertEqual(after["status"], "unique")
         self.assertNotIn(["6弦標準"], after["differentia"]["minimal_keys"])
-        self.assertEqual(after["differentia"]["minimal_keys"], [["中高音主体"]])
+        # the models, riffs and open strings still tell ギター apart on their own; 6弦標準 alone no longer does
+        self.assertEqual(after["differentia"]["minimal_keys"],
+                         [["代表モデル:ストラトキャスター"], ["代表モデル:レスポール"], ["有名なリフ:Seven Nation Army"],
+                          ["有名なリフ:Smoke on the Water"], ["開放弦:EADGBE"]])
 
     def test_subset_elements_report_unavoidable_collision_and_stay_hypothesis(self):
         corpus = _load_example()
@@ -71,7 +74,7 @@ class ConceptDefinitionTests(unittest.TestCase):
         entry = ot.define_concepts(corpus, ["楽器の何か"])["concepts"]["楽器の何か"]
         self.assertEqual(entry["status"], "collides")
         self.assertEqual(entry["basis"], "hypothesis")
-        self.assertEqual(entry["differentia"]["unavoidable_collisions"], ["ギター", "ベース"])
+        self.assertEqual(entry["differentia"]["unavoidable_collisions"], ["ウクレレ", "ギター", "ベース", "三味線"])
         self.assertEqual(entry["definition"]["roundtrip"]["verdict"], "collides")
 
     def test_unobserved_similar_peer_or_hypothesis_link_prevents_derived_promotion(self):
@@ -99,8 +102,8 @@ class ConceptDefinitionTests(unittest.TestCase):
         nodes = [n["id"] for n in projected["nodes"]]
         edges = projected["edges"]
         self.assertEqual(ot.check(edges, nodes), [])
-        reached = ot.reach(edges, ["elem:カフェイン含有"])
-        self.assertEqual({r["node"] for r in reached["rows"]}, {"concept:エナジードリンク", "concept:コーヒー"})
+        reached = ot.reach(edges, ["elem:カフェイン含有"])  # カクテル has none, but it is similar to one that has: look again
+        self.assertEqual({r["node"] for r in reached["rows"]}, {"concept:エナジードリンク", "concept:カクテル", "concept:コーヒー"})
         why = ot.why(edges, "concept:ギター", depth=1)
         self.assertTrue(any(r["edge"]["kind"] == "similarTo" and r["edge"]["source"] == "concept:ベース" for r in why["rows"]))
         counts = ot.ladder(edges)["basis"]
@@ -125,15 +128,16 @@ class WatchLayerTests(unittest.TestCase):
                          {oid: snapshots[0]["id"] for oid in observed.values()})
         for edge in (e for e in graph["edges"] if e["kind"] == "hasElement"):
             with self.subTest(edge=(edge["source"], edge["target"])):
-                self.assertEqual(edge["lock"], observed[edge["target"]])
+                # seen elements rest on the observation; a maybe link only on the snapshot that wrote it down
+                self.assertEqual(edge["lock"], snapshots[0]["id"] if edge.get("maybe") else observed[edge["target"]])
         self.assertEqual(ot.check(graph["edges"], list(nodes)), [])
 
     def test_an_unobserved_concept_has_no_observation(self):
         corpus = _load_example()
-        corpus["similar"].append({"left": "ギター", "right": "ウクレレ", "basis": "hypothesis"})
+        corpus["similar"].append({"left": "ギター", "right": "マンドリン", "basis": "hypothesis"})
         graph, nodes = self.graph(corpus)
-        self.assertIn("concept:ウクレレ", nodes)
-        self.assertNotIn("concept:ウクレレ", {e["target"] for e in graph["edges"] if e["kind"] == "observes"})
+        self.assertIn("concept:マンドリン", nodes)
+        self.assertNotIn("concept:マンドリン", {e["target"] for e in graph["edges"] if e["kind"] == "observes"})
 
     def test_the_snapshot_ignores_input_order_and_follows_content(self):
         corpus = _load_example()
@@ -194,15 +198,16 @@ class ConceptCliTests(unittest.TestCase):
         }
         out_a = self.run_cli("define", "-", data=json.dumps(corpus, ensure_ascii=False), seed="1")
         out_b = self.run_cli("define", "-", data=json.dumps(reversed_corpus, ensure_ascii=False), seed="99")
-        self.assertEqual(out_a.returncode, 0, out_a.stderr)
-        self.assertEqual(out_b.returncode, 0, out_b.stderr)
+        # ピアノ has no similar concept (a near miss), so define answers and asks for a look (2).
+        self.assertEqual(out_a.returncode, 2, out_a.stderr)
+        self.assertEqual(out_b.returncode, 2, out_b.stderr)
         self.assertEqual(out_a.stdout, out_b.stdout)
 
     def test_core_cli_commands_read_concept_corpus_directly(self):
         p = self.run_cli("reach", str(EXAMPLE_PATH), "elem:カフェイン含有")
         self.assertEqual(p.returncode, 0, p.stderr)
         self.assertEqual({r["node"] for r in json.loads(p.stdout)["rows"]},
-                         {"concept:エナジードリンク", "concept:コーヒー"})
+                         {"concept:エナジードリンク", "concept:カクテル", "concept:コーヒー"})
 
 
 if __name__ == "__main__":
