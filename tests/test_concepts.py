@@ -62,7 +62,8 @@ class ConceptDefinitionTests(unittest.TestCase):
         after = ot.define_concepts(with_counter, ["ギター"])["concepts"]["ギター"]
         self.assertEqual(after["status"], "unique")
         self.assertNotIn(["6弦標準"], after["differentia"]["minimal_keys"])
-        self.assertEqual(after["differentia"]["minimal_keys"], [["6弦標準", "中高音主体"]])  # ウクレレ shares 中高音主体
+        # the open strings still tell ギター apart; 6弦標準 now needs 中高音主体 (ウクレレ shares that)
+        self.assertEqual(after["differentia"]["minimal_keys"], [["開放弦:EADGBE"], ["6弦標準", "中高音主体"]])
 
     def test_subset_elements_report_unavoidable_collision_and_stay_hypothesis(self):
         corpus = _load_example()

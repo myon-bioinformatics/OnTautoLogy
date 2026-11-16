@@ -311,7 +311,8 @@ class JudgeTests(unittest.TestCase):
         self.assertEqual(tautology.rules(corpus, "ルイージ")["definition"],  # ties with all-elements at 8 features
                          ["AND", "オーバーオール", "ゲームキャラクター", "人間", "任天堂", "帽子", "配管工", ["NOR", "兄", "赤色"]])
         # ピアノ shares the genus of ギター without being similar, so excluding the neighbours is not enough there
-        self.assertEqual(tautology.rules(corpus, "ギター")["definition"], ["AND", "ボディ", "弦楽器", "楽器", ["OR", ["AND", "6弦標準"]]])
+        self.assertEqual(tautology.rules(corpus, "ギター")["definition"],
+                         ["AND", "ボディ", "弦楽器", "楽器", ["OR", ["AND", "6弦標準"], ["AND", "開放弦:EADGBE"]]])
         for seed in corpus["seeds"]:
             with self.subTest(seed=seed):
                 self.assertNotEqual(tautology.rules(corpus, seed)["candidates"][0]["shape"], "all-elements")
@@ -340,17 +341,31 @@ class JudgeTests(unittest.TestCase):
         found = tautology.holdout(corpus)
         rows = found["concepts"]
         self.assertEqual(list(rows), corpus["seeds"])
-        self.assertEqual(rows["ギター"]["unseen"]["fp"], ["ウクレレ"])
-        self.assertEqual(rows["ピカチュウ"]["unseen"]["fp"], ["ピチュー"])
+        # ≥2 similar concepts plus the attributes that really differ (open strings, stage, base stats): no unseen FP
+        self.assertEqual((rows["ギター"]["unseen"]["fp"], rows["ピカチュウ"]["unseen"]["fp"]), ([], []))
+        # one similar concept each: hiding it lets it in (the one-similar trap)
+        for seed, similar in (("鮭", "サクラマス"), ("iPhone", "Android"), ("エナジードリンク", "コーヒー"), ("ルイージ", "マリオ")):
+            with self.subTest(seed=seed):
+                self.assertEqual(rows[seed]["unseen"]["fp"], [similar])
         summary = found["summary"]
         self.assertEqual(summary["unseen"]["tested"], sum(r["unseen"]["tested"] for r in rows.values()))
         self.assertEqual(summary["unseen"]["fp"], sum(len(r["unseen"]["fp"]) for r in rows.values()))
         self.assertEqual(summary["unseen"]["rate"], round(summary["unseen"]["fp"] / summary["unseen"]["tested"], 4))
-        # 🎭 every AND part is needed; the OR of two keys in ピカチュウ survives losing either one
-        self.assertEqual(rows["ギター"]["masked"]["fn"], sorted(["6弦標準", "ボディ", "弦楽器", "楽器"]))
+        # 🎭 every AND part is needed; an OR of shortest keys survives losing any one of them
+        self.assertEqual(rows["ギター"]["masked"]["fn"], sorted(["ボディ", "弦楽器", "楽器"]))
         self.assertEqual(rows["ピカチュウ"]["masked"]["fn"], sorted(["でんきタイプ", "ねずみ分類", "ポケモン"]))
         from test_ontautology import run_cli
         self.assertEqual(run_cli(ROOT / "tools/tautology.py", "holdout", str(ROOT / "examples/concepts-20261115.json")).returncode, 2)
+
+    def test_only_the_shortest_keys_are_joined_by_or(self):
+        # With ウクレレ hidden, 中高音主体 ∧ 撥弦 also tells ギター from the rest; joined by OR it would let ウクレレ in.
+        masked = tautology._without(concepts(), "ウクレレ")
+        rule = tautology.rules(masked, "ギター")["definition"]
+        keys = next(part for part in rule[1:] if isinstance(part, list) and part[0] == "OR")[1:]
+        self.assertEqual({len(key) - 1 for key in keys}, {1})
+        self.assertFalse(tautology.holds(rule, set(concepts()["concepts"]["ウクレレ"])))
+        longer = ot.define_concepts(masked, ["ギター"])["concepts"]["ギター"]["differentia"]["minimal_keys"]
+        self.assertTrue(any(len(key) > 1 for key in longer))
 
     def test_masking_removes_the_concept_and_its_pairs_in_either_shape(self):
         corpus = {"similar": [["a", "b"], {"left": "b", "right": "c"}, {"source": "a", "target": "c"}],

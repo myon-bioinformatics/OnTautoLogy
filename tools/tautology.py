@@ -87,7 +87,7 @@ def rules(corpus, concept):
     genus                  AND of the common part with the similar concepts (the control: it also lets them in)
     genus-nor-neighbours   genus AND NOR(what only the similar concepts have)
     genus-nand-neighbours  genus AND NAND(what only the similar concepts have) — weaker: not all of it
-    genus-or-differentia   genus AND OR(each minimal distinguishing key)
+    genus-or-differentia   genus AND OR(each shortest distinguishing key)
     all-elements           AND of every observed element
     ``definition`` is the first reversible rule, or None while every candidate is refuted or undecided.
     """
@@ -96,7 +96,9 @@ def rules(corpus, concept):
         return {"concept": concept, "candidates": [], "definition": None, "to_model": [concept]}
     genus = info["definition"]["genus"]
     neighbours = sorted({el for side in info["differentia"]["vs_similar"].values() for el in side["only_similar"]})
-    keys = [["AND", *key] for key in info["differentia"]["minimal_keys"] if key]
+    # Only the shortest keys: a longer key is a combination of features others share, and it lets unseen neighbours in.
+    shortest = min((len(key) for key in info["differentia"]["minimal_keys"] if key), default=0)
+    keys = [["AND", *key] for key in info["differentia"]["minimal_keys"] if key and len(key) == shortest]
     shapes = [("genus", ["AND", *genus], genus),
               ("genus-nor-neighbours", ["AND", *genus, ["NOR", *neighbours]], genus and neighbours),
               ("genus-nand-neighbours", ["AND", *genus, ["NAND", *neighbours]], genus and neighbours),
