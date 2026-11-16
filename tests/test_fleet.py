@@ -14,7 +14,6 @@ sys.path.insert(0, str(ROOT))
 import ontautology as ot  # noqa: E402
 from vendor import fleet_check as fleet  # noqa: E402
 
-TOOL = "ontautology.py"
 EXAMPLE = ROOT / "examples/audit-20261114.json"
 needs_node = unittest.skipIf(fleet.node() is None, "Node 26+ not available (set NODE)")
 
@@ -48,7 +47,7 @@ class FleetContracts(unittest.TestCase):
 
     def test_no_per_tool_wrapper_and_readme_documents_the_direct_command(self):
         self.assertEqual(sorted(p.name for p in ROOT.glob("*.[cm]js")), [])
-        self.assertIn(f"node vendor/py_launch.cjs -- {TOOL}", (ROOT / "README.md").read_text(encoding="utf-8"))
+        self.assertIn("node vendor/py_launch.cjs -- ontautology.py", (ROOT / "README.md").read_text(encoding="utf-8"))
 
 
 @needs_node
@@ -57,13 +56,13 @@ class NodeEntry(unittest.TestCase):
         cases = {"help": (["--help"], 0), "bogus": (["bogus"], 2), "not-a-graph": (["check", str(EXAMPLE)], 1)}
         for name, (args, expected) in cases.items():
             with self.subTest(case=name):
-                via_node, via_python = fleet.node_parity(ROOT, TOOL, "PYTHON", *args)
+                via_node, via_python = fleet.node_parity(ROOT, "ontautology.py", "PYTHON", *args)
                 self.assertEqual(via_python[0], expected, via_python[2])
                 self.assertEqual(via_node, via_python)
 
     def test_stdin_audit_through_node_is_the_python_answer(self):
         document = EXAMPLE.read_text(encoding="utf-8")
-        via_node, via_python = fleet.node_parity(ROOT, TOOL, "PYTHON", "audit", "-", input=document)
+        via_node, via_python = fleet.node_parity(ROOT, "ontautology.py", "PYTHON", "audit", "-", input=document)
         self.assertEqual(via_node, via_python)
         self.assertEqual(json.loads(via_node[1]), ot.audit([json.loads(document)]))
 
@@ -71,7 +70,7 @@ class NodeEntry(unittest.TestCase):
         edges = [{"kind": "k", "source": "a", "target": "b", "basis": "proof"},
                  {"kind": "k", "source": "b", "target": "c", "basis": "hypothesis"}]
         for script, target, request, expected in (
-                (TOOL, "reach", [edges, ["a"]], ot.reach(edges, ["a"])),
+                ("ontautology.py", "reach", [edges, ["a"]], ot.reach(edges, ["a"])),
                 ("tools/tautology.py", "standing", [edges, "c"], {"node": "c", "level": "hypothesis", "edges": 2, "tautology": False}),
                 ("tools/ontology.py", "identity", [[{"id": 1}, {"id": 2}], [["id"]]], {"key": ["id"], "report": ot.key_report([{"id": 1}, {"id": 2}], [("id",)])}),
                 ("tools/knowledgegraph.py", "topological_order", [edges], {"order": ["a", "b", "c"], "cycle": None})):

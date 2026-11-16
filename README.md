@@ -205,6 +205,7 @@ uv run --no-project --with redis python -m unittest discover -s tests -p test_to
 
 `examples/concepts-20261115.json` のように `similar`（`ギター↔ベース`、`マリオ↔ルイージ`、`ピカチュウ↔ライチュウ`、`鮭↔サクラマス`、`エナジードリンク↔コーヒー`、`iPhone↔Android`）と各概念の観察要素を渡すと、`define` が類似群の**共通項（類）**と最寄り概念を分ける**最小識別鍵（種差）**を導出し、`roundtrip` で要素集合だけから元の語へ一意に戻るか（衝突しないか）を検証します。
 
+- 🌱 定義したい〇〇は `seeds` に並べます（いまはギター・ピカチュウ・鮭・iPhone・エナジードリンク・ルイージ）。増やすときは `seeds` と `similar`・`concepts` に足すだけです。
 - 反例（例: `6弦ベース` の追加）が来ると `roundtrip` が `collides` を返し、最小識別鍵が自動で組み替わります。
 - 類似先の要素が未観測（`null`）や `basis=hypothesis` だけの辺しかない場合、`derived` に昇格せず `hypothesis` に留まります。
 

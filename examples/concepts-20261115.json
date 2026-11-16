@@ -1,6 +1,7 @@
 {
   "schema": "ontautology-concepts/1",
   "note": "Minimal similarity pairs for Phase 2 concept-definition and roundtrip experiments.",
+  "seeds": ["ギター", "ピカチュウ", "鮭", "iPhone", "エナジードリンク", "ルイージ"],
   "similar": [
     {"left": "ギター", "right": "ベース", "basis": "observed", "note": "撥弦・フレット付き弦楽器のペア"},
     {"left": "マリオ", "right": "ルイージ", "basis": "observed", "note": "任天堂・配管工兄弟のペア"},

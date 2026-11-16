@@ -192,12 +192,9 @@ class TautologyTests(unittest.TestCase):
                 self.assertEqual(tautology.entailed(closed, ["a", "b"]), [])
 
 
-CONCEPTS = ROOT / "examples/concepts-20261115.json"
-SEEDS = ("ギター", "ピカチュウ", "鮭", "iPhone", "エナジードリンク")
-
-
 def concepts():
-    return json.loads(CONCEPTS.read_text(encoding="utf-8"))
+    """The example corpus; its ``seeds`` are the 〇〇 to define (edit the JSON to add more)."""
+    return json.loads((ROOT / "examples/concepts-20261115.json").read_text(encoding="utf-8"))
 
 
 def random_rule(rng, names, depth=3):
@@ -228,7 +225,7 @@ class JudgeTests(unittest.TestCase):
 
     def test_every_seed_has_a_reversible_definition_and_the_genus_alone_lets_the_neighbour_in(self):
         corpus = concepts()
-        for seed in SEEDS:
+        for seed in corpus["seeds"]:
             found = tautology.rules(corpus, seed)
             with self.subTest(seed=seed):
                 self.assertIsNotNone(found["definition"])
@@ -243,7 +240,7 @@ class JudgeTests(unittest.TestCase):
         corpus = concepts()
         self.assertEqual(tautology.rules(corpus, "ギター")["definition"],
                          ["AND", "フレット", "ボディ", "弦楽器", "撥弦", "楽器", ["NOR", "4弦標準", "低音主体"]])
-        for seed in SEEDS:
+        for seed in corpus["seeds"]:
             with self.subTest(seed=seed):
                 self.assertNotEqual(tautology.rules(corpus, seed)["candidates"][0]["shape"], "all-elements")
 
@@ -290,7 +287,7 @@ class JudgeTests(unittest.TestCase):
 
     def test_a_definition_and_its_rewrite_judge_the_same(self):
         corpus = concepts()
-        for seed in SEEDS:
+        for seed in corpus["seeds"]:
             rule = tautology.rules(corpus, seed)["definition"]
             rewrite = ["NOT", ["NAND", rule]]
             with self.subTest(seed=seed):
