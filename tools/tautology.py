@@ -86,7 +86,8 @@ def rules(corpus, concept):
     what the concept has before what it lacks, then fewer features, then the order below.
 
     genus                   AND of the common part with the similar concepts (the control: it also lets them in)
-    genus-most-differentia  genus AND all but one of the shortest distinguishing keys (one may be missing)
+    genus-most-differentia  genus AND all but one of the shortest distinguishing keys (one may be missing);
+                            the values of one attribute are one clue (any of them)
     genus-nor-neighbours    genus AND NOR(what only the similar concepts have) — knows only the neighbours it saw
     genus-nand-neighbours   genus AND NAND(what only the similar concepts have) — weaker: not all of it
     all-elements            AND of every observed element
@@ -102,8 +103,16 @@ def rules(corpus, concept):
     # Only the shortest keys: a longer key is a combination of features others share, and it lets unseen neighbours in.
     shortest = min((len(key) for key in info["differentia"]["minimal_keys"] if key), default=0)
     keys = [key for key in info["differentia"]["minimal_keys"] if key and len(key) == shortest]
-    # All but one: a masked observation may take one key away, but one key an unseen neighbour shares is not enough.
-    most = ["OR", *(["AND", *sorted({el for key in group for el in key})] for group in itertools.combinations(keys, max(1, len(keys) - 1)))]
+    # One attribute is one clue, as it is one question in guess: 別名:アキアジ or 別名:トキシラズ counts once.
+    clues = {}
+    for key in keys:
+        clues.setdefault(key[0].split(":", 1)[0] if len(key) == 1 and ":" in key[0] else tuple(key), []).append(key)
+    clues = [key[0] if len(key) == 1 else ["AND", *key] for key, *more in clues.values() if not more] + \
+            [["OR", *(key[0] for key in group)] for group in clues.values() if len(group) > 1]
+    # All but one: a masked observation may take one clue away, but one clue an unseen neighbour shares is not enough.
+    flat = lambda group: [*sorted({el for clue in group if not isinstance(clue, list) or clue[0] == "AND" for el in ([clue] if isinstance(clue, str) else clue[1:])}),
+                          *(clue for clue in group if isinstance(clue, list) and clue[0] == "OR")]
+    most = ["OR", *(["AND", *flat(group)] for group in itertools.combinations(clues, max(1, len(clues) - 1)))]
     shapes = [("genus", ["AND", *genus], genus),
               ("genus-most-differentia", ["AND", *genus, most], keys),
               ("genus-nor-neighbours", ["AND", *genus, ["NOR", *neighbours]], genus and neighbours),

@@ -308,17 +308,30 @@ class JudgeTests(unittest.TestCase):
 
     def test_the_definition_is_built_from_what_the_concept_has(self):
         corpus = concepts()
-        # four keys, any three of them; 配管工 is no key (マリオ has it too)
-        three = [["AND", *group] for group in (["初登場年:1983", "帽子のマーク:L", "弟"], ["初登場年:1983", "帽子のマーク:L", "緑色"],
-                                               ["初登場年:1983", "弟", "緑色"], ["帽子のマーク:L", "弟", "緑色"])]
+        # five clues, any four of them; 配管工 is no key (マリオ has it too)
+        clues = ["主役シリーズ:ルイージマンション", "初登場年:1983", "帽子のマーク:L", "弟", "緑色"]
+        four = [["AND", *(clue for clue in clues if clue != left)] for left in reversed(clues)]
         self.assertEqual(tautology.rules(corpus, "ルイージ")["definition"],
-                         ["AND", "オーバーオール", "ゲームキャラクター", "人間", "任天堂", "帽子", ["OR", *three]])
+                         ["AND", "オーバーオール", "ゲームキャラクター", "人間", "任天堂", "帽子", ["OR", *four]])
         # ピアノ shares the genus of ギター without being similar, so excluding the neighbours is not enough there
+        # three clues, any two: 6弦標準, a model, a riff (the key search stops at five, so 開放弦 is not among them)
+        models = ["OR", "代表モデル:ストラトキャスター", "代表モデル:レスポール"]
+        riffs = ["OR", "有名なリフ:Seven Nation Army", "有名なリフ:Smoke on the Water"]
         self.assertEqual(tautology.rules(corpus, "ギター")["definition"],
-                         ["AND", "ボディ", "弦楽器", "楽器", ["OR", ["AND", "6弦標準"], ["AND", "開放弦:EADGBE"]]])
+                         ["AND", "ボディ", "弦楽器", "楽器", ["OR", ["AND", "6弦標準", models], ["AND", "6弦標準", riffs], ["AND", models, riffs]]])
         for seed in corpus["seeds"]:
             with self.subTest(seed=seed):
                 self.assertEqual(tautology.rules(corpus, seed)["candidates"][0]["shape"], "genus-most-differentia")
+
+    def test_the_values_of_one_attribute_are_one_clue(self):
+        # 別名 is one question in guess, so it is one clue here: either alias will do, and two aliases do not count twice
+        corpus = {"seeds": ["鮭"], "similar": [["鮭", "サクラマス"], ["鮭", "スチールヘッド"]],
+                  "concepts": {"鮭": ["魚", "別名:アキアジ", "別名:トキシラズ", "料理:ちゃんちゃん焼き"], "サクラマス": ["魚", "桜色"],
+                               "スチールヘッド": ["魚", "虹色"]}}
+        rule = tautology.rules(corpus, "鮭")["definition"]
+        self.assertEqual(rule, ["AND", "魚", ["OR", ["AND", "料理:ちゃんちゃん焼き"], ["AND", ["OR", "別名:アキアジ", "別名:トキシラズ"]]]])
+        self.assertTrue(tautology.holds(rule, {"魚", "別名:トキシラズ"}))
+        self.assertFalse(tautology.holds(rule, {"魚"}))
 
     def test_one_key_shared_with_an_unseen_twin_is_not_enough(self):
         # 配管工 is only マリオ's and ルイージ's. With マリオ hidden it looks like a key of ルイージ; any one key would let
@@ -379,19 +392,21 @@ class JudgeTests(unittest.TestCase):
         self.assertEqual(summary["unseen"]["rate"], round(summary["unseen"]["fp"] / summary["unseen"]["tested"], 4))
         # 🎭 every AND part is needed; an OR of shortest keys survives losing any one of them
         self.assertEqual(rows["ギター"]["masked"]["fn"], sorted(["ボディ", "弦楽器", "楽器"]))
-        self.assertEqual(rows["ピカチュウ"]["masked"]["fn"], sorted(["でんきタイプ", "ねずみ分類", "ポケモン"]))
+        self.assertEqual(rows["ピカチュウ"]["masked"]["fn"], ["ポケモン"])
         from test_ontautology import run_cli
-        self.assertEqual(run_cli(ROOT / "tools/tautology.py", "holdout", str(ROOT / "examples/concepts-20261115.json")).returncode, 0)
+        self.assertEqual(run_cli(ROOT / "tools/tautology.py", "holdout", str(ROOT / "examples/concepts-20261115.json"), "ギター").returncode, 0)
 
-    def test_only_the_shortest_keys_are_joined_by_or(self):
-        # With ウクレレ hidden, 中高音主体 ∧ 撥弦 also tells ギター from the rest; joined by OR it would let ウクレレ in.
-        masked = tautology._without(concepts(), "ウクレレ")
+    def test_only_the_shortest_keys_are_used(self):
+        # With ウクレレ hidden, 中高音主体 ∧ 撥弦 also tells ギター from the rest; used as a key it would let ウクレレ in.
+        corpus = {"similar": [["ギター", "ベース"], ["ギター", "ウクレレ"]],
+                  "concepts": {"ギター": ["楽器", "撥弦", "中高音主体", "6弦標準"], "ベース": ["楽器", "撥弦", "低音主体", "4弦標準"],
+                               "ウクレレ": ["楽器", "撥弦", "中高音主体", "4弦標準"], "ピアノ": ["楽器", "打弦", "中高音主体"]}}
+        masked = tautology._without(corpus, "ウクレレ")
+        keys = ot.define_concepts(masked, ["ギター"])["concepts"]["ギター"]["differentia"]["minimal_keys"]
+        self.assertEqual(keys, [["6弦標準"], ["中高音主体", "撥弦"]])
         rule = tautology.rules(masked, "ギター")["definition"]
-        keys = next(part for part in rule[1:] if isinstance(part, list) and part[0] == "OR")[1:]
-        self.assertEqual({len(key) - 1 for key in keys}, {1})
-        self.assertFalse(tautology.holds(rule, set(concepts()["concepts"]["ウクレレ"])))
-        longer = ot.define_concepts(masked, ["ギター"])["concepts"]["ギター"]["differentia"]["minimal_keys"]
-        self.assertTrue(any(len(key) > 1 for key in longer))
+        self.assertNotIn("中高音主体", tautology.atoms(rule))
+        self.assertFalse(tautology.holds(rule, set(corpus["concepts"]["ウクレレ"])))
 
     def test_masking_removes_the_concept_and_its_pairs_in_either_shape(self):
         corpus = {"similar": [["a", "b"], {"left": "b", "right": "c"}, {"source": "a", "target": "c"}],
@@ -492,8 +507,11 @@ class GuessTests(unittest.TestCase):
         graph = ot.concept_edges(corpus)
         maybe = [e for e in graph["edges"] if e.get("maybe")]
         self.assertEqual(sorted((e["source"], e["target"]) for e in maybe),
-                         [("elem:エレキ", "concept:ベース"), ("elem:モバイル通信", "concept:iPad"), ("elem:炭酸", "concept:カクテル"),
-                          ("elem:缶入り", "concept:エナジードリンク"), ("elem:金属弦", "concept:ギター")])
+                         [("elem:アクセサリ:Sペン", "concept:Android"), ("elem:エレキ", "concept:ベース"),
+                          ("elem:モバイル通信", "concept:iPad"), ("elem:名前の由来:類似", "concept:ルイージ"),
+                          ("elem:有名なリフ:Seven Nation Army", "concept:ベース"), ("elem:流通名:トラウトサーモン", "concept:スチールヘッド"),
+                          ("elem:炭酸", "concept:カクテル"), ("elem:缶入り", "concept:エナジードリンク"), ("elem:金属弦", "concept:ギター"),
+                          ("elem:黄色", "concept:ミミッキュ")])
         self.assertTrue(all(e["basis"] == "hypothesis" for e in maybe))
         self.assertEqual(ot.reach(graph["edges"], ["elem:金属弦"])["rows"], [])
         without = {k: v for k, v in corpus.items() if k != "maybe"}

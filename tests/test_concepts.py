@@ -25,12 +25,12 @@ class ConceptDefinitionTests(unittest.TestCase):
     def test_example_pairs_derive_genus_differentia_and_unique_roundtrip(self):
         corpus = _load_example()
         defined = ot.define_concepts(corpus)
-        self.assertEqual(defined["similar_pairs"], 15)
+        self.assertEqual(defined["similar_pairs"], 21)
         self.assertEqual(defined["unknown"], [])
         concepts = defined["concepts"]
         expected_genus = {
             "ギター": ["ボディ", "弦楽器", "楽器"],  # with ウクレレ・三味線・バイオリン the common part narrows
-            "ピカチュウ": ["でんきタイプ", "ねずみ分類", "ポケモン"],
+            "ピカチュウ": ["ポケモン"],  # ミミッキュ is no electric type, and only ライチュウ is a mouse too
             "鮭": ["サケ属", "サケ科", "遡河回遊魚", "食用", "魚類"],
             "iPhone": ["アプリ実行環境", "タッチパネル"],  # iPad is no smartphone, and its mobile link is only maybe
             "エナジードリンク": ["飲料"],  # カクテル has no caffeine
@@ -62,8 +62,10 @@ class ConceptDefinitionTests(unittest.TestCase):
         after = ot.define_concepts(with_counter, ["ギター"])["concepts"]["ギター"]
         self.assertEqual(after["status"], "unique")
         self.assertNotIn(["6弦標準"], after["differentia"]["minimal_keys"])
-        # the open strings still tell ギター apart; 6弦標準 now needs 中高音主体 (ウクレレ shares that)
-        self.assertEqual(after["differentia"]["minimal_keys"], [["開放弦:EADGBE"], ["6弦標準", "中高音主体"]])
+        # the models, riffs and open strings still tell ギター apart on their own; 6弦標準 alone no longer does
+        self.assertEqual(after["differentia"]["minimal_keys"],
+                         [["代表モデル:ストラトキャスター"], ["代表モデル:レスポール"], ["有名なリフ:Seven Nation Army"],
+                          ["有名なリフ:Smoke on the Water"], ["開放弦:EADGBE"]])
 
     def test_subset_elements_report_unavoidable_collision_and_stay_hypothesis(self):
         corpus = _load_example()
