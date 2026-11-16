@@ -16,15 +16,14 @@ Every function is callable by name from Python, and from Node through vendor/py_
 """
 from __future__ import annotations
 
-import hashlib
 import json
 import sys
-from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import ontautology as ot  # noqa: E402
+from ontautology import digest, timestamp  # noqa: E402,F401  (the watch layer is shared with phase 2)
 from tools import ontology  # noqa: E402
 
 __all__ = ["KG_SCHEMA", "RELATIONS", "STATES", "audit", "audit_entities", "audit_runs", "digest", "edges_of", "enrich", "inventory_entries", "observation_diff", "plan", "pr_id", "repository", "timestamp", "transfer_entities", "transfer_report", "turtle", "validate", "main"]
@@ -279,19 +278,6 @@ def enrich(value, documents, owner):
         if relation == 'hasEvidence' and e['source'] in observations:
             graph.edge(observations[e['source']], 'verified_by', e['target'], **props)
     return validate(graph.export())
-
-
-def digest(value):
-    return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
-
-
-def timestamp(value):
-    if not isinstance(value, str):
-        raise ValueError("observed_at must be an ISO timestamp with timezone")
-    result = datetime.fromisoformat(value.replace("Z", "+00:00"))
-    if result.tzinfo is None:
-        raise ValueError("observed_at must include a timezone")
-    return result
 
 
 def repository(value):

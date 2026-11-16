@@ -26,8 +26,10 @@ Every function is callable by name from Python, and from Node through the Python
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
+from datetime import datetime
 from graphlib import CycleError, TopologicalSorter
 from pathlib import Path
 
@@ -35,7 +37,22 @@ from pathlib import Path
 
 BASIS = ("hypothesis", "derived", "observed", "proof")
 __all__ = ["BASIS", "check", "reach", "why", "cycles", "order", "ladder", "key_report",
-           "define_concepts", "roundtrip_elements", "concept_edges", "main"]
+           "digest", "timestamp", "define_concepts", "roundtrip_elements", "concept_edges", "main"]
+
+
+def digest(value):
+    """👀 Watch layer, shared by every use: the identity of a record (a snapshot, an observed value) — SHA-256 of its JSON."""
+    return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+
+
+def timestamp(value):
+    """👀 Watch layer: an observation time is an ISO timestamp with a timezone; anything else is refused."""
+    if not isinstance(value, str):
+        raise ValueError("observed_at must be an ISO timestamp with timezone")
+    result = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if result.tzinfo is None:
+        raise ValueError("observed_at must include a timezone")
+    return result
 
 
 def _basis(edge):
@@ -451,20 +468,36 @@ def define_concepts(corpus, targets=None, *, max_keys=5, max_key_size=5):
 
 
 def concept_edges(corpus):
-    """Project a concept-similarity corpus onto core edges for check / reach / why / cycles / ladder."""
+    """Project a concept-similarity corpus onto core edges for check / reach / why / cycles / ladder.
+
+    The watch layer is the one phase 1 uses: the corpus is one Snapshot (the digest of its normalized content, so
+    the order of the input does not change it) and every concept whose elements were seen gets one Observation
+    (``observes`` the concept, ``derived_from`` the snapshot). Each element edge names that observation as its
+    ``lock``. An unobserved concept (elements null) has no observation. ``captured_at``, when given, is the time.
+    """
     concepts, concept_meta, pairs, _ = _normalize_corpus(corpus)
     defined = define_concepts(corpus)
-    nodes, edges = {}, []
+    seen_at = corpus.get("captured_at")
+    if seen_at is not None:
+        timestamp(seen_at)
+    when = {"observed_at": seen_at} if seen_at else {}
+    snapshot = digest({"concepts": concepts, "similar": sorted(pairs, key=digest)})
+    sid = "snapshot:" + snapshot
+    nodes, edges = {sid: {"id": sid, "type": "Snapshot", **({"captured_at": seen_at} if seen_at else {})}}, []
     for name in sorted(concepts):
         cid = f"concept:{name}"
         nodes[cid] = {"id": cid, "type": "Concept", "name": name,
                       "elements_observed": concepts[name] is not None}
         if concepts[name] is not None:
+            oid = f"observation:{snapshot}:{cid}"
+            nodes[oid] = {"id": oid, "type": "Observation", "snapshot": sid, **when}
+            edges.append({"kind": "observes", "source": oid, "target": cid, "basis": "observed", **when})
+            edges.append({"kind": "derived_from", "source": oid, "target": sid, "basis": "observed", **when})
             c_basis = concept_meta[name]["basis"]
             for el in concepts[name]:
                 eid = f"elem:{el}"
                 nodes.setdefault(eid, {"id": eid, "type": "Element", "name": el})
-                edges.append({"kind": "hasElement", "source": eid, "target": cid, "basis": c_basis})
+                edges.append({"kind": "hasElement", "source": eid, "target": cid, "basis": c_basis, "lock": oid, **when})
         info = defined["concepts"][name]
         for el in info["definition"]["genus"]:
             eid = f"elem:{el}"

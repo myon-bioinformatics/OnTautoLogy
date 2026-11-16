@@ -10,6 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ontautology as ot  # noqa: E402
+from gh_audit import gh_audit as ga  # noqa: E402
 from test_ontautology import run_cli  # noqa: E402
 
 EXAMPLE_PATH = Path(__file__).resolve().parent.parent / "examples/concepts-20261115.json"
@@ -105,6 +106,63 @@ class ConceptDefinitionTests(unittest.TestCase):
         counts = ot.ladder(edges)["basis"]
         self.assertGreater(counts["observed"], 0)
         self.assertGreater(counts["derived"], 0)
+
+
+class WatchLayerTests(unittest.TestCase):
+    """👀 The watch layer is the one phase 1 uses: Snapshot per corpus, Observation per observed concept."""
+
+    def graph(self, corpus=None):
+        found = ot.concept_edges(corpus or _load_example())
+        return found, {n["id"]: n for n in found["nodes"]}
+
+    def test_every_observed_concept_has_one_observation_from_the_one_snapshot(self):
+        graph, nodes = self.graph()
+        snapshots = [n for n in nodes.values() if n["type"] == "Snapshot"]
+        self.assertEqual(len(snapshots), 1)
+        observed = {e["target"]: e["source"] for e in graph["edges"] if e["kind"] == "observes"}
+        self.assertEqual(sorted(observed), sorted(f"concept:{name}" for name in _load_example()["concepts"]))
+        self.assertEqual({e["source"]: e["target"] for e in graph["edges"] if e["kind"] == "derived_from"},
+                         {oid: snapshots[0]["id"] for oid in observed.values()})
+        for edge in (e for e in graph["edges"] if e["kind"] == "hasElement"):
+            with self.subTest(edge=(edge["source"], edge["target"])):
+                self.assertEqual(edge["lock"], observed[edge["target"]])
+        self.assertEqual(ot.check(graph["edges"], list(nodes)), [])
+
+    def test_an_unobserved_concept_has_no_observation(self):
+        corpus = _load_example()
+        corpus["similar"].append({"left": "ギター", "right": "ウクレレ", "basis": "hypothesis"})
+        graph, nodes = self.graph(corpus)
+        self.assertIn("concept:ウクレレ", nodes)
+        self.assertNotIn("concept:ウクレレ", {e["target"] for e in graph["edges"] if e["kind"] == "observes"})
+
+    def test_the_snapshot_ignores_input_order_and_follows_content(self):
+        corpus = _load_example()
+        shuffled = {"similar": list(reversed(corpus["similar"])),
+                    "concepts": {k: list(reversed(v)) for k, v in reversed(list(corpus["concepts"].items()))}}
+        snapshot = lambda c: next(n["id"] for n in self.graph(c)[0]["nodes"] if n["type"] == "Snapshot")
+        self.assertEqual(snapshot(corpus), snapshot(shuffled))
+        changed = copy.deepcopy(corpus)
+        changed["concepts"]["ギター"].append("12弦もある")
+        self.assertNotEqual(snapshot(corpus), snapshot(changed))
+
+    def test_captured_at_is_the_observation_time_and_must_carry_a_timezone(self):
+        corpus = dict(_load_example(), captured_at="2026-11-16T18:00:00+09:00")
+        graph, nodes = self.graph(corpus)
+        self.assertEqual({n.get("observed_at") for n in nodes.values() if n["type"] == "Observation"}, {"2026-11-16T18:00:00+09:00"})
+        self.assertTrue(all(e.get("observed_at") == "2026-11-16T18:00:00+09:00" for e in graph["edges"] if e["kind"] in ("observes", "hasElement")))
+        self.assertNotIn("observed_at", next(n for n in self.graph()[1].values() if n["type"] == "Observation"))
+        with self.assertRaises(ValueError):
+            ot.concept_edges(dict(_load_example(), captured_at="2026-11-16T18:00:00"))
+
+    def test_the_watch_layer_is_shared_with_phase_one(self):
+        graph, nodes = self.graph()
+        triples = {(nodes[e["source"]]["type"], e["kind"], nodes[e["target"]]["type"]) for e in graph["edges"]}
+        watch = {triple for triple in triples if triple[0] == "Observation"}
+        self.assertEqual(watch, {("Observation", "observes", "Concept"), ("Observation", "derived_from", "Snapshot")})
+        self.assertEqual(ga.RELATIONS["derived_from"], (("Observation",), "Snapshot"))
+        self.assertIn("Observation", ga.RELATIONS["observes"][0])
+        self.assertIs(ga.digest, ot.digest)
+        self.assertIs(ga.timestamp, ot.timestamp)
 
 
 class ConceptCliTests(unittest.TestCase):
