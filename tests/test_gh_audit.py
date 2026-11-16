@@ -1,4 +1,4 @@
-"""The GitHub audit dashboard (gh_audit/gh_audit.py): snapshots → graph, plan, diff, Turtle, transfers. Standard library only."""
+"""第一弾 (phase 1) — the GitHub audit dashboard (gh_audit/gh_audit.py): snapshots → graph, plan, diff, Turtle, transfers. Standard library only."""
 import copy
 import json
 from pathlib import Path

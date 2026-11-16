@@ -16,17 +16,17 @@
 ```
 ontautology.py          🧠🧩 本体（汎用だけ・標準ライブラリのみ。これ1本を vendor すれば動く）
 tools/
-  tautology.py          ⚖️ 規則での判定・可逆な定義・真理値表（第二弾の判定）、証明の段までの距離
+  tautology.py          🧩⚖️ 第二弾の判定（規則・可逆な定義・真理値表）、証明の段までの距離
   ontology.py           📚 語彙の違反を全部挙げる・鍵に昇格できる属性の組
   knowledgegraph.py     🕸️ 親の fleet コードと同じ名前・形の答え
-gh_audit/
-  gh_audit.py           🔭 GitHub 監査（PR 監査・plan・diff・Turtle・Flutter 移管台帳）。監査の enhancement はこのフォルダへ
+gh_audit/               🔭 第一弾だけのフォルダ（第一弾の enhancement はここへ）
+  gh_audit.py           🔭 第一弾: GitHub 監査（PR 監査・plan・diff・Turtle・Flutter 移管台帳）
 vendor/                 📦 親から借りるもの（vendor.lock.json で SHA 固定）: py_launch.cjs・fleet_check.py
 examples/               🌱 第二弾の類似コーパス、第一弾の監査スナップショット・移管台帳
 tests/                  🧪 unittest（Redis の答え合わせは任意）
 ```
 
-依存は 🔭 gh_audit → 🧰 tools → 🧠 本体 の一方向です。本体は tools/・vendor/・gh_audit/ を読まず、tools も gh_audit を読みません（テストで固定）。
+依存は 🔭 第一弾（gh_audit）→ 🧰 tools → 🧠 本体 の一方向です。🔭 第一弾は `gh_audit/` に閉じていて、本体と tools は gh_audit を読みません（テストで固定）。🧩 第二弾は汎用なので本体と `tools/tautology.py` にあります。
 
 ## 🚀 すぐ試す
 
@@ -38,7 +38,7 @@ python -S tools/tautology.py equivalent '["NOR", "a", "b"]' '["AND", ["NOT", "a"
 python -S ontautology.py define examples/concepts-20261115.json ギター ピカチュウ 鮭 iPhone エナジードリンク ルイージ   # 🧩 類と種差
 python -S ontautology.py roundtrip examples/concepts-20261115.json カフェイン含有 飲料                     # 🔁 要素 → 語の往復
 
-# 🔭 第一弾
+# 🔭 第一弾（gh_audit/）
 python -S gh_audit/gh_audit.py audit examples/audit-20261114.json -o graph.json   # スナップショット → グラフ（複数渡すと履歴）
 python -S gh_audit/gh_audit.py plan  graph.json                                  # main 未導入の PR の依存順
 python -S gh_audit/gh_audit.py transfers examples/flutter-absorption.json        # Flutter の未吸収機能
@@ -59,7 +59,7 @@ node vendor/py_launch.cjs --call equivalent -- tools/tautology.py '["NOR","a","b
 
 ## 🗂️ オントロジーを並べて見る
 
-| | 🧩 第二弾 | 🔭 第一弾 |
+| | 🧩 第二弾（本体・`tools/tautology.py`） | 🔭 第一弾（`gh_audit/`） |
 | --- | --- | --- |
 | 入力 | `ontautology-concepts/1`（seeds・similar・concepts） | `integration-audit/3`（監査スナップショット） |
 | 語彙の置き場 | `ontautology.concept_edges` | `gh_audit.RELATIONS`（domain と range） |
@@ -128,7 +128,7 @@ flowchart TD
 
 ## 🪜 手順を並べて見る（rules と plan）
 
-| 段 | 🧩 `rules`（〇〇の定義） | 🔭 `plan`（統合順序） |
+| 段 | 🧩 第二弾 `rules`（〇〇の定義） | 🔭 第一弾 `plan`（統合順序） |
 | --- | --- | --- |
 | 1 集める | 類似と要素（`similar`・`concepts`） | PR ごとの観測（スナップショット、複数なら履歴） |
 | 2 選ぶ | `seeds` の〇〇とその類似 | PR ごとに最新の観測（同時刻の矛盾はエラー） |
@@ -144,7 +144,7 @@ flowchart TD
 
 本体の芯を組み合わせて、名前の意味（オントロジー → トートロジー）に沿った問いに答えます。実装を二重に持たず、芯を呼ぶだけです。
 
-| ファイル | 関数 | 🧩 第二弾で | 🔭 第一弾で |
+| ファイル | 関数 | 🧩 第二弾で | 🔭 第一弾（`gh_audit/`）で |
 | --- | --- | --- | --- |
 | ⚖️ `tautology.py` | `holds` `judge` `rules` `equivalent` | 規則での判定・定義・真理値表（CLI あり） | ➖ |
 | ✅ `tautology.py` | `standing` `gaps` `entailed` | 定義が立つ段・証明未満の辺 | 監査の辺が立つ段・証明未満の辺 |
@@ -153,9 +153,9 @@ flowchart TD
 
 ## 📊 例データでの結果を並べて見る
 
-どちらも同じ芯のコマンドで問えます（🧩 は `python -S tools/tautology.py`、🔭 は `python -S gh_audit/gh_audit.py` に続けて実行）。
+どちらも同じ芯のコマンドで問えます（🧩 第二弾は `python -S tools/tautology.py`、🔭 第一弾は `python -S gh_audit/gh_audit.py` に続けて実行）。
 
-| 問い | 🧩 `examples/concepts-20261115.json` | 🔭 `examples/audit-20261114.json` |
+| 問い | 🧩 第二弾 `examples/concepts-20261115.json` | 🔭 第一弾 `examples/audit-20261114.json` |
 | --- | --- | --- |
 | グラフ | 65 ノード・155 辺（Element 53・Concept 12） | 720 ノード・2,342 辺（File 542・ActionsRun 93・Commit 32・PullRequest 15・Observation 14 ほか） |
 | `check` | 所見なし | 所見なし |
@@ -165,7 +165,7 @@ flowchart TD
 
 🔭 の例は 2026年11月14日 23:12 JST の監査から抜き出した履歴（8 リポジトリ、観測した PR は 14 件）で、今の GitHub の状態ではありません。
 
-## 🧩 第二弾: 類似から定義を作る
+## 🧩 第二弾: 類似から定義を作る（本体・`tools/tautology.py`）
 
 ### 📥 集めるもの
 
@@ -238,7 +238,9 @@ TalkCompress の判定モデルと同じ分け方で、まず規則が決め、�
 - 類似が1つずつだと、種差は「その1つとの違い」になります。ギター↔ウクレレ↔三味線のように類似を増やすほど、類は全員の本質に絞られ、種差が意味を持ちます。
 - 種差が名前の言い換え（`白鮭(O.keta)`、`Apple製` など）になると定義が堂々巡りになります。これを見つける検査はまだありません。
 
-## 🔭 第一弾: GitHub 監査
+## 🔭 第一弾: GitHub 監査（`gh_audit/`）
+
+第一弾は `gh_audit/gh_audit.py` に閉じています。GitHub 固有のもの（リポジトリ・PR・コミット・run・job・タスク・移管）はここだけに置き、本体と tools には入れません。第一弾の enhancement はこのフォルダに足します。
 
 入力は継続監査サイトの「統合証跡JSON」（`integration-audit/3`）です。観測 JSON の `{"aoi_integration": {...}}` で包まれた形も受け付けます。GitHub への取得・書き込みは行いません。
 
@@ -309,22 +311,34 @@ PR ごとに最新の観測を選び、`contained_in_main=true` の依存先を�
 
 ### ⌨️ コマンド
 
-| コマンド | どこから | 入力 | 答え |
-| --- | --- | --- | --- |
-| ⚖️ `rules CORPUS [CONCEPT...]` | 🧰 | 類似コーパス | 〇〇ごとの規則の候補と判定、可逆な定義（既定は `seeds`） |
-| 🧮 `judge CORPUS CONCEPT RULE` | 🧰 | 類似コーパス | 1本の規則の FN・FP・精度・命題／逆／裏／対偶 |
-| ✅ `equivalent RULE RULE` | 🧰 | 規則2本 | 全通りで同じか（`proof`）、違う場合の反例 |
-| 🧩 `define CORPUS [CONCEPT...]` | 🧠 | 類似コーパス | 類・種差・往復判定 |
-| 🔁 `roundtrip CORPUS ELEM...` | 🧠 | 類似コーパス | 要素をすべて満たす概念（一意・衝突・空） |
-| 🔭 `audit FILE...` | 🔭 | 監査スナップショット | グラフ（`--format turtle` で RDF） |
-| 🪜 `plan GRAPH` | 🔭 | 監査グラフ | main 未導入の PR の依存順・ブロック・未観測の依存先 |
-| 🆚 `diff BEFORE AFTER` | 🔭 | 監査グラフ2つ | 追加・削除・変化した PR |
-| 🐢 `turtle GRAPH` | 🔭 | 監査グラフ | RDF/Turtle |
-| 📦 `transfers LEDGER` | 🔭 | 移管台帳 | 未吸収・移管先・受入の整合性 |
-| 🧪 `check` 💥 `reach` 🔎 `why` 🔁 `cycles` 🪜 `order` `ladder` | 🧠 | どれでも | 所見・影響先・根拠・循環・順序・段ごとの本数 |
-| 🔑 `keys GRAPH FIELDS...` | 🧠 | `"items"` を持つ JSON | 属性の組（`id+run` など）が鍵になるか |
+🧠 共通の芯 — `ontautology.py`（どの CLI からも使える）
 
-🧠 は `ontautology.py`、🧰 は `tools/tautology.py`、🔭 は `gh_audit/gh_audit.py` です。🧰 と 🔭 は本体の口 `main(commands=..., load=...)` に自分のコマンドを足すので、🧠 のコマンドもそのまま使え、CLI・標準入力の決まり・終了コードは1つです。「どれでも」は類似コーパス・素の `{"edges": [...], "nodes": [...]}`・（🔭 経由なら）監査グラフです。全コマンドに `-o FILE` があり、ファイル名を `-` にすると標準入力の UTF-8 JSON を読みます（1コマンドにつき1回）。
+| コマンド | 入力 | 答え |
+| --- | --- | --- |
+| 🧪 `check` 💥 `reach` 🔎 `why` 🔁 `cycles` 🪜 `order` `ladder` | どれでも | 所見・影響先・根拠・循環・順序・段ごとの本数 |
+| 🔑 `keys GRAPH FIELDS...` | `"items"` を持つ JSON | 属性の組（`id+run` など）が鍵になるか |
+
+🧩 第二弾 — `ontautology.py`（define・roundtrip）と `tools/tautology.py`（rules・judge・equivalent）
+
+| コマンド | 入力 | 答え |
+| --- | --- | --- |
+| ⚖️ `rules CORPUS [CONCEPT...]` | 類似コーパス | 〇〇ごとの規則の候補と判定、可逆な定義（既定は `seeds`） |
+| 🧮 `judge CORPUS CONCEPT RULE` | 類似コーパス | 1本の規則の FN・FP・精度・命題／逆／裏／対偶 |
+| ✅ `equivalent RULE RULE` | 規則2本 | 全通りで同じか（`proof`）、違う場合の反例 |
+| 🧩 `define CORPUS [CONCEPT...]` | 類似コーパス | 類・種差・往復判定 |
+| 🔁 `roundtrip CORPUS ELEM...` | 類似コーパス | 要素をすべて満たす概念（一意・衝突・空） |
+
+🔭 第一弾 — `gh_audit/gh_audit.py`
+
+| コマンド | 入力 | 答え |
+| --- | --- | --- |
+| 🔭 `audit FILE...` | 監査スナップショット | グラフ（`--format turtle` で RDF） |
+| 🪜 `plan GRAPH` | 監査グラフ | main 未導入の PR の依存順・ブロック・未観測の依存先 |
+| 🆚 `diff BEFORE AFTER` | 監査グラフ2つ | 追加・削除・変化した PR |
+| 🐢 `turtle GRAPH` | 監査グラフ | RDF/Turtle |
+| 📦 `transfers LEDGER` | 移管台帳 | 未吸収・移管先・受入の整合性 |
+
+`tools/tautology.py` と `gh_audit/gh_audit.py` は本体の口 `main(commands=..., load=...)` に自分のコマンドを足すので、🧠 のコマンドもそのまま使え、CLI・標準入力の決まり・終了コードは1つです。「どれでも」は類似コーパス・素の `{"edges": [...], "nodes": [...]}`・（🔭 第一弾の CLI なら）監査グラフです。全コマンドに `-o FILE` があり、ファイル名を `-` にすると標準入力の UTF-8 JSON を読みます（1コマンドにつき1回）。
 
 終了コード: `0` 答えた / `1` 入力エラー / `2` 答えたが要確認（所見・循環・ブロック・未知のノード・鍵にならない・差分あり・定義の衝突や未観測・可逆でない・同値でない）。`2` は道具の失敗ではなく、入力についての答えです。
 
@@ -335,9 +349,9 @@ import ontautology as ot
 from tools import tautology
 from gh_audit import gh_audit
 
-tautology.rules(corpus, "ギター")["definition"]       # 可逆な最初の規則
-ot.define_concepts(corpus, ["ギター"])                 # 類と種差
-gh_audit.plan(gh_audit.audit([snapshot]))             # 監査グラフ → 依存順
+tautology.rules(corpus, "ギター")["definition"]       # 🧩 第二弾: 可逆な最初の規則
+ot.define_concepts(corpus, ["ギター"])                 # 🧩 第二弾: 類と種差
+gh_audit.plan(gh_audit.audit([snapshot]))             # 🔭 第一弾: 監査グラフ → 依存順
 ```
 
 Node からは `vendor/py_launch.cjs` の `--call 関数名` で、`if __name__ == "__main__"` を通さずに関数を名前で呼べます（引数は1つずつ JSON）。大きな JSON は引数ではなく CLI のファイル入力か標準入力で渡します。GraphQL は取得側で `integration-audit/3` へ変換する境界で、本体から認証・HTTP を呼びません。Rust への切り出しは同じ JSON と終了コードを保つ案で、未実装・未測定です。

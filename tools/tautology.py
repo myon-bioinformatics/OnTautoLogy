@@ -175,9 +175,9 @@ def _equivalent(args):
 def main(argv=None):
     """Exit codes as the core: 0 answered, 1 input error, 2 answered and something needs a look."""
     return ot.main(argv, commands=(
-        ("rules", "⚖️ candidate rules per concept, judged; the first reversible one is the definition", _rules_arguments, _rules),
-        ("judge", "🧮 one rule as the judge of a concept: FN / FP / accuracy / propositions", _judge_arguments, _judge),
-        ("equivalent", "✅ two rules on every truth assignment (proof) or a counterexample", _equivalent_arguments, _equivalent)))
+        ("rules", "🧩 第二弾 · ⚖️ candidate rules per concept, judged; the first reversible one is the definition", _rules_arguments, _rules),
+        ("judge", "🧩 第二弾 · 🧮 one rule as the judge of a concept: FN / FP / accuracy / propositions", _judge_arguments, _judge),
+        ("equivalent", "🧩 第二弾 · ✅ two rules on every truth assignment (proof) or a counterexample", _equivalent_arguments, _equivalent)))
 
 
 if __name__ == "__main__":
