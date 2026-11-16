@@ -57,6 +57,114 @@ node vendor/py_launch.cjs --call equivalent -- tools/tautology.py '["NOR","a","b
 
 `uv tool install .`（または `uv tool install git+https://github.com/myon-bioinformatics/OnTautoLogy.git`）で入るのは本体の `ontautology` コマンドです。tools と gh_audit はチェックアウトから使います。
 
+## 🗂️ オントロジーを並べて見る
+
+| | 🧩 第二弾 | 🔭 第一弾 |
+| --- | --- | --- |
+| 入力 | `ontautology-concepts/1`（seeds・similar・concepts） | `integration-audit/3`（監査スナップショット） |
+| 語彙の置き場 | `ontautology.concept_edges` | `gh_audit.RELATIONS`（domain と range） |
+| 芯の辺への写し | `concept_edges` | `edges_of` |
+| 検証 | `check` | `check` ＋ `tools/ontology.violations` ＋ 監査固有の規則 |
+| 手順 | ⚖️ `rules`（〇〇の定義） | 🪜 `plan`（PR の統合順序） |
+| 証明の段 | ✅ `equivalent` が埋める | まだ 0 本 |
+
+下の2つの表は、クラスと「そのクラスから出ていく関係 → 先のクラス」をすべて並べたものです。コードの語彙と1つでもずれるとテストが落ちます。
+
+### 🧩 第二弾のクラスと関係
+
+| クラス | 識別子 | 出ていく関係 → 先 |
+| --- | --- | --- |
+| `Concept` | `concept:` ＋ 語 | `similarTo` → Concept |
+| `Element` | `elem:` ＋ 要素 | `hasElement` / `genusElement` / `differentiaElement` → Concept |
+
+```mermaid
+flowchart LR
+  E[Element 要素] -->|hasElement 観測| C[Concept 〇〇]
+  E -->|genusElement 類| C
+  E -->|differentiaElement 種差| C
+  C <-->|similarTo| S[Concept 類似]
+```
+
+向きは芯と同じで、要素（依存される側）→ 概念（要素が変わったら見直す側）です。`hasElement` は観察の段（observed）、`genusElement`・`differentiaElement` は `define` の結果（derived、類似先が未観測なら hypothesis）です。
+
+### 🔭 第一弾のクラスと関係
+
+| クラス | 識別子 | 出ていく関係 → 先 |
+| --- | --- | --- |
+| `Observation` | `observation:` スナップショット digest ＋ PR | `hasRun` → ActionsRun・`targetsBranch` → Branch・`hasBase` / `hasHead` / `hasMain` → Commit・`hasCompletion` → CompletionRecord・`hasEvidence` → Evidence・`missingEvidence` → EvidenceGap・`changesFile` / `updates` → File・`hasPin` → FixedSHA・`hasGeneratedArtifact` → GeneratedArtifact・`hasIssue` → Issue・`missingFromMain` → MainGap・`observes` / `targets` → PullRequest・`hasReview` → Review・`derived_from` → Snapshot・`hasTask` → Task |
+| `PullRequest` | `pr:` リポジトリ ＋ PR 番号 | `integrates_into` → Branch・`verified_by` → Evidence・`has_status` → Observation・`blocks` / `dependsOn` / `depends_on` / `duplicates` / `overlapsWith` → PullRequest・`belongsTo` → Repository |
+| `Repository` | `repo:` owner/name | `has_status` → Observation・`same_as` → Repository |
+| `Snapshot` | `snapshot:` digest | `supersedes` → Snapshot |
+| `Commit` | `commit:` リポジトリ ＋ 完全 SHA | `belongsTo` → Repository |
+| `Branch` | `branch:` リポジトリ ＋ ブランチ名 | `belongsTo` → Repository |
+| `File` | `file:` リポジトリ ＋ 相対パス | `belongsTo` → Repository |
+| `ActionsRun` | `run:` リポジトリ ＋ run ID ＋ attempt | `runsAt` → Commit・`hasJob` → Job・`belongsTo` → Repository |
+| `Job` | `job:` run ＋ attempt ＋ job ID | — |
+| `Task` | `task:` 観測（または台帳）＋ キー | `verifiesCommit` → Commit・`migration_source` → File・`has_status` → Observation・`migration_target` → Repository・`precedes` → Task |
+| `CompletionRecord` | `completion:` 観測 ＋ digest | `verifiesCommit` → Commit |
+| `FixedSHA` | `fixedsha:` 観測 ＋ digest | `pinsCommit` → Commit |
+| `GeneratedArtifact` | `generatedartifact:` 観測 ＋ digest | `generatedFrom` → Commit |
+| `Issue` | `issue:` 観測 ＋ digest | `belongsTo` → Repository |
+| `Review` | `review:` 観測 ＋ digest | — |
+| `Evidence` | `evidence:` 観測 ＋ digest | — |
+| `EvidenceGap` | `evidencegap:` 観測 ＋ digest | — |
+| `MainGap` | `main-gap:` 観測 | — |
+
+```mermaid
+flowchart TD
+  O[Observation] -->|derived_from| N[Snapshot]
+  O -->|observes| P[PullRequest]
+  O -->|hasHead / hasBase / hasMain| C[Commit]
+  O -->|hasRun| W[ActionsRun]
+  O -->|changesFile| F[File]
+  O -->|hasTask| T[Task]
+  W -->|runsAt| C
+  P -->|dependsOn| P
+  P -->|belongsTo| R[Repository]
+  C -->|belongsTo| R
+  T -->|migration_source| F
+  T -->|migration_target| R
+```
+
+## 🪜 手順を並べて見る（rules と plan）
+
+| 段 | 🧩 `rules`（〇〇の定義） | 🔭 `plan`（統合順序） |
+| --- | --- | --- |
+| 1 集める | 類似と要素（`similar`・`concepts`） | PR ごとの観測（スナップショット、複数なら履歴） |
+| 2 選ぶ | `seeds` の〇〇とその類似 | PR ごとに最新の観測（同時刻の矛盾はエラー） |
+| 3 組む | 類 AND ・ NOR / NAND 類似の固有 ・ OR 種差 ・ 全要素 | main 未導入の PR と `dependsOn` |
+| 4 当てる | 全概念に当てて FN・FP | 芯の `order`（graphlib） |
+| 5 止める | FP・FN → `refuted`、未観測 → `to_model` | 循環・その下流・未観測の依存先 → `blocked` |
+| 6 答える | 可逆な最初の規則 = 定義（`derived`） | 依存の順（CI・レビュー・競合は別に確認） |
+| 終了コード 2 | 可逆な定義が無い〇〇がある | ブロック・循環・棚卸しが不確か |
+
+どちらも「見ていないものを完了・成立と読まない」点が同じです。未観測は第二弾では `to_model`、第一弾では `blocked` に残ります。
+
+## 🧰 tools を並べて見る
+
+本体の芯を組み合わせて、名前の意味（オントロジー → トートロジー）に沿った問いに答えます。実装を二重に持たず、芯を呼ぶだけです。
+
+| ファイル | 関数 | 🧩 第二弾で | 🔭 第一弾で |
+| --- | --- | --- | --- |
+| ⚖️ `tautology.py` | `holds` `judge` `rules` `equivalent` | 規則での判定・定義・真理値表（CLI あり） | ➖ |
+| ✅ `tautology.py` | `standing` `gaps` `entailed` | 定義が立つ段・証明未満の辺 | 監査の辺が立つ段・証明未満の辺 |
+| 📚 `ontology.py` | `classes` `violations` `identity` | 鍵に昇格できる属性の組（種差と同じ考え方） | 語彙の検査（`validate` が使う）・クラス一覧 |
+| 🕸️ `knowledgegraph.py` | `relation_cycles` `topological_order` | ➖ | 親の `fleet_records` / `vendor_fleet_plan` と同じ名前・形 |
+
+## 📊 例データでの結果を並べて見る
+
+どちらも同じ芯のコマンドで問えます（🧩 は `python -S tools/tautology.py`、🔭 は `python -S gh_audit/gh_audit.py` に続けて実行）。
+
+| 問い | 🧩 `examples/concepts-20261115.json` | 🔭 `examples/audit-20261114.json` |
+| --- | --- | --- |
+| グラフ | 65 ノード・155 辺（Element 53・Concept 12） | 720 ノード・2,342 辺（File 542・ActionsRun 93・Commit 32・PullRequest 15・Observation 14 ほか） |
+| `check` | 所見なし | 所見なし |
+| `reach` | `elem:カフェイン含有` → エナジードリンク・コーヒー | `file:myon-bioinformatics/Aoi:README.md` → 159 ノード（PR 12） |
+| `ladder` | 観測 91・導出 64・候補 0・証明 0 | 観測 2,292・導出 50・候補 25・証明 0 |
+| 手順 | `rules`: 6 つの〇〇すべてに可逆な定義（終了コード 0） | `plan`: 順序 5・ブロック 1（`SakAnalytics#45` が未観測の `#44` を待つ。終了コード 2） |
+
+🔭 の例は 2026年11月14日 23:12 JST の監査から抜き出した履歴（8 リポジトリ、観測した PR は 14 件）で、今の GitHub の状態ではありません。
+
 ## 🧩 第二弾: 類似から定義を作る
 
 ### 📥 集めるもの
@@ -91,7 +199,7 @@ flowchart LR
 
 TalkCompress の判定モデルと同じ分け方で、まず規則が決め、規則で決められないものだけを判定モデル（LLM）に回します。OTL 自身は LLM を呼びません。
 
-### 📊 例データでの結果
+### 📊 6つの〇〇の定義
 
 `examples/concepts-20261115.json`（12 概念、類似 6 組、seeds 6）で `rules` を実行した結果です。
 
@@ -134,31 +242,7 @@ TalkCompress の判定モデルと同じ分け方で、まず規則が決め、�
 
 入力は継続監査サイトの「統合証跡JSON」（`integration-audit/3`）です。観測 JSON の `{"aoi_integration": {...}}` で包まれた形も受け付けます。GitHub への取得・書き込みは行いません。
 
-### 🗂️ オントロジー
-
-クラスと関係は `gh_audit/gh_audit.py` の `RELATIONS`（関係ごとの domain と range）だけで定義し、クラスの一覧はそこから導きます（`tools/ontology.classes`）。JSON と Turtle へ同じ定義を出し、読込後に `tools/ontology.violations` と監査固有の規則で検証します。
-
-| クラス | 識別子の範囲 | 主な関係 |
-| --- | --- | --- |
-| Repository | owner/name | 他の実体から belongsTo |
-| PullRequest | リポジトリ＋PR番号 | dependsOn、overlapsWith |
-| Observation | 入力スナップショットの digest＋PR | observes、hasHead、hasBase、hasMain |
-| Commit | リポジトリ＋完全 SHA | belongsTo |
-| Branch | リポジトリ＋ブランチ名 | Observation から targetsBranch |
-| File | リポジトリ＋相対パス | Observation から changesFile |
-| WorkflowRun | リポジトリ＋run ID＋attempt | runsAt、Observation から hasRun |
-
-ほかに Issue、Review、Job、FixedSHA、Artifact、Evidence、EvidenceGap、MainGap、Task、CompletionRecord、Snapshot があります。
-
-```mermaid
-flowchart TD
-  O[Observation] -->|observes| P[PullRequest]
-  O -->|hasHead / hasMain| C[Commit]
-  O -->|hasRun| W[WorkflowRun]
-  W -->|runsAt| C
-  P -->|belongsTo| R[Repository]
-  C -->|belongsTo| R
-```
+### 👀 観測の扱い
 
 - 観測に取得日時・出典・作業状態・merged・mergeable・main 包含を残します。未取得は `null` のままで、false にしません。変更ファイルの未取得は `files_observed=false` で区別します。
 - run は自分のコミット（`runsAt`）にだけ結び付けます。PR の head と同じだとは仮定せず、head が未取得の run にはコミットを作りません。attempt ごとに別のノードです。
@@ -166,7 +250,7 @@ flowchart TD
 - 依存は監査側の主張として取り込み、出典と観測 ID を関係に付けます。Turtle では `rdf:Statement` で表し、古い依存を今も有効な事実に昇格させません。
 - `edges_of(graph)` が監査グラフを芯の辺に直します。`dependsOn` と `changesFile` は向きを返し、向きのない `overlapsWith` は両向きにします。循環と順序は `cycles GRAPH dependsOn`、`order GRAPH dependsOn` のように依存の辺だけで問います。
 
-### 🪜 統合順序（`plan`）
+### 🪜 統合順序（`plan`）の補足
 
 PR ごとに最新の観測を選び、`contained_in_main=true` の依存先を消化済みとして、芯の `order` で順序を出します。merged だけでは main への導入を推定しません。未観測の依存先、循環、その下流は `blocked` に残し、独立した部分の順序は出します。同時刻に矛盾するスナップショットがあればエラーにします。順序は依存関係の制約だけで、CI・未解決レビュー・競合・保留の受入条件は監査ビューで確認します。
 
@@ -191,19 +275,6 @@ PR ごとに最新の観測を選び、`contained_in_main=true` の依存先を�
 - `transfers` は未完了または棚卸し範囲が未確定なら終了コード 2、入力不整合なら 1 です。
 - `state=完了` には、元 SHA と移管先 SHA に一致する receipt、移管先ファイル、main 反映の記録、全受入条件の ID、移管先の Actions URL が必要です。これは記録の整合性検査で、CI 結果・main 包含・機能同等性の独立検証ではありません。移管先が未決でも `target.repository=null` で残せます。
 - 機能は Task として `migration_source`（元 File）・`migration_target`（移管先 Repository）に結び、5 状態と Snapshot・Evidence を保ちます。追加要望は `kind=request` で既存機能の未吸収と区別します。
-
-### 📊 例データでの結果
-
-`examples/audit-20261114.json`（8 リポジトリ、観測した PR は 14 件。依存先として名前だけ出る 1 件を含めて PR ノードは 15）の結果です。2026年11月14日 23:12 JST の監査から抜き出した履歴で、現在の GitHub の状態ではありません。
-
-| 問い | 結果 |
-| --- | --- |
-| `audit` | 719 ノード、1,671 辺（File 542、WorkflowRun 93、Commit 32、PullRequest 15、Observation 14） |
-| `check` | 所見なし |
-| `plan` | 順序 5 件、ブロック 1 件（`SakAnalytics#45` が未観測の `SakAnalytics#44` を待つ）。終了コード 2 |
-| `cycles GRAPH dependsOn` | なし |
-| `reach GRAPH file:myon-bioinformatics/Aoi:README.md` | 96 ノード、うち PR 12 件 |
-| `ladder` | 観測 1,646、導出 50（変更パスの重なり）、候補 0、証明 0 |
 
 監査の入力には「常に成り立つ」と言える関係がないので、証明の段は 0 本です。第二弾の `equivalent` のように、他で証明された関係を辺として渡したときに埋まります。
 
@@ -270,17 +341,6 @@ gh_audit.plan(gh_audit.audit([snapshot]))             # 監査グラフ → 依�
 ```
 
 Node からは `vendor/py_launch.cjs` の `--call 関数名` で、`if __name__ == "__main__"` を通さずに関数を名前で呼べます（引数は1つずつ JSON）。大きな JSON は引数ではなく CLI のファイル入力か標準入力で渡します。GraphQL は取得側で `integration-audit/3` へ変換する境界で、本体から認証・HTTP を呼びません。Rust への切り出しは同じ JSON と終了コードを保つ案で、未実装・未測定です。
-
-## 🧰 tools
-
-本体の芯を組み合わせて、名前の意味（オントロジー → トートロジー）に沿った問いに答えます。実装を二重に持たず、芯を呼ぶだけです。
-
-| ファイル | 関数 | 答えること |
-| --- | --- | --- |
-| ⚖️ `tautology.py` | `holds` `judge` `rules` `equivalent` | 規則での判定・可逆な定義・真理値表（第二弾） |
-| ✅ `tautology.py` | `standing` `gaps` `entailed` | ノードが立つ段（深さ無制限で一番弱い段）、証明未満の辺、推移的な種類で証明から従うがまだ書かれていない辺 |
-| 📚 `ontology.py` | `classes` `violations` `identity` | 渡した語彙（`gh_audit.RELATIONS` と同じ形）から外れた所を全部挙げる（直さない）。鍵に昇格できる最初の属性の組 |
-| 🕸️ `knowledgegraph.py` | `relation_cycles` `topological_order` | 親の `fleet_records` / `vendor_fleet_plan` と同じ名前・形。親は自前の写しの代わりにこれを呼べる |
 
 ## 🧪 テスト
 

@@ -133,6 +133,32 @@ class OntologyTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             ga.validate({"schema": ga.KG_SCHEMA, **graph})
 
+    def readme_vocabulary(self, heading):
+        """(classes, {(class, relation, target class)}) from a README table of classes and outgoing relations."""
+        section = (ROOT / "README.md").read_text(encoding="utf-8").split(heading + "\n", 1)[1].split("\n#", 1)[0]
+        classes, triples = set(), set()
+        for line in section.splitlines():
+            cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+            if len(cells) != 3 or not cells[0].startswith("`"):
+                continue
+            name = cells[0].strip("`")
+            classes.add(name)
+            for part in cells[2].split("・"):
+                if "→" in part:
+                    relations, target = part.split("→")
+                    triples |= {(name, relation, target.strip()) for relation in re.findall(r"`(\w+)`", relations)}
+        return classes, triples
+
+    def test_readme_tables_hold_exactly_the_code_vocabulary(self):
+        classes, triples = self.readme_vocabulary("### 🔭 第一弾のクラスと関係")
+        self.assertEqual(classes, set(ontology.classes(ga.RELATIONS)))
+        self.assertEqual(triples, {(domain, relation, target) for relation, (domains, target) in ga.RELATIONS.items() for domain in domains})
+        graph = ot.concept_edges(concepts())
+        kinds = {node["id"]: node["type"] for node in graph["nodes"]}
+        classes, triples = self.readme_vocabulary("### 🧩 第二弾のクラスと関係")
+        self.assertEqual(classes, set(kinds.values()))
+        self.assertEqual(triples, {(kinds[e["source"]], e["kind"], kinds[e["target"]]) for e in graph["edges"]})
+
     def test_identity_promotes_the_first_candidate_that_is_a_key(self):
         items = [{"id": 1, "run": 1, "name": "a"}, {"id": 1, "run": 2, "name": "b"}]
         found = ontology.identity(items, [("id",), ("id", "run"), ("name",)])
