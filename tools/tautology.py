@@ -28,7 +28,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import ontautology as ot  # noqa: E402
 
-__all__ = ["standing", "gaps", "entailed", "holds", "atoms", "judge", "rules", "equivalent", "main"]
+__all__ = ["standing", "gaps", "entailed", "holds", "atoms", "judge", "rules", "holdout", "equivalent", "main"]
 OPS = {"AND": all, "OR": any, "NAND": lambda v: not all(v), "NOR": lambda v: not any(v), "NOT": lambda v: not v[0]}
 
 
@@ -109,6 +109,55 @@ def rules(corpus, concept):
     return {"concept": concept, "candidates": found, "definition": definition, "to_model": found[0]["to_model"] if found else []}
 
 
+def _without(corpus, name):
+    """The corpus with one concept masked out: its elements and every similar pair that names it."""
+    concepts = corpus.get("concepts", {})
+    concepts = ({k: v for k, v in concepts.items() if k != name} if isinstance(concepts, dict)
+                else [entry for entry in concepts if entry.get("id") != name])
+    ends = lambda e: e if isinstance(e, (list, tuple)) else (e.get("left", e.get("source")), e.get("right", e.get("target")))
+    return {**corpus, "concepts": concepts, "similar": [e for e in corpus.get("similar", []) if name not in ends(e)]}
+
+
+def holdout(corpus, names=None):
+    """How each definition behaves on what it was not built from: 🙈 unseen concepts and 🎭 masked elements.
+
+    unseen  for every other observed concept x: mask x out of the corpus, build the definition again, then judge x
+            with it. A pass is an FP on unseen data — the collection looked enough only because x was missing.
+    masked  for every element e of the concept: judge the concept itself with e hidden. A miss means the
+            definition needs e and breaks when that observation is missing (an AND keeps every element it names).
+    Defaults to the corpus seeds. ``summary`` adds the counts up; ``rate`` is misses per test.
+    """
+    defined = ot.define_concepts(corpus)["concepts"]
+    names = names or corpus.get("seeds") or sorted(defined)
+    observed = [name for name, info in sorted(defined.items()) if info["elements"] is not None]
+    found = {}
+    for name in names:
+        info = defined.get(name)
+        if info is None or info["elements"] is None:
+            found[name] = {"concept": name, "definition": None, "to_model": [name]}
+            continue
+        elements, definition = set(info["elements"]), rules(corpus, name)["definition"]
+        fp, undefined = [], []
+        for other in (x for x in observed if x != name):
+            rule = rules(_without(corpus, other), name)["definition"]
+            if rule is None:
+                undefined.append(other)
+            elif holds(rule, set(defined[other]["elements"])):
+                fp.append(other)
+        fn = [] if definition is None else [e for e in sorted(elements) if not holds(definition, elements - {e})]
+        found[name] = {"concept": name, "definition": definition,
+                       "unseen": {"tested": len(observed) - 1 - len(undefined), "fp": fp, "undefined": undefined},
+                       "masked": {"tested": len(elements) if definition else 0, "fn": fn}}
+    rows = [row for row in found.values() if row["definition"] is not None]
+    count = lambda part, key: sum(len(row[part][key]) for row in rows)
+    tested = lambda part: sum(row[part]["tested"] for row in rows)
+    rate = lambda part, key: round(count(part, key) / tested(part), 4) if tested(part) else None
+    return {"concepts": found, "summary": {
+        "seeds": len(names), "defined": len(rows),
+        "unseen": {"tested": tested("unseen"), "fp": count("unseen", "fp"), "rate": rate("unseen", "fp")},
+        "masked": {"tested": tested("masked"), "fn": count("masked", "fn"), "rate": rate("masked", "fn")}}}
+
+
 def equivalent(left, right, *, limit=16):
     """Do two rules agree on every truth assignment of their features (at most ``limit`` of them).
 
@@ -172,12 +221,19 @@ def _equivalent(args):
     return found, not found["equivalent"]
 
 
+def _holdout(args):
+    found = holdout(ot._read_json(args.graph), args.terms or None)
+    summary = found["summary"]
+    return found, bool(summary["unseen"]["fp"]) or summary["defined"] < summary["seeds"]
+
+
 def main(argv=None):
     """Exit codes as the core: 0 answered, 1 input error, 2 answered and something needs a look."""
     return ot.main(argv, commands=(
         ("rules", "🧩 第二弾 · ⚖️ candidate rules per concept, judged; the first reversible one is the definition", _rules_arguments, _rules),
         ("judge", "🧩 第二弾 · 🧮 one rule as the judge of a concept: FN / FP / accuracy / propositions", _judge_arguments, _judge),
-        ("equivalent", "🧩 第二弾 · ✅ two rules on every truth assignment (proof) or a counterexample", _equivalent_arguments, _equivalent)))
+        ("equivalent", "🧩 第二弾 · ✅ two rules on every truth assignment (proof) or a counterexample", _equivalent_arguments, _equivalent),
+        ("holdout", "🧩 第二弾 · 🙈 unseen concepts and 🎭 masked elements: how definitions hold on what they were not built from", _rules_arguments, _holdout)))
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 {
   "schema": "ontautology-concepts/1",
-  "note": "Minimal similarity pairs for Phase 2 concept-definition and roundtrip experiments.",
+  "note": "Phase 2 similarity pairs. ギター has four similar concepts and one near miss (ピアノ, no similar link); ピカチュウ has ピチュー. Used for definitions, roundtrip and holdout (unseen / masked) checks.",
   "seeds": ["ギター", "ピカチュウ", "鮭", "iPhone", "エナジードリンク", "ルイージ"],
   "similar": [
     {"left": "ギター", "right": "ベース", "basis": "observed", "note": "撥弦・フレット付き弦楽器のペア"},
@@ -8,7 +8,11 @@
     {"left": "ピカチュウ", "right": "ライチュウ", "basis": "observed", "note": "でんきタイプ進化ラインのペア"},
     {"left": "鮭", "right": "サクラマス", "basis": "observed", "note": "サケ科サケ属の遡河回遊魚ペア"},
     {"left": "エナジードリンク", "right": "コーヒー", "basis": "observed", "note": "カフェイン系覚醒飲料のペア"},
-    {"left": "iPhone", "right": "Android", "basis": "observed", "note": "現代スマートフォンの代表ペア"}
+    {"left": "iPhone", "right": "Android", "basis": "observed", "note": "現代スマートフォンの代表ペア"},
+    {"left": "ギター", "right": "ウクレレ", "basis": "observed", "note": "フレット付き撥弦。弦の数と大きさが違う"},
+    {"left": "ギター", "right": "三味線", "basis": "observed", "note": "撥弦の和楽器。フレットがない"},
+    {"left": "ギター", "right": "バイオリン", "basis": "observed", "note": "弦楽器だが弓で擦る"},
+    {"left": "ピカチュウ", "right": "ピチュー", "basis": "observed", "note": "でんきタイプ進化ラインの進化前"}
   ],
   "concepts": {
     "ギター": ["楽器", "弦楽器", "撥弦", "フレット", "ボディ", "6弦標準", "中高音主体"],
@@ -22,6 +26,11 @@
     "エナジードリンク": ["飲料", "カフェイン含有", "覚醒目的", "炭酸", "甘味料", "タウリン・ビタミンB群"],
     "コーヒー": ["飲料", "カフェイン含有", "覚醒目的", "焙煎豆", "抽出液", "苦味"],
     "iPhone": ["スマートフォン", "タッチパネル", "アプリ実行環境", "モバイル通信", "Apple製", "iOS"],
-    "Android": ["スマートフォン", "タッチパネル", "アプリ実行環境", "モバイル通信", "Google系OS", "複数メーカー採用"]
+    "Android": ["スマートフォン", "タッチパネル", "アプリ実行環境", "モバイル通信", "Google系OS", "複数メーカー採用"],
+    "ウクレレ": ["楽器", "弦楽器", "撥弦", "フレット", "ボディ", "4弦標準", "中高音主体", "小型"],
+    "三味線": ["楽器", "弦楽器", "撥弦", "ボディ", "3弦標準", "フレットなし", "和楽器", "撥で弾く"],
+    "バイオリン": ["楽器", "弦楽器", "擦弦", "ボディ", "4弦標準", "フレットなし", "弓で弾く", "中高音主体"],
+    "ピアノ": ["楽器", "弦楽器", "打弦", "鍵盤", "ボディ", "88鍵標準"],
+    "ピチュー": ["ポケモン", "でんきタイプ", "ねずみ分類", "黄色", "ベビィポケモン", "進化前(なつき進化)"]
   }
 }

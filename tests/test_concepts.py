@@ -22,14 +22,14 @@ def _load_example():
 
 
 class ConceptDefinitionTests(unittest.TestCase):
-    def test_six_example_pairs_derive_genus_differentia_and_unique_roundtrip(self):
+    def test_example_pairs_derive_genus_differentia_and_unique_roundtrip(self):
         corpus = _load_example()
         defined = ot.define_concepts(corpus)
-        self.assertEqual(defined["similar_pairs"], 6)
+        self.assertEqual(defined["similar_pairs"], 10)
         self.assertEqual(defined["unknown"], [])
         concepts = defined["concepts"]
         expected_genus = {
-            "ギター": ["フレット", "ボディ", "弦楽器", "撥弦", "楽器"],
+            "ギター": ["ボディ", "弦楽器", "楽器"],  # with ウクレレ・三味線・バイオリン the common part narrows
             "ピカチュウ": ["でんきタイプ", "ねずみ分類", "ポケモン"],
             "鮭": ["サケ属", "サケ科", "遡河回遊魚", "食用", "魚類"],
             "iPhone": ["アプリ実行環境", "スマートフォン", "タッチパネル", "モバイル通信"],
@@ -62,7 +62,7 @@ class ConceptDefinitionTests(unittest.TestCase):
         after = ot.define_concepts(with_counter, ["ギター"])["concepts"]["ギター"]
         self.assertEqual(after["status"], "unique")
         self.assertNotIn(["6弦標準"], after["differentia"]["minimal_keys"])
-        self.assertEqual(after["differentia"]["minimal_keys"], [["中高音主体"]])
+        self.assertEqual(after["differentia"]["minimal_keys"], [["6弦標準", "中高音主体"]])  # ウクレレ shares 中高音主体
 
     def test_subset_elements_report_unavoidable_collision_and_stay_hypothesis(self):
         corpus = _load_example()
@@ -71,7 +71,7 @@ class ConceptDefinitionTests(unittest.TestCase):
         entry = ot.define_concepts(corpus, ["楽器の何か"])["concepts"]["楽器の何か"]
         self.assertEqual(entry["status"], "collides")
         self.assertEqual(entry["basis"], "hypothesis")
-        self.assertEqual(entry["differentia"]["unavoidable_collisions"], ["ギター", "ベース"])
+        self.assertEqual(entry["differentia"]["unavoidable_collisions"], ["ウクレレ", "ギター", "ベース", "三味線"])
         self.assertEqual(entry["definition"]["roundtrip"]["verdict"], "collides")
 
     def test_unobserved_similar_peer_or_hypothesis_link_prevents_derived_promotion(self):
@@ -130,10 +130,10 @@ class WatchLayerTests(unittest.TestCase):
 
     def test_an_unobserved_concept_has_no_observation(self):
         corpus = _load_example()
-        corpus["similar"].append({"left": "ギター", "right": "ウクレレ", "basis": "hypothesis"})
+        corpus["similar"].append({"left": "ギター", "right": "マンドリン", "basis": "hypothesis"})
         graph, nodes = self.graph(corpus)
-        self.assertIn("concept:ウクレレ", nodes)
-        self.assertNotIn("concept:ウクレレ", {e["target"] for e in graph["edges"] if e["kind"] == "observes"})
+        self.assertIn("concept:マンドリン", nodes)
+        self.assertNotIn("concept:マンドリン", {e["target"] for e in graph["edges"] if e["kind"] == "observes"})
 
     def test_the_snapshot_ignores_input_order_and_follows_content(self):
         corpus = _load_example()
@@ -194,8 +194,9 @@ class ConceptCliTests(unittest.TestCase):
         }
         out_a = self.run_cli("define", "-", data=json.dumps(corpus, ensure_ascii=False), seed="1")
         out_b = self.run_cli("define", "-", data=json.dumps(reversed_corpus, ensure_ascii=False), seed="99")
-        self.assertEqual(out_a.returncode, 0, out_a.stderr)
-        self.assertEqual(out_b.returncode, 0, out_b.stderr)
+        # ピアノ has no similar concept (a near miss), so define answers and asks for a look (2).
+        self.assertEqual(out_a.returncode, 2, out_a.stderr)
+        self.assertEqual(out_b.returncode, 2, out_b.stderr)
         self.assertEqual(out_a.stdout, out_b.stdout)
 
     def test_core_cli_commands_read_concept_corpus_directly(self):

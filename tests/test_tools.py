@@ -300,7 +300,7 @@ class JudgeTests(unittest.TestCase):
         self.assertEqual(json.loads(run_cli(script, "rules", "-", "鮭", data=json.dumps(concepts())).stdout)["鮭"]["definition"],
                          tautology.rules(concepts(), "鮭")["definition"])
         genus = run_cli(script, "judge", corpus_path, "ギター", json.dumps(["AND", "弦楽器", "撥弦", "フレット"]))
-        self.assertEqual((genus.returncode, json.loads(genus.stdout)["fp"]), (2, ["ベース"]))
+        self.assertEqual((genus.returncode, json.loads(genus.stdout)["fp"]), (2, ["ウクレレ", "ベース"]))
         self.assertEqual(json.loads(run_cli(script, "judge", corpus_path, "ギター", "6弦標準").stdout)["verdict"], "reversible")
         self.assertEqual(run_cli(script, "equivalent", '["NOR", "a", "b"]', '["AND", ["NOT", "a"], ["NOT", "b"]]').returncode, 0)
         self.assertEqual(run_cli(script, "equivalent", '["NAND", "a", "b"]', '["NOR", "a", "b"]').returncode, 2)
@@ -308,11 +308,57 @@ class JudgeTests(unittest.TestCase):
 
     def test_on_a_tie_the_definition_is_built_from_the_genus(self):
         corpus = concepts()
-        self.assertEqual(tautology.rules(corpus, "ギター")["definition"],
-                         ["AND", "フレット", "ボディ", "弦楽器", "撥弦", "楽器", ["NOR", "4弦標準", "低音主体"]])
+        self.assertEqual(tautology.rules(corpus, "ルイージ")["definition"],  # ties with all-elements at 8 features
+                         ["AND", "オーバーオール", "ゲームキャラクター", "人間", "任天堂", "帽子", "配管工", ["NOR", "兄", "赤色"]])
+        # ピアノ shares the genus of ギター without being similar, so excluding the neighbours is not enough there
+        self.assertEqual(tautology.rules(corpus, "ギター")["definition"], ["AND", "ボディ", "弦楽器", "楽器", ["OR", ["AND", "6弦標準"]]])
         for seed in corpus["seeds"]:
             with self.subTest(seed=seed):
                 self.assertNotEqual(tautology.rules(corpus, seed)["candidates"][0]["shape"], "all-elements")
+
+    def test_holdout_shows_the_one_similar_trap(self):
+        # With one similar concept, hiding it leaves only the far ピアノ to tell ギター from: a short key (撥弦)
+        # is enough there, and the hidden ベース has it too, so the rebuilt definition lets ベース in.
+        corpus = {"seeds": ["ギター"], "similar": [["ギター", "ベース"]],
+                  "concepts": {"ギター": ["楽器", "撥弦", "6弦標準"], "ベース": ["楽器", "撥弦", "4弦標準", "低音主体"],
+                               "ピアノ": ["楽器", "打弦", "鍵盤"]}}
+        found = tautology.holdout(corpus)
+        self.assertEqual(found["concepts"]["ギター"]["unseen"], {"tested": 2, "fp": ["ベース"], "undefined": []})
+        self.assertEqual(found["summary"]["unseen"], {"tested": 2, "fp": 1, "rate": 0.5})
+
+    def test_holdout_passes_when_the_hidden_one_is_still_excluded(self):
+        corpus = {"seeds": ["ギター"], "similar": [["ギター", "ベース"], ["ギター", "ウクレレ"]],
+                  "concepts": {"ギター": ["楽器", "撥弦", "6弦標準"], "ベース": ["楽器", "撥弦", "4弦標準"],
+                               "ウクレレ": ["楽器", "撥弦", "4弦標準", "小型"]}}
+        self.assertEqual(tautology.holdout(corpus)["summary"]["unseen"], {"tested": 2, "fp": 0, "rate": 0.0})
+        from test_ontautology import run_cli
+        done = run_cli(ROOT / "tools/tautology.py", "holdout", "-", data=json.dumps(corpus, ensure_ascii=False))
+        self.assertEqual(done.returncode, 0, done.stderr)
+
+    def test_holdout_on_the_example_names_the_closest_unseen_neighbour(self):
+        corpus = concepts()
+        found = tautology.holdout(corpus)
+        rows = found["concepts"]
+        self.assertEqual(list(rows), corpus["seeds"])
+        self.assertEqual(rows["ギター"]["unseen"]["fp"], ["ウクレレ"])
+        self.assertEqual(rows["ピカチュウ"]["unseen"]["fp"], ["ピチュー"])
+        summary = found["summary"]
+        self.assertEqual(summary["unseen"]["tested"], sum(r["unseen"]["tested"] for r in rows.values()))
+        self.assertEqual(summary["unseen"]["fp"], sum(len(r["unseen"]["fp"]) for r in rows.values()))
+        self.assertEqual(summary["unseen"]["rate"], round(summary["unseen"]["fp"] / summary["unseen"]["tested"], 4))
+        # 🎭 every AND part is needed; the OR of two keys in ピカチュウ survives losing either one
+        self.assertEqual(rows["ギター"]["masked"]["fn"], sorted(["6弦標準", "ボディ", "弦楽器", "楽器"]))
+        self.assertEqual(rows["ピカチュウ"]["masked"]["fn"], sorted(["でんきタイプ", "ねずみ分類", "ポケモン"]))
+        from test_ontautology import run_cli
+        self.assertEqual(run_cli(ROOT / "tools/tautology.py", "holdout", str(ROOT / "examples/concepts-20261115.json")).returncode, 2)
+
+    def test_masking_removes_the_concept_and_its_pairs_in_either_shape(self):
+        corpus = {"similar": [["a", "b"], {"left": "b", "right": "c"}, {"source": "a", "target": "c"}],
+                  "concepts": [{"id": "a", "elements": ["x"]}, {"id": "b", "elements": ["y"]}]}
+        masked = tautology._without(corpus, "a")
+        self.assertEqual(masked["concepts"], [{"id": "b", "elements": ["y"]}])
+        self.assertEqual(masked["similar"], [{"left": "b", "right": "c"}])
+        self.assertEqual(tautology._without({"concepts": {"a": ["x"], "b": ["y"]}}, "b")["concepts"], {"a": ["x"]})
 
     def test_counts_add_up_and_fn_refutes_the_converse(self):
         corpus = concepts()
@@ -324,10 +370,10 @@ class JudgeTests(unittest.TestCase):
 
     def test_unobserved_concepts_go_to_the_judgment_model(self):
         corpus = concepts()
-        corpus["similar"].append({"left": "ギター", "right": "ウクレレ", "basis": "hypothesis"})
+        corpus["similar"].append({"left": "ギター", "right": "マンドリン", "basis": "hypothesis"})
         found = tautology.judge(corpus, "ギター", ["AND", "6弦標準"])
-        self.assertEqual((found["to_model"], found["verdict"], found["basis"]), (["ウクレレ"], "undecided", "hypothesis"))
-        self.assertEqual(tautology.rules(corpus, "ウクレレ")["to_model"], ["ウクレレ"])
+        self.assertEqual((found["to_model"], found["verdict"], found["basis"]), (["マンドリン"], "undecided", "hypothesis"))
+        self.assertEqual(tautology.rules(corpus, "マンドリン")["to_model"], ["マンドリン"])
 
     def test_one_more_concept_can_refute_a_reversible_definition(self):
         corpus = concepts()
