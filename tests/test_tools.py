@@ -308,11 +308,11 @@ class JudgeTests(unittest.TestCase):
 
     def test_the_definition_is_built_from_what_the_concept_has(self):
         corpus = concepts()
-        # five clues, any four of them; 配管工 is no key (マリオ has it too)
-        clues = ["主役シリーズ:ルイージマンション", "初登場年:1983", "帽子のマーク:L", "弟", "緑色"]
-        four = [["AND", *(clue for clue in clues if clue != left)] for left in reversed(clues)]
+        # four clues, any three; 配管工 is no key (マリオ has it too), and the two name origins are one clue
+        clues = ["主役シリーズ:ルイージマンション", "初登場年:1983", "帽子のマーク:L", ["OR", "名前の由来:イタリアで多い名前", "名前の由来:類似"]]
+        three = [["AND", *(clue for j, clue in enumerate(clues) if j != left)] for left in reversed(range(len(clues)))]
         self.assertEqual(tautology.rules(corpus, "ルイージ")["definition"],
-                         ["AND", "オーバーオール", "ゲームキャラクター", "人間", "任天堂", "帽子", ["OR", *four]])
+                         ["AND", "オーバーオール", "ゲームキャラクター", "人間", "任天堂", "帽子", ["OR", *three]])
         # ピアノ shares the genus of ギター without being similar, so excluding the neighbours is not enough there
         # three clues, any two: 6弦標準, a model, a riff (the key search stops at five, so 開放弦 is not among them)
         models = ["OR", "代表モデル:ストラトキャスター", "代表モデル:レスポール"]
@@ -508,7 +508,7 @@ class GuessTests(unittest.TestCase):
         maybe = [e for e in graph["edges"] if e.get("maybe")]
         self.assertEqual(sorted((e["source"], e["target"]) for e in maybe),
                          [("elem:アクセサリ:Sペン", "concept:Android"), ("elem:エレキ", "concept:ベース"),
-                          ("elem:モバイル通信", "concept:iPad"), ("elem:名前の由来:類似", "concept:ルイージ"),
+                          ("elem:モバイル通信", "concept:iPad"),
                           ("elem:有名なリフ:Seven Nation Army", "concept:ベース"), ("elem:流通名:トラウトサーモン", "concept:スチールヘッド"),
                           ("elem:炭酸", "concept:カクテル"), ("elem:缶入り", "concept:エナジードリンク"), ("elem:金属弦", "concept:ギター"),
                           ("elem:黄色", "concept:ミミッキュ")])
