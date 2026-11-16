@@ -184,6 +184,7 @@ process.exit(result.status ?? 1);
 | 🕸️ `knowledgegraph.py` | `relation_cycles(edges)` `topological_order(edges)` | 親の `fleet_records` / `vendor_fleet_plan` と同じ名前・形。親は自前の写しの代わりにこれを呼べる |
 | 📚 `ontology.py` | `classes(relations)` `violations(graph, relations)` `identity(items, candidates)` | 語彙（`RELATIONS` と同じ形）から外れた所を全部挙げる（直さない）。候補の属性の組から、鍵に昇格できる最初の組を選ぶ |
 | ✅ `tautology.py` | `standing(edges, node)` `gaps(edges)` `entailed(edges, kinds)` | ノードが立つ段（深さ無制限で一番弱い段）、証明未満の辺、推移的な種類で証明から従うがまだ書かれていない辺 |
+| ⚖️ `tautology.py` | `holds(rule, elements)` `judge(corpus, concept, rule)` `rules(corpus, concept)` `equivalent(a, b)` | AND・OR・NOT・NAND・NOR の規則で〇〇かを判定し FN・FP・精度を出す。共通項から規則の候補を組み、可逆な最初の1本を定義にする。書き換えた規則が全通りで同じか（真理値表） |
 
 ## 🧪 テスト
 
@@ -192,7 +193,7 @@ python -S -m unittest discover -s tests                     # 標準ライブラ
 uv run --no-project --with redis python -m unittest discover -s tests -p test_tools.py -k RedisCrossCheck -v   # 🧱 Redis で答え合わせ
 ```
 
-🧱 `RedisCrossCheck` は、外部モジュールで先に考え方を確かめるための足場です。Redis の集合と `HSETNX` で同じ問い（`reach` の到達先、`key_report` の判定）を別に解き、乱数で作った入力すべてで本体と一致するかを見ます。`redis` パッケージか `redis-server` が無ければ skip し、CI の `redis` ジョブでだけ skip を失敗にします。サーバーは一時ディレクトリの unix socket で立て、ポートも保存も使いません。本体と tools/ は Redis を import しません。
+🧱 `RedisCrossCheck` は、外部モジュールで先に考え方を確かめるための足場です。Redis の集合と `HSETNX` で同じ問い（`reach` の到達先、`key_report` の判定、規則が通す概念を `SINTER`・`SUNION`・`SDIFF` の集合演算で、類と種差を `SINTER`・`SDIFF` で）を別に解き、乱数で作った入力すべてで本体と一致するかを見ます。`redis` パッケージか `redis-server` が無ければ skip し、CI の `redis` ジョブでだけ skip を失敗にします。サーバーは一時ディレクトリの unix socket で立て、ポートも保存も使いません。本体と tools/ は Redis を import しません。
 
 ## 🧭 置くもの・置かないもの
 
@@ -200,17 +201,31 @@ uv run --no-project --with redis python -m unittest discover -s tests -p test_to
 - 置かない: GitHub や Git からの取得、各リポジトリ固有の記録形式の解釈、画面。それらは記録を書くリポジトリと親（myon-bioinformatics）の役目で、ここを呼ぶ側です。
 - OWL 準拠は主張しません。SPARQL や GraphQL の代わりに、関数を名前で呼びます。
 
-## 🧩 類似ペアからの定義抽出（第二弾）とテスト用 Redis
+## 🧩 類似ペアからの定義抽出（第二弾）
 
 `examples/concepts-20261115.json` のように `similar`（`ギター↔ベース`、`マリオ↔ルイージ`、`ピカチュウ↔ライチュウ`、`鮭↔サクラマス`、`エナジードリンク↔コーヒー`、`iPhone↔Android`）と各概念の観察要素を渡すと、`define` が類似群の**共通項（類）**と最寄り概念を分ける**最小識別鍵（種差）**を導出し、`roundtrip` で要素集合だけから元の語へ一意に戻るか（衝突しないか）を検証します。
 
 - 反例（例: `6弦ベース` の追加）が来ると `roundtrip` が `collides` を返し、最小識別鍵が自動で組み替わります。
 - 類似先の要素が未観測（`null`）や `basis=hypothesis` だけの辺しかない場合、`derived` に昇格せず `hypothesis` に留まります。
-- 本体（`ontautology.py`）は標準ライブラリのみのまま保ち、テスト側（`tests/redis_helper.py` / `tests/test_concepts.py`）で `REDIS_URL` が設定されている場合は標準ライブラリ実装の RESP2 クライアント経由で Redis（`SINTER` / `SDIFF` 検算と `roundtrip` キャッシュ）を利用できます。未設定時はインメモリの `FakeRedis` にフォールバックするため、`python -S -m unittest discover -s tests` は外部依存なしでそのまま通ります。
 
-```sh
-REDIS_URL=redis://127.0.0.1:6379/15 python3 -S -m unittest discover -s tests -v
+### ⚖️ 規則で判定し、可逆なものを定義にする
+
+TalkCompress の判定モデルと同じ分け方です。まず規則が決め、規則で決められないもの（要素が未観測の概念）は `to_model` として判定モデルに回します。OTL は LLM を呼びません。
+
+| 段 | 何で決まるか | basis |
+| --- | --- | --- |
+| 🧮 規則 | `["AND", "弦楽器", ["NOR", "4弦標準", "低音主体"]]` のような AND・OR・NOT・NAND・NOR の木 | — |
+| ⚖️ 判定 | 集めた全概念に当て、FP（他の概念を通す）は命題・対偶を、FN（〇〇を落とす）は逆・裏を覆す | FN・FP が 0 で `reversible` → `derived` |
+| ✅ 可逆 | 書き換えた規則（ド・モルガンなど）が真理値表の全通りで同じ | `proof` |
+
+```python
+from tools import tautology
+found = tautology.rules(corpus, "ギター")      # 類だけ（ベースも通す）→ 類 NOR 類似の固有 → … の順に判定
+found["definition"]                           # 可逆な最初の規則
+tautology.equivalent(["NOR", "a", "b"], ["AND", ["NOT", "a"], ["NOT", "b"]])   # {"equivalent": True, "basis": "proof"}
 ```
+
+`reversible` は集めた概念の範囲での話です。概念が1つ増えると FP が出ることがあります（テストで固定）。
 
 ## 方針メモ（たたき台）
 
