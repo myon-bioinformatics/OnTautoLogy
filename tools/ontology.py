@@ -1,6 +1,6 @@
 """Ontology tool: what a vocabulary allows, and which attributes may become an identity. Standard library only.
 
-A vocabulary is a mapping ``relation -> (domains, range)`` — the shape of ``ontautology.RELATIONS``. The classes
+A vocabulary is a mapping ``relation -> (domains, range)`` — such as ``gh_audit.RELATIONS``, passed in. The classes
 are exactly the types the relations name. ``violations`` lists every place a graph leaves its vocabulary and
 repairs nothing; the core ``validate`` stops at the first one and also knows the audit's own rules.
 
@@ -16,18 +16,16 @@ import ontautology as ot  # noqa: E402
 __all__ = ["classes", "violations", "identity"]
 
 
-def classes(relations=None):
-    """The classes a vocabulary names, sorted. Without an argument: the audit vocabulary of the core."""
-    relations = ot.RELATIONS if relations is None else relations
+def classes(relations):
+    """The classes a vocabulary names, sorted."""
     return sorted({kind for domains, range_type in relations.values() for kind in (*domains, range_type)})
 
 
-def violations(graph, relations=None):
+def violations(graph, relations):
     """Every place ``graph`` ({"nodes": [{"id", "type"}], "edges": [{"source", "relation", "target"}]}) leaves
     the vocabulary: a node id used twice, an unknown class, an edge to a node that is not there, an unknown
     relation, a relation between the wrong classes. An empty list means the vocabulary holds for these
     nodes and edges — nothing more."""
-    relations = ot.RELATIONS if relations is None else relations
     known, findings, nodes = set(classes(relations)), [], {}
     for index, node in enumerate(graph["nodes"]):
         if node["id"] in nodes:

@@ -2,10 +2,12 @@
 
 オントロジーをトートロジーの水準まで持っていく。複数のリポジトリを横断して見るための、小さなナレッジグラフです。Python 3.11 以降の標準ライブラリだけで動き、GitHub からの取得・書き込み・マージ・CI 起動は行いません。
 
-本体は `ontautology.py` 1本で、これだけを vendor すれば動きます。依存は 🧰 tools → 本体 の一方向で、本体は tools/ も vendor/ も読みません。
+本体は `ontautology.py` 1本で、リポジトリを知らない汎用の部分だけを持ち、これだけを vendor すれば動きます。GitHub 監査ダッシュボード向けは 🔭 `gh_audit/gh_audit.py` に分けました。依存は 🔭 gh_audit → 🧰 tools → 🧠 本体 の一方向で、本体は tools/ も vendor/ も読まず、汎用の tools も `gh_audit` を読みません。
 
 ```
-ontautology.py          🧠🔭 本体（標準ライブラリのみ、単体で配れる）
+ontautology.py          🧠🧩 本体（汎用・標準ライブラリのみ、単体で配れる）
+gh_audit/
+  gh_audit.py           🔭 GitHub 監査ダッシュボード向け（PR 監査・plan・diff・Turtle・Flutter 移管台帳）。監査の enhancement はこのフォルダへ
 tools/
   knowledgegraph.py     🕸️ 親の fleet コードと同じ名前・形の答え（relation_cycles・topological_order）
   ontology.py           📚 語彙の違反を全部挙げる（violations）・鍵の昇格（identity）
@@ -13,49 +15,55 @@ tools/
 vendor/                 📦 親から借りるもの（vendor.lock.json で SHA 固定）
   py_launch.cjs         Node → Python の起動役（関数を名前で呼ぶ --call も）
   fleet_check.py        子リポジトリ共通の検査
-tests/                  🧪 unittest（Redis の答え合わせは任意）
+tests/                  🧪 unittest（test_concepts.py に第二弾、Redis の答え合わせは任意）
 ```
 
 | 部分 | 役割 | 関数 |
 | --- | --- | --- |
 | 1. 🧠 芯 | どのグラフにも要るロジック。リポジトリを知らず、dict / list（JSON）だけを扱う | `check` `reach` `why` `cycles` `order` `ladder` `key_report` |
-| 2. 🔭 横断監査 | 最初の用途。多数のリポジトリの PR 監査スナップショットを、観測の履歴を保った1つのグラフにする | `audit` `validate` `plan` `observation_diff` `turtle` `edges_of` |
+| 2. 🧩 類似と定義 | 第二弾。類似ペア（`ギター↔ベース` など）から共通項（類）と最小識別鍵（種差）を抽出し、要素からの往復復元で衝突を検証する | `define_concepts` `roundtrip_elements` `concept_edges` |
+| 🔭 `gh_audit/gh_audit.py` | 最初の用途。多数のリポジトリの PR 監査スナップショットを、観測の履歴を保った1つのグラフにする（GitHub 固有） | `audit` `validate` `plan` `observation_diff` `turtle` `edges_of` `transfer_report` |
 
-チェックアウトしたディレクトリで `uv tool install .`、または `uv tool install git+https://github.com/myon-bioinformatics/OnTautoLogy.git` で導入できます。導入後は `ontautology audit snapshot.json -o graph.json` を実行できます。Python からは `from ontautology import audit` のように関数名で呼び出せます。
+チェックアウトしたディレクトリで `uv tool install .`、または `uv tool install git+https://github.com/myon-bioinformatics/OnTautoLogy.git` で導入できます。導入後は `ontautology define examples/concepts-20261115.json ギター` を実行できます（`uv tool install` で入るのは本体だけで、監査はチェックアウトから `gh_audit/gh_audit.py` を使います）。Python からは `from ontautology import define_concepts`、`from gh_audit import gh_audit` のように関数名で呼び出せます。
 
 ```sh
-python -S ontautology.py audit examples/audit-20261114.json -o graph.json   # 🔭 スナップショット → グラフ（複数渡すと履歴）
-python -S ontautology.py plan   graph.json                                  # 🪜 main 未導入の PR の依存順
-python -S ontautology.py reach  graph.json file:myon-bioinformatics/Aoi:README.md   # 💥 変更の影響先
-python -S ontautology.py why    graph.json pr:myon-bioinformatics/Aoi#208          # 🔎 判断の根拠
-python -S ontautology.py check  graph.json                                  # 🧪 形・参照・重複
-python -S ontautology.py diff   before.json after.json                      # 🆚 最新観測どうしの差
-python -S ontautology.py audit  examples/audit-20261114.json --format turtle -o graph.ttl   # 🐢 RDF/Turtle
+python -S gh_audit/gh_audit.py audit examples/audit-20261114.json -o graph.json   # 🔭 スナップショット → グラフ（複数渡すと履歴）
+python -S gh_audit/gh_audit.py plan   graph.json                                  # 🪜 main 未導入の PR の依存順
+python -S gh_audit/gh_audit.py reach  graph.json file:myon-bioinformatics/Aoi:README.md   # 💥 変更の影響先
+python -S gh_audit/gh_audit.py why    graph.json pr:myon-bioinformatics/Aoi#208          # 🔎 判断の根拠
+python -S gh_audit/gh_audit.py check  graph.json                                  # 🧪 形・参照・重複
+python -S gh_audit/gh_audit.py diff   before.json after.json                      # 🆚 最新観測どうしの差
+python -S gh_audit/gh_audit.py audit  examples/audit-20261114.json --format turtle -o graph.ttl   # 🐢 RDF/Turtle
+python -S ontautology.py define examples/concepts-20261115.json ギター ピカチュウ 鮭 iPhone エナジードリンク ルイージ  # 🧩 類似から定義抽出
+python -S ontautology.py roundtrip examples/concepts-20261115.json カフェイン含有 飲料  # 🔁 要素→語の往復と衝突確認
 python -S -m unittest discover -s tests
 ```
 
 | コマンド | 入力 | 答え |
 | --- | --- | --- |
-| 🔭 `audit FILE...` | 監査スナップショット | グラフ（`--format turtle` で RDF） |
-| 🪜 `plan GRAPH` | 監査グラフ | main 未導入の PR の依存順・ブロック・未観測の依存先 |
-| 🆚 `diff BEFORE AFTER` | 監査グラフ2つ | 追加・削除・変化した PR |
-| 🐢 `turtle GRAPH` | 監査グラフ | RDF/Turtle |
-| 🧪 `check GRAPH` | どちらでも | 所見の一覧（監査グラフはオントロジーも検証） |
-| 💥 `reach GRAPH NODE...` | どちらでも | 変更が届く先 |
-| 🔎 `why GRAPH NODE...` | どちらでも | 判断の根拠 |
-| 🔁 `cycles GRAPH [KIND...]` | どちらでも | 循環の代表例 |
-| 🪜 `order GRAPH [KIND...]` | どちらでも | 並行できる組の順 |
-| 🪜 `ladder GRAPH` | どちらでも | 根拠の段ごとの本数 |
+| 🔭 `audit FILE...` ¹ | 監査スナップショット | グラフ（`--format turtle` で RDF） |
+| 🪜 `plan GRAPH` ¹ | 監査グラフ | main 未導入の PR の依存順・ブロック・未観測の依存先 |
+| 🆚 `diff BEFORE AFTER` ¹ | 監査グラフ2つ | 追加・削除・変化した PR |
+| 🐢 `turtle GRAPH` ¹ | 監査グラフ | RDF/Turtle |
+| 🧩 `define CORPUS [CONCEPT...]` | 類似コーパス | 類似ペアの共通項（類）・最小識別鍵（種差）・往復判定 |
+| 🔁 `roundtrip CORPUS ELEM...` | 類似コーパス | 指定要素をすべて満たす概念（一意・衝突・空） |
+| 🧪 `check GRAPH` | どれでも | 所見の一覧（監査グラフは ¹ でオントロジーも検証） |
+| 💥 `reach GRAPH NODE...` | どれでも | 変更が届く先 |
+| 🔎 `why GRAPH NODE...` | どれでも | 判断の根拠 |
+| 🔁 `cycles GRAPH [KIND...]` | どれでも | 循環の代表例 |
+| 🪜 `order GRAPH [KIND...]` | どれでも | 並行できる組の順 |
+| 🪜 `ladder GRAPH` | どれでも | 根拠の段ごとの本数 |
 | 🔑 `keys GRAPH FIELDS...` | `"items"` を持つ JSON | 属性の組（`id+run` など）が鍵になるか |
 
-「どちらでも」は、監査グラフと素の `{"edges": [...], "nodes": [...]}` の両方です。全コマンドに `-o FILE` があります。
+¹ 🔭 は `gh_audit/gh_audit.py` のコマンドです。「どれでも」は類似コーパス（`ontautology-concepts/1`）と素の `{"edges": [...], "nodes": [...]}` で、監査グラフも `gh_audit/gh_audit.py` 経由なら同じコマンドで読めます（本体の口 `main(commands=..., load=...)` に監査側が足すので、CLI・標準入力の決まり・終了コードは1つ）。全コマンドに `-o FILE` があります。
 
-終了コード: `0` 答えた / `1` 入力エラー / `2` 答えたが要確認（所見・循環・ブロック・未知のノード・鍵にならない・差分あり）。`2` は道具の失敗ではなく、入力についての答えです。
+終了コード: `0` 答えた / `1` 入力エラー / `2` 答えたが要確認（所見・循環・ブロック・未知のノード・鍵にならない・差分あり・定義衝突または未観測）。`2` は道具の失敗ではなく、入力についての答えです。
 
 Python からは関数名で呼べます。Node からは親の Python ランチャー（`vendor/py_launch.cjs`）を通し、ツールごとの `.mjs` / `.cjs` は置きません。
 
 ```sh
-node vendor/py_launch.cjs -- ontautology.py audit examples/audit-20261114.json -o graph.json   # CLI そのまま
+node vendor/py_launch.cjs -- ontautology.py define examples/concepts-20261115.json ギター   # CLI そのまま
+node vendor/py_launch.cjs -- gh_audit/gh_audit.py audit examples/audit-20261114.json -o graph.json
 node vendor/py_launch.cjs --call standing -- tools/tautology.py '[{"kind":"k","source":"a","target":"b","basis":"proof"}]' '"b"'   # 関数を名前で
 ```
 
@@ -90,7 +98,7 @@ node vendor/py_launch.cjs --call standing -- tools/tautology.py '[{"kind":"k","s
 
 ## 🔭 横断監査のオントロジー
 
-入力は継続監査サイトの「統合証跡JSON」（`integration-audit/3`）です。観測 JSON の `{"aoi_integration": {...}}` で包まれた形も受け付けます。クラスと関係は `ontautology.py` の `RELATIONS`（関係ごとの domain と range）だけで定義し、クラスの一覧はそこから導きます。JSON と Turtle へ同じ定義を出し、読込後に検証します。
+入力は継続監査サイトの「統合証跡JSON」（`integration-audit/3`）です。観測 JSON の `{"aoi_integration": {...}}` で包まれた形も受け付けます。クラスと関係は `gh_audit/gh_audit.py` の `RELATIONS`（関係ごとの domain と range）だけで定義し、クラスの一覧はそこから導きます。JSON と Turtle へ同じ定義を出し、読込後に検証します。
 
 | クラス | 識別子の範囲 | 主な関係 |
 | --- | --- | --- |
@@ -146,8 +154,8 @@ PR ごとに最新の観測を選び、`contained_in_main=true` の依存先を�
 ファイル名を `-` にすると標準入力のUTF-8 JSONを読み、標準出力へ結果を返します。1コマンドにつき標準入力は1回だけです。READMEや設定ファイルの読み込み、外部依存は不要です。
 
 ```sh
-python -S ontautology.py audit - < snapshot.json > graph.json
-python -S ontautology.py plan - < graph.json
+python -S gh_audit/gh_audit.py audit - < snapshot.json > graph.json
+python -S gh_audit/gh_audit.py plan - < graph.json
 ```
 
 Pythonからは `audit([snapshot])` と `plan(graph)` を直接呼べます。Nodeは標準モジュールで同じCLIへ渡します。シェルは起動せず、終了コード `0`（回答）、`1`（入力エラー）、`2`（回答あり・要確認）を引き継ぎます。
@@ -155,7 +163,7 @@ Pythonからは `audit([snapshot])` と `plan(graph)` を直接呼べます。No
 ```js
 const { spawnSync } = require('node:child_process');
 const { readFileSync } = require('node:fs');
-const result = spawnSync('python3', ['-S', 'ontautology.py', 'audit', '-'], {
+const result = spawnSync('python3', ['-S', 'gh_audit/gh_audit.py', 'audit', '-'], {
   input: readFileSync('snapshot.json'),
   encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, timeout: 60000,
 });
@@ -177,8 +185,9 @@ process.exit(result.status ?? 1);
 | ファイル | 関数 | 答えること |
 | --- | --- | --- |
 | 🕸️ `knowledgegraph.py` | `relation_cycles(edges)` `topological_order(edges)` | 親の `fleet_records` / `vendor_fleet_plan` と同じ名前・形。親は自前の写しの代わりにこれを呼べる |
-| 📚 `ontology.py` | `classes(relations)` `violations(graph, relations)` `identity(items, candidates)` | 語彙（`RELATIONS` と同じ形）から外れた所を全部挙げる（直さない）。候補の属性の組から、鍵に昇格できる最初の組を選ぶ |
+| 📚 `ontology.py` | `classes(relations)` `violations(graph, relations)` `identity(items, candidates)` | 語彙（`gh_audit.RELATIONS` と同じ形のものを渡す）から外れた所を全部挙げる（直さない。`gh_audit.validate` もこれを使う）。候補の属性の組から、鍵に昇格できる最初の組を選ぶ |
 | ✅ `tautology.py` | `standing(edges, node)` `gaps(edges)` `entailed(edges, kinds)` | ノードが立つ段（深さ無制限で一番弱い段）、証明未満の辺、推移的な種類で証明から従うがまだ書かれていない辺 |
+| ⚖️ `tautology.py` | `holds(rule, elements)` `judge(corpus, concept, rule)` `rules(corpus, concept)` `equivalent(a, b)` | AND・OR・NOT・NAND・NOR の規則で〇〇かを判定し FN・FP・精度を出す。共通項から規則の候補を組み、可逆な最初の1本を定義にする。書き換えた規則が全通りで同じか（真理値表） |
 
 ## 🧪 テスト
 
@@ -187,13 +196,40 @@ python -S -m unittest discover -s tests                     # 標準ライブラ
 uv run --no-project --with redis python -m unittest discover -s tests -p test_tools.py -k RedisCrossCheck -v   # 🧱 Redis で答え合わせ
 ```
 
-🧱 `RedisCrossCheck` は、外部モジュールで先に考え方を確かめるための足場です。Redis の集合と `HSETNX` で同じ問い（`reach` の到達先、`key_report` の判定）を別に解き、乱数で作った入力すべてで本体と一致するかを見ます。`redis` パッケージか `redis-server` が無ければ skip し、CI の `redis` ジョブでだけ skip を失敗にします。サーバーは一時ディレクトリの unix socket で立て、ポートも保存も使いません。本体と tools/ は Redis を import しません。
+🧱 `RedisCrossCheck` は、外部モジュールで先に考え方を確かめるための足場です。Redis の集合と `HSETNX` で同じ問い（`reach` の到達先、`key_report` の判定、規則が通す概念を `SINTER`・`SUNION`・`SDIFF` の集合演算で、類と種差を `SINTER`・`SDIFF` で）を別に解き、乱数で作った入力すべてで本体と一致するかを見ます。`redis` パッケージか `redis-server` が無ければ skip し、CI の `redis` ジョブでだけ skip を失敗にします。サーバーは一時ディレクトリの unix socket で立て、ポートも保存も使いません。本体と tools/ は Redis を import しません。
 
 ## 🧭 置くもの・置かないもの
 
 - 置く: リポジトリを横断して見るためのグラフのロジックと、その最初の用途である PR 監査の読み取り。
 - 置かない: GitHub や Git からの取得、各リポジトリ固有の記録形式の解釈、画面。それらは記録を書くリポジトリと親（myon-bioinformatics）の役目で、ここを呼ぶ側です。
 - OWL 準拠は主張しません。SPARQL や GraphQL の代わりに、関数を名前で呼びます。
+
+## 🧩 類似ペアからの定義抽出（第二弾）
+
+`examples/concepts-20261115.json` のように `similar`（`ギター↔ベース`、`マリオ↔ルイージ`、`ピカチュウ↔ライチュウ`、`鮭↔サクラマス`、`エナジードリンク↔コーヒー`、`iPhone↔Android`）と各概念の観察要素を渡すと、`define` が類似群の**共通項（類）**と最寄り概念を分ける**最小識別鍵（種差）**を導出し、`roundtrip` で要素集合だけから元の語へ一意に戻るか（衝突しないか）を検証します。
+
+- 🌱 定義したい〇〇は `seeds` に並べます（いまはギター・ピカチュウ・鮭・iPhone・エナジードリンク・ルイージ）。増やすときは `seeds` と `similar`・`concepts` に足すだけです。
+- 反例（例: `6弦ベース` の追加）が来ると `roundtrip` が `collides` を返し、最小識別鍵が自動で組み替わります。
+- 類似先の要素が未観測（`null`）や `basis=hypothesis` だけの辺しかない場合、`derived` に昇格せず `hypothesis` に留まります。
+
+### ⚖️ 規則で判定し、可逆なものを定義にする
+
+TalkCompress の判定モデルと同じ分け方です。まず規則が決め、規則で決められないもの（要素が未観測の概念）は `to_model` として判定モデルに回します。OTL は LLM を呼びません。
+
+| 段 | 何で決まるか | basis |
+| --- | --- | --- |
+| 🧮 規則 | `["AND", "弦楽器", ["NOR", "4弦標準", "低音主体"]]` のような AND・OR・NOT・NAND・NOR の木 | — |
+| ⚖️ 判定 | 集めた全概念に当て、FP（他の概念を通す）は命題・対偶を、FN（〇〇を落とす）は逆・裏を覆す | FN・FP が 0 で `reversible` → `derived` |
+| ✅ 可逆 | 書き換えた規則（ド・モルガンなど）が真理値表の全通りで同じ | `proof` |
+
+```python
+from tools import tautology
+found = tautology.rules(corpus, "ギター")      # 類だけ（ベースも通す）→ 類 NOR 類似の固有 → … の順に判定
+found["definition"]                           # 可逆な最初の規則
+tautology.equivalent(["NOR", "a", "b"], ["AND", ["NOT", "a"], ["NOT", "b"]])   # {"equivalent": True, "basis": "proof"}
+```
+
+`reversible` は集めた概念の範囲での話です。概念が1つ増えると FP が出ることがあります（テストで固定）。
 
 ## 方針メモ（たたき台）
 
@@ -239,9 +275,9 @@ This remains dependency planning, not permission to merge or a complete CI verdi
 `examples/flutter-absorption.json` に、固定SHAの元ファイル、移管先候補、受入条件、検証SHA・Actions証跡を記録します。初期登録は主要機能12群と追加要望2件です。全パターンの棚卸し完了や吸収完了は意味しません。アーカイブ後も元SHAへの紐付けを保持し、Flutterのactive監視とは分けます。
 
 ```sh
-python -S ontautology.py transfers examples/flutter-absorption.json
-python -S ontautology.py audit examples/flutter-absorption.json -o graph.json
-node vendor/py_launch.cjs -- ontautology.py transfers examples/flutter-absorption.json
+python -S gh_audit/gh_audit.py transfers examples/flutter-absorption.json
+python -S gh_audit/gh_audit.py audit examples/flutter-absorption.json -o graph.json
+node vendor/py_launch.cjs -- gh_audit/gh_audit.py transfers examples/flutter-absorption.json
 ```
 
 `transfers` は未完了または棚卸し範囲が未確定なら終了コード2、入力不整合なら1です。`state=完了` には元SHAと移管先SHAに一致するreceipt、移管先ファイル、main反映の記録、全受入条件のID、移管先のActions URLが必要です。これは記録の整合性検査であり、CI結果・main包含・機能同等性の独立検証ではありません。移管先が未決でも `target.repository=null` で残せます。

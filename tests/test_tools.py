@@ -7,6 +7,7 @@ and fails instead of skipping in the CI job named redis.
 import json
 import os
 import random
+import re
 import shutil
 import subprocess
 import sys
@@ -18,6 +19,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 import ontautology as ot  # noqa: E402
+from gh_audit import gh_audit as ga  # noqa: E402
 from tools import knowledgegraph, ontology, tautology  # noqa: E402
 
 
@@ -33,20 +35,20 @@ def random_graph(seed, nodes=12, edges=24):
 
 
 class OneWayDependency(unittest.TestCase):
-    def test_core_never_imports_tools_and_tools_never_import_each_other(self):
-        core = (ROOT / "ontautology.py").read_text(encoding="utf-8")
-        self.assertNotIn("import tools", core)
-        self.assertNotIn("from tools", core)
-        for path in sorted((ROOT / "tools").glob("*.py")):
-            text = path.read_text(encoding="utf-8")
-            with self.subTest(tool=path.name):
-                self.assertIn("import ontautology as ot", text)
-                self.assertNotIn("from tools", text)
-                self.assertNotIn("import tools", text)
+    def test_generic_code_never_reads_the_github_audit(self):
+        for path in [ROOT / "ontautology.py", *sorted((ROOT / "tools").glob("*.py"))]:
+            imports = "\n".join(re.findall(r"(?m)^(?:from|import) .*", path.read_text(encoding="utf-8")))
+            with self.subTest(file=path.name):
+                self.assertNotIn("gh_audit", imports)
+                self.assertIsNone(re.search(r"\b(?:from|import) tools\b", imports))
+                if path.parent.name == "tools":
+                    self.assertIn("import ontautology as ot", imports)
+        audit = "\n".join(re.findall(r"(?m)^(?:from|import) .*", (ROOT / "gh_audit/gh_audit.py").read_text(encoding="utf-8")))
+        self.assertIn("import ontautology as ot", audit)
 
     def test_every_public_name_is_callable(self):
-        for module in (knowledgegraph, ontology, tautology):
-            for name in module.__all__:
+        for module in (ga, knowledgegraph, ontology, tautology):
+            for name in (name for name in module.__all__ if not name.isupper()):  # upper case: a vocabulary, not a call
                 with self.subTest(module=module.__name__, name=name):
                     self.assertTrue(callable(getattr(module, name)))
 
@@ -105,13 +107,13 @@ class OntologyTests(unittest.TestCase):
                 "edges": [{"source": "pr:a#1", "relation": "belongsTo", "target": "repo:a"}]}
 
     def test_classes_come_from_the_relations_only(self):
-        self.assertEqual(ontology.classes(), ot._classes())
+        self.assertIn("PullRequest", ontology.classes(ga.RELATIONS))
         self.assertEqual(ontology.classes({"implies": (("Rule",), "Rule")}), ["Rule"])
 
     def test_a_graph_in_its_vocabulary_has_no_violation(self):
-        self.assertEqual(ontology.violations(self.graph()), [])
-        example = ot.audit([json.loads((ROOT / "examples/audit-20261114.json").read_text(encoding="utf-8"))])
-        self.assertEqual(ontology.violations(example), [])
+        self.assertEqual(ontology.violations(self.graph(), ga.RELATIONS), [])
+        example = ga.audit([json.loads((ROOT / "examples/audit-20261114.json").read_text(encoding="utf-8"))])
+        self.assertEqual(ontology.violations(example, ga.RELATIONS), [])
 
     def test_every_violation_is_listed_and_nothing_is_repaired(self):
         graph = self.graph()
@@ -120,16 +122,16 @@ class OntologyTests(unittest.TestCase):
                            {"source": "pr:a#1", "relation": "mentions", "target": "repo:a"},
                            {"source": "pr:a#1", "relation": "belongsTo", "target": "nowhere"}]
         before = json.dumps(graph, sort_keys=True)
-        kinds = [finding["kind"] for finding in ontology.violations(graph)]
+        kinds = [finding["kind"] for finding in ontology.violations(graph, ga.RELATIONS)]
         self.assertEqual(kinds, ["duplicate-node", "unknown-class", "domain-range", "unknown-relation", "missing-reference"])
         self.assertEqual(json.dumps(graph, sort_keys=True), before)
 
     def test_the_core_validate_rejects_what_violations_lists(self):
         graph = self.graph()
         graph["edges"].append({"source": "repo:a", "relation": "belongsTo", "target": "pr:a#1"})
-        self.assertTrue(ontology.violations(graph))
+        self.assertTrue(ontology.violations(graph, ga.RELATIONS))
         with self.assertRaises(ValueError):
-            ot.validate({"schema": ot.KG_SCHEMA, **graph})
+            ga.validate({"schema": ga.KG_SCHEMA, **graph})
 
     def test_identity_promotes_the_first_candidate_that_is_a_key(self):
         items = [{"id": 1, "run": 1, "name": "a"}, {"id": 1, "run": 2, "name": "b"}]
@@ -190,6 +192,109 @@ class TautologyTests(unittest.TestCase):
             closed = edges + [{k: v for k, v in e.items() if k != "via"} for e in tautology.entailed(edges, ["a", "b"])]
             with self.subTest(seed=seed):
                 self.assertEqual(tautology.entailed(closed, ["a", "b"]), [])
+
+
+def concepts():
+    """The example corpus; its ``seeds`` are the 〇〇 to define (edit the JSON to add more)."""
+    return json.loads((ROOT / "examples/concepts-20261115.json").read_text(encoding="utf-8"))
+
+
+def random_rule(rng, names, depth=3):
+    """A random rule tree over ``names`` with every operator."""
+    if depth == 0 or rng.random() < 0.3:
+        return rng.choice(names)
+    op = rng.choice(sorted(tautology.OPS))
+    return [op, random_rule(rng, names, depth - 1)] if op == "NOT" else [op, *(random_rule(rng, names, depth - 1) for _ in range(rng.randint(0, 3)))]
+
+
+def random_corpus(seed, size=8):
+    rng = random.Random(seed)
+    features = [f"f{i}" for i in range(6)]
+    names = [f"c{i}" for i in range(size)]
+    return {"concepts": {n: sorted(rng.sample(features, rng.randint(1, 5))) for n in names},
+            "similar": [[a, b] for a, b in zip(names, names[1:]) if rng.random() < 0.7]}, features
+
+
+class JudgeTests(unittest.TestCase):
+    def test_operators_and_empty_cases(self):
+        present = {"a"}
+        self.assertEqual([tautology.holds([op, "a", "b"], present) for op in ("AND", "OR", "NAND", "NOR")], [False, True, True, False])
+        self.assertTrue(tautology.holds(["NOT", "b"], present))
+        self.assertEqual((tautology.holds(["AND"], set()), tautology.holds(["OR"], set())), (True, False))
+        for bad in ([], ["XOR", "a"], ["NOT", "a", "b"], 3):
+            with self.subTest(rule=bad), self.assertRaises(ValueError):
+                tautology.holds(bad, present)
+
+    def test_every_seed_has_a_reversible_definition_and_the_genus_alone_lets_the_neighbour_in(self):
+        corpus = concepts()
+        for seed in corpus["seeds"]:
+            found = tautology.rules(corpus, seed)
+            with self.subTest(seed=seed):
+                self.assertIsNotNone(found["definition"])
+                self.assertEqual(tautology.judge(corpus, seed, found["definition"])["verdict"], "reversible")
+                genus = next(row for row in found["candidates"] if row["shape"] == "genus")
+                self.assertEqual(genus["verdict"], "refuted")
+                self.assertTrue(genus["fp"])
+                self.assertFalse(genus["fn"])
+                self.assertEqual(genus["propositions"], {"proposition": False, "contrapositive": False, "converse": True, "inverse": True})
+
+    def test_on_a_tie_the_definition_is_built_from_the_genus(self):
+        corpus = concepts()
+        self.assertEqual(tautology.rules(corpus, "ギター")["definition"],
+                         ["AND", "フレット", "ボディ", "弦楽器", "撥弦", "楽器", ["NOR", "4弦標準", "低音主体"]])
+        for seed in corpus["seeds"]:
+            with self.subTest(seed=seed):
+                self.assertNotEqual(tautology.rules(corpus, seed)["candidates"][0]["shape"], "all-elements")
+
+    def test_counts_add_up_and_fn_refutes_the_converse(self):
+        corpus = concepts()
+        rule = ["AND", "弦楽器", "6弦標準", "存在しない要素"]
+        found = tautology.judge(corpus, "ギター", rule)
+        self.assertEqual((found["fn"], found["fp"], found["verdict"]), (["ギター"], [], "refuted"))
+        self.assertEqual(found["propositions"]["converse"], False)
+        self.assertEqual(found["tp"] + found["tn"] + len(found["fp"]) + len(found["fn"]), len(corpus["concepts"]))
+
+    def test_unobserved_concepts_go_to_the_judgment_model(self):
+        corpus = concepts()
+        corpus["similar"].append({"left": "ギター", "right": "ウクレレ", "basis": "hypothesis"})
+        found = tautology.judge(corpus, "ギター", ["AND", "6弦標準"])
+        self.assertEqual((found["to_model"], found["verdict"], found["basis"]), (["ウクレレ"], "undecided", "hypothesis"))
+        self.assertEqual(tautology.rules(corpus, "ウクレレ")["to_model"], ["ウクレレ"])
+
+    def test_one_more_concept_can_refute_a_reversible_definition(self):
+        corpus = concepts()
+        rule = tautology.rules(corpus, "ギター")["definition"]
+        corpus["concepts"]["ギターのコピー"] = list(corpus["concepts"]["ギター"])
+        self.assertEqual(tautology.judge(corpus, "ギター", rule)["fp"], ["ギターのコピー"])
+
+    def test_de_morgan_is_proof_and_a_wrong_rewrite_has_a_counterexample(self):
+        self.assertEqual(tautology.equivalent(["NOR", "a", "b"], ["AND", ["NOT", "a"], ["NOT", "b"]])["basis"], "proof")
+        self.assertEqual(tautology.equivalent(["NAND", "a", "b"], ["OR", ["NOT", "a"], ["NOT", "b"]])["basis"], "proof")
+        self.assertTrue(tautology.equivalent(["OR", "a", ["NOT", "a"]], ["AND"])["equivalent"])
+        wrong = tautology.equivalent(["NAND", "a", "b"], ["NOR", "a", "b"])
+        self.assertFalse(wrong["equivalent"])
+        self.assertNotEqual(tautology.holds(["NAND", "a", "b"], set(wrong["counterexample"])),
+                            tautology.holds(["NOR", "a", "b"], set(wrong["counterexample"])))
+        with self.assertRaises(ValueError):
+            tautology.equivalent(["AND", *(f"x{i}" for i in range(17))], ["AND"])
+
+    def test_random_rules_rewritten_by_de_morgan_stay_equivalent(self):
+        for seed in range(40):
+            rng = random.Random(seed)
+            a, b = random_rule(rng, list("pqrs")), random_rule(rng, list("pqrs"))
+            with self.subTest(seed=seed):
+                self.assertTrue(tautology.equivalent(["NOR", a, b], ["NOT", ["OR", a, b]])["equivalent"])
+                self.assertTrue(tautology.equivalent(["NAND", a, b], ["NOT", ["AND", a, b]])["equivalent"])
+                self.assertFalse(tautology.equivalent(a, ["NOT", a])["equivalent"])
+
+    def test_a_definition_and_its_rewrite_judge_the_same(self):
+        corpus = concepts()
+        for seed in corpus["seeds"]:
+            rule = tautology.rules(corpus, seed)["definition"]
+            rewrite = ["NOT", ["NAND", rule]]
+            with self.subTest(seed=seed):
+                self.assertTrue(tautology.equivalent(rule, rewrite)["equivalent"])
+                self.assertEqual(tautology.judge(corpus, seed, rewrite)["matched"], tautology.judge(corpus, seed, rule)["matched"])
 
 
 def _redis_or_skip(case):
@@ -275,6 +380,48 @@ class RedisCrossCheck(unittest.TestCase):
             start = sorted({e["source"] for e in edges})[:2]
             with self.subTest(seed=seed):
                 self.assertEqual({row["node"] for row in ot.reach(edges, start)["rows"]}, self.redis_reach(edges, start))
+
+    def redis_matched(self, corpus, rule):
+        """The concepts a rule lets in, by set algebra: AND=SINTER, OR=SUNION, NOT/NAND/NOR=SDIFF from all."""
+        self.client.sadd("all", *corpus["concepts"])
+        for name, elements in corpus["concepts"].items():
+            for element in elements:
+                self.client.sadd("has:" + element, name)
+        counter = iter(range(1 << 30))
+
+        def store(part):
+            if isinstance(part, str):
+                return "has:" + part
+            key, op, inner = f"tmp:{next(counter)}", part[0], [store(p) for p in part[1:]]
+            if op in ("AND", "NAND"):
+                self.client.sinterstore(key, *inner) if inner else self.client.sunionstore(key, "all")
+            else:
+                self.client.sunionstore(key, *inner) if inner else self.client.delete(key)
+            if op in ("NOT", "NAND", "NOR"):
+                self.client.sdiffstore(key, "all", key)
+            return key
+        return sorted(self.client.smembers(store(rule)))
+
+    def test_rule_judgements_agree_with_redis_set_algebra(self):
+        for seed in range(30):
+            corpus, features = random_corpus(seed)
+            rng = random.Random(seed)
+            for _ in range(5):
+                rule = random_rule(rng, features)
+                self.client.flushdb()
+                with self.subTest(seed=seed, rule=rule):
+                    self.assertEqual(tautology.judge(corpus, "c0", rule)["matched"], self.redis_matched(corpus, rule))
+
+    def test_genus_and_differentia_agree_with_sinter_and_sdiff(self):
+        corpus = concepts()
+        defined = ot.define_concepts(corpus)["concepts"]
+        for name, elements in corpus["concepts"].items():
+            self.client.sadd("elem:" + name, *elements)
+        for pair in corpus["similar"]:
+            left, right = pair["left"], pair["right"]
+            with self.subTest(pair=(left, right)):
+                self.assertEqual(sorted(self.client.sinter("elem:" + left, "elem:" + right)), defined[left]["genus"]["by_similar"][right]["common"])
+                self.assertEqual(sorted(self.client.sdiff("elem:" + left, "elem:" + right)), defined[left]["differentia"]["vs_similar"][right]["only_target"])
 
     def test_key_verdicts_agree_with_redis(self):
         for seed in range(30):
