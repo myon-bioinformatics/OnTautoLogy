@@ -2,7 +2,19 @@
 
 オントロジーをトートロジーの水準まで持っていく。複数のリポジトリを横断して見るための、小さなナレッジグラフです。Python 3.11 以降の標準ライブラリだけで動き、GitHub からの取得・書き込み・マージ・CI 起動は行いません。
 
-実装は `ontautology.py` 1本、テストは `tests/` 以下（`test_ontautology.py` と `test_concepts.py`）です。
+本体は `ontautology.py` 1本で、これだけを vendor すれば動きます。依存は 🧰 tools → 本体 の一方向で、本体は tools/ も vendor/ も読みません。
+
+```
+ontautology.py          🧠🔭 本体（標準ライブラリのみ、単体で配れる）
+tools/
+  knowledgegraph.py     🕸️ 親の fleet コードと同じ名前・形の答え（relation_cycles・topological_order）
+  ontology.py           📚 語彙の違反を全部挙げる（violations）・鍵の昇格（identity）
+  tautology.py          ✅ 証明の段までの距離（standing・gaps）・推移で従う証明（entailed）
+vendor/                 📦 親から借りるもの（vendor.lock.json で SHA 固定）
+  py_launch.cjs         Node → Python の起動役（関数を名前で呼ぶ --call も）
+  fleet_check.py        子リポジトリ共通の検査
+tests/                  🧪 unittest（test_concepts.py に第二弾、Redis の答え合わせは任意）
+```
 
 | 部分 | 役割 | 関数 |
 | --- | --- | --- |
@@ -10,7 +22,7 @@
 | 2. 🔭 横断監査 | 最初の用途。多数のリポジトリの PR 監査スナップショットを、観測の履歴を保った1つのグラフにする | `audit` `validate` `plan` `observation_diff` `turtle` `edges_of` |
 | 3. 🧩 類似と定義 | 第二弾。類似ペア（`ギター↔ベース` など）から共通項（類）と最小識別鍵（種差）を抽出し、要素からの往復復元で衝突を検証する | `define_concepts` `roundtrip_elements` `concept_edges` |
 
-チェックアウトしたディレクトリで `uv tool install .`、または `uv tool install git+https://github.com/myon-bioinformatics/OnTautoLogy.git` で導入できます。導入後は `ontautology snapshot.json -o graph.json` を実行できます。Python からは `from ontautology import build_graph` で呼び出せます。
+チェックアウトしたディレクトリで `uv tool install .`、または `uv tool install git+https://github.com/myon-bioinformatics/OnTautoLogy.git` で導入できます。導入後は `ontautology audit snapshot.json -o graph.json` を実行できます。Python からは `from ontautology import audit` のように関数名で呼び出せます。
 
 ```sh
 python -S ontautology.py audit examples/audit-20261114.json -o graph.json   # 🔭 スナップショット → グラフ（複数渡すと履歴）
@@ -45,7 +57,14 @@ python -S -m unittest discover -s tests
 
 終了コード: `0` 答えた / `1` 入力エラー / `2` 答えたが要確認（所見・循環・ブロック・未知のノード・鍵にならない・差分あり・定義衝突または未観測）。`2` は道具の失敗ではなく、入力についての答えです。
 
-Python からは関数名で呼べます。Node からは Python ランチャー（`py_launch.cjs`）経由で呼ぶ前提で、JS の実装は置きません。画面が要るときも HTML・CSS・JS は Python 側（`web_ui.py` など）で組み、ここには足しません。`uv tool install .` で `ontautology` コマンドとしても使えます。
+Python からは関数名で呼べます。Node からは親の Python ランチャー（`vendor/py_launch.cjs`）を通し、ツールごとの `.mjs` / `.cjs` は置きません。
+
+```sh
+node vendor/py_launch.cjs -- ontautology.py audit examples/audit-20261114.json -o graph.json   # CLI そのまま
+node vendor/py_launch.cjs --call standing -- tools/tautology.py '[{"kind":"k","source":"a","target":"b","basis":"proof"}]' '"b"'   # 関数を名前で
+```
+
+画面が要るときも HTML・CSS・JS は Python 側（`web_ui.py` など）で組み、ここには足しません。`uv tool install .` で `ontautology` コマンドとしても使えます。
 
 ## 🪜 根拠の段
 
@@ -156,6 +175,25 @@ process.exit(result.status ?? 1);
 - `schema=integration-audit/3`、完全な40桁 SHA、タイムゾーン付きの `captured_at`、5種類の作業状態（調査中・着手中・完了・保留・ブロッカー）を確認します。合わなければ終了コード 1 と短いエラーを標準エラーに出します。
 - `examples/audit-20261114.json` は 2026年11月14日 23:12 JST の監査から抜き出した履歴で、現在の GitHub の状態ではありません。
 
+## 🧰 tools
+
+本体の芯を組み合わせて、名前の意味（オントロジー → トートロジー）に沿った問いに答えます。実装を二重に持たず、芯を呼ぶだけです。
+
+| ファイル | 関数 | 答えること |
+| --- | --- | --- |
+| 🕸️ `knowledgegraph.py` | `relation_cycles(edges)` `topological_order(edges)` | 親の `fleet_records` / `vendor_fleet_plan` と同じ名前・形。親は自前の写しの代わりにこれを呼べる |
+| 📚 `ontology.py` | `classes(relations)` `violations(graph, relations)` `identity(items, candidates)` | 語彙（`RELATIONS` と同じ形）から外れた所を全部挙げる（直さない）。候補の属性の組から、鍵に昇格できる最初の組を選ぶ |
+| ✅ `tautology.py` | `standing(edges, node)` `gaps(edges)` `entailed(edges, kinds)` | ノードが立つ段（深さ無制限で一番弱い段）、証明未満の辺、推移的な種類で証明から従うがまだ書かれていない辺 |
+
+## 🧪 テスト
+
+```sh
+python -S -m unittest discover -s tests                     # 標準ライブラリだけ（Node 26+ があれば Node 経由も）
+uv run --no-project --with redis python -m unittest discover -s tests -p test_tools.py -k RedisCrossCheck -v   # 🧱 Redis で答え合わせ
+```
+
+🧱 `RedisCrossCheck` は、外部モジュールで先に考え方を確かめるための足場です。Redis の集合と `HSETNX` で同じ問い（`reach` の到達先、`key_report` の判定）を別に解き、乱数で作った入力すべてで本体と一致するかを見ます。`redis` パッケージか `redis-server` が無ければ skip し、CI の `redis` ジョブでだけ skip を失敗にします。サーバーは一時ディレクトリの unix socket で立て、ポートも保存も使いません。本体と tools/ は Redis を import しません。
+
 ## 🧭 置くもの・置かないもの
 
 - 置く: リポジトリを横断して見るためのグラフのロジックと、その最初の用途である PR 監査の読み取り。
@@ -177,3 +215,52 @@ REDIS_URL=redis://127.0.0.1:6379/15 python3 -S -m unittest discover -s tests -v
 ## 方針メモ（たたき台）
 
 リポジトリのあり方をルールとしてグラフに載せる案は、[docs/policy-rules.md](docs/policy-rules.md) にあります。実装ではなく、見直し前提の設計メモです。
+
+## Open PR inventory (optional `integration-audit/3` coverage)
+
+`open_pr_inventory` is an optional top-level array. Legacy inputs without it keep the
+existing planning behavior; an empty array declares no repository coverage, not zero
+PRs everywhere. Each entry is scoped to one full `owner/name` repository:
+
+```json
+{"repository":"myon-bioinformatics/Ironmate","checked_at":"2026-11-15T12:00:00Z",
+ "complete":true,"open_pr_numbers":[]}
+```
+
+A complete entry lists unique positive PR numbers, including Drafts; `[]` explicitly
+means no open PRs in that repository at that check. A failed/partial check uses
+`"complete":false,"open_pr_numbers":null`, never an empty list.
+
+Every input creates a `Snapshot` node, including inputs with no records. Its digest,
+observation time and explicit inventory remain in the graph; existing `derived_from` links
+its PR observations. Structured metadata in Turtle is a JSON-text string literal.
+
+`plan` uses the newest `checked_at` per repository, even when incomplete. It does not
+schedule stale PRs for an incomplete scope and reports `inventory_uncertainty`.
+Complete coverage controls membership, but every listed PR must have a row from that
+same snapshot digest: otherwise `missing_rows` and `blocked` identify it. Older evidence
+is not promoted to current evidence. Other repositories retain their own coverage or
+legacy behavior. Conflicting checks at the same time are rejected as ambiguous.
+
+Disappearance is not completion: an absent dependency still blocks its dependents
+unless an observation explicitly verifies `contained_in_main: true`. Historical nodes
+and evidence are never deleted. Inventory-aware plans add `inventory_uncertainty` and
+`missing_rows`; legacy plan output fields remain unchanged. The graph schema stays
+`ontautology/1` with #9’s existing `Snapshot` class and `derived_from` relation.
+A partial inventory makes the `plan` CLI return 2, even if no PR rows are available.
+This remains dependency planning, not permission to merge or a complete CI verdict.
+
+
+## Flutterの未吸収機能を追跡
+
+`examples/flutter-absorption.json` に、固定SHAの元ファイル、移管先候補、受入条件、検証SHA・Actions証跡を記録します。初期登録は主要機能12群と追加要望2件です。全パターンの棚卸し完了や吸収完了は意味しません。アーカイブ後も元SHAへの紐付けを保持し、Flutterのactive監視とは分けます。
+
+```sh
+python -S ontautology.py transfers examples/flutter-absorption.json
+python -S ontautology.py audit examples/flutter-absorption.json -o graph.json
+node vendor/py_launch.cjs -- ontautology.py transfers examples/flutter-absorption.json
+```
+
+`transfers` は未完了または棚卸し範囲が未確定なら終了コード2、入力不整合なら1です。`state=完了` には元SHAと移管先SHAに一致するreceipt、移管先ファイル、main反映の記録、全受入条件のID、移管先のActions URLが必要です。これは記録の整合性検査であり、CI結果・main包含・機能同等性の独立検証ではありません。移管先が未決でも `target.repository=null` で残せます。
+
+機能はTaskとして `migration_source`（元File）・`migration_target`（移管先Repository）に結び、5状態とSnapshot・Evidenceを保持します。追加要望は `kind=request` で既存機能の未吸収から区別します。GitHubのアーカイブ・マージは行いません。
