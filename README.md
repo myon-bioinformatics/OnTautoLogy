@@ -2,12 +2,13 @@
 
 オントロジーをトートロジーの水準まで持っていく。複数のリポジトリを横断して見るための、小さなナレッジグラフです。Python 3.11 以降の標準ライブラリだけで動き、GitHub からの取得・書き込み・マージ・CI 起動は行いません。
 
-実装は `ontautology.py` 1本、テストは `tests/test_ontautology.py` 1本です。
+実装は `ontautology.py` 1本、テストは `tests/` 以下（`test_ontautology.py` と `test_concepts.py`）です。
 
 | 部分 | 役割 | 関数 |
 | --- | --- | --- |
 | 1. 🧠 芯 | どのグラフにも要るロジック。リポジトリを知らず、dict / list（JSON）だけを扱う | `check` `reach` `why` `cycles` `order` `ladder` `key_report` |
 | 2. 🔭 横断監査 | 最初の用途。多数のリポジトリの PR 監査スナップショットを、観測の履歴を保った1つのグラフにする | `audit` `validate` `plan` `observation_diff` `turtle` `edges_of` |
+| 3. 🧩 類似と定義 | 第二弾。類似ペア（`ギター↔ベース` など）から共通項（類）と最小識別鍵（種差）を抽出し、要素からの往復復元で衝突を検証する | `define_concepts` `roundtrip_elements` `concept_edges` |
 
 チェックアウトしたディレクトリで `uv tool install .`、または `uv tool install git+https://github.com/myon-bioinformatics/OnTautoLogy.git` で導入できます。導入後は `ontautology snapshot.json -o graph.json` を実行できます。Python からは `from ontautology import build_graph` で呼び出せます。
 
@@ -19,6 +20,8 @@ python -S ontautology.py why    graph.json pr:myon-bioinformatics/Aoi#208       
 python -S ontautology.py check  graph.json                                  # 🧪 形・参照・重複
 python -S ontautology.py diff   before.json after.json                      # 🆚 最新観測どうしの差
 python -S ontautology.py audit  examples/audit-20261114.json --format turtle -o graph.ttl   # 🐢 RDF/Turtle
+python -S ontautology.py define examples/concepts-20261115.json ギター ピカチュウ 鮭 iPhone エナジードリンク  # 🧩 類似から定義抽出
+python -S ontautology.py roundtrip examples/concepts-20261115.json カフェイン含有 飲料  # 🔁 要素→語の往復と衝突確認
 python -S -m unittest discover -s tests
 ```
 
@@ -28,17 +31,19 @@ python -S -m unittest discover -s tests
 | 🪜 `plan GRAPH` | 監査グラフ | main 未導入の PR の依存順・ブロック・未観測の依存先 |
 | 🆚 `diff BEFORE AFTER` | 監査グラフ2つ | 追加・削除・変化した PR |
 | 🐢 `turtle GRAPH` | 監査グラフ | RDF/Turtle |
-| 🧪 `check GRAPH` | どちらでも | 所見の一覧（監査グラフはオントロジーも検証） |
-| 💥 `reach GRAPH NODE...` | どちらでも | 変更が届く先 |
-| 🔎 `why GRAPH NODE...` | どちらでも | 判断の根拠 |
-| 🔁 `cycles GRAPH [KIND...]` | どちらでも | 循環の代表例 |
-| 🪜 `order GRAPH [KIND...]` | どちらでも | 並行できる組の順 |
-| 🪜 `ladder GRAPH` | どちらでも | 根拠の段ごとの本数 |
+| 🧩 `define CORPUS [CONCEPT...]` | 類似コーパス | 類似ペアの共通項（類）・最小識別鍵（種差）・往復判定 |
+| 🔁 `roundtrip CORPUS ELEM...` | 類似コーパス | 指定要素をすべて満たす概念（一意・衝突・空） |
+| 🧪 `check GRAPH` | どれでも | 所見の一覧（監査グラフはオントロジーも検証） |
+| 💥 `reach GRAPH NODE...` | どれでも | 変更が届く先 |
+| 🔎 `why GRAPH NODE...` | どれでも | 判断の根拠 |
+| 🔁 `cycles GRAPH [KIND...]` | どれでも | 循環の代表例 |
+| 🪜 `order GRAPH [KIND...]` | どれでも | 並行できる組の順 |
+| 🪜 `ladder GRAPH` | どれでも | 根拠の段ごとの本数 |
 | 🔑 `keys GRAPH FIELDS...` | `"items"` を持つ JSON | 属性の組（`id+run` など）が鍵になるか |
 
-「どちらでも」は、監査グラフと素の `{"edges": [...], "nodes": [...]}` の両方です。全コマンドに `-o FILE` があります。
+「どれでも」は、監査グラフ、類似コーパス（`ontautology-concepts/1`）、素の `{"edges": [...], "nodes": [...]}` のすべてです。全コマンドに `-o FILE` があります。
 
-終了コード: `0` 答えた / `1` 入力エラー / `2` 答えたが要確認（所見・循環・ブロック・未知のノード・鍵にならない・差分あり）。`2` は道具の失敗ではなく、入力についての答えです。
+終了コード: `0` 答えた / `1` 入力エラー / `2` 答えたが要確認（所見・循環・ブロック・未知のノード・鍵にならない・差分あり・定義衝突または未観測）。`2` は道具の失敗ではなく、入力についての答えです。
 
 Python からは関数名で呼べます。Node からは Python ランチャー（`py_launch.cjs`）経由で呼ぶ前提で、JS の実装は置きません。画面が要るときも HTML・CSS・JS は Python 側（`web_ui.py` など）で組み、ここには足しません。`uv tool install .` で `ontautology` コマンドとしても使えます。
 
@@ -156,6 +161,18 @@ process.exit(result.status ?? 1);
 - 置く: リポジトリを横断して見るためのグラフのロジックと、その最初の用途である PR 監査の読み取り。
 - 置かない: GitHub や Git からの取得、各リポジトリ固有の記録形式の解釈、画面。それらは記録を書くリポジトリと親（myon-bioinformatics）の役目で、ここを呼ぶ側です。
 - OWL 準拠は主張しません。SPARQL や GraphQL の代わりに、関数を名前で呼びます。
+
+## 🧩 類似ペアからの定義抽出（第二弾）とテスト用 Redis
+
+`examples/concepts-20261115.json` のように `similar`（`ギター↔ベース`、`マリオ↔ルイージ`、`ピカチュウ↔ライチュウ`、`鮭↔サクラマス`、`エナジードリンク↔コーヒー`、`iPhone↔Android`）と各概念の観察要素を渡すと、`define` が類似群の**共通項（類）**と最寄り概念を分ける**最小識別鍵（種差）**を導出し、`roundtrip` で要素集合だけから元の語へ一意に戻るか（衝突しないか）を検証します。
+
+- 反例（例: `6弦ベース` の追加）が来ると `roundtrip` が `collides` を返し、最小識別鍵が自動で組み替わります。
+- 類似先の要素が未観測（`null`）や `basis=hypothesis` だけの辺しかない場合、`derived` に昇格せず `hypothesis` に留まります。
+- 本体（`ontautology.py`）は標準ライブラリのみのまま保ち、テスト側（`tests/redis_helper.py` / `tests/test_concepts.py`）で `REDIS_URL` が設定されている場合は標準ライブラリ実装の RESP2 クライアント経由で Redis（`SINTER` / `SDIFF` 検算と `roundtrip` キャッシュ）を利用できます。未設定時はインメモリの `FakeRedis` にフォールバックするため、`python -S -m unittest discover -s tests` は外部依存なしでそのまま通ります。
+
+```sh
+REDIS_URL=redis://127.0.0.1:6379/15 python3 -S -m unittest discover -s tests -v
+```
 
 ## 方針メモ（たたき台）
 

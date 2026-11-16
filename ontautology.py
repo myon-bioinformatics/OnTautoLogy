@@ -36,7 +36,8 @@ from urllib.parse import quote
 
 BASIS = ("hypothesis", "derived", "observed", "proof")
 __all__ = ["BASIS", "check", "reach", "why", "cycles", "order", "ladder", "key_report",
-           "audit", "validate", "plan", "observation_diff", "turtle", "edges_of", "main"]
+           "audit", "validate", "plan", "observation_diff", "turtle", "edges_of",
+           "define_concepts", "roundtrip_elements", "concept_edges", "main"]
 
 
 def _basis(edge):
@@ -649,6 +650,279 @@ def turtle(graph):
     return "\n".join(lines) + "\n"
 
 
+# ---------------------------------------------------------------- 3. concept similarity & definition
+
+CONCEPT_SCHEMA = "ontautology-concepts/1"
+
+
+def _nonempty_str(value, label):
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{label} must be a non-empty string")
+    return value
+
+
+def _normalize_corpus(corpus):
+    """Validate and normalize a concept-similarity corpus into sorted dicts.
+
+    Accepts {"concepts": ..., "similar": [...]} (concepts as dict or list of objects;
+    similar entries as [left, right] or {"left"/"source", "right"/"target", ...}).
+    Missing concepts mentioned in ``similar`` are kept with elements=None (unobserved).
+    """
+    if not isinstance(corpus, dict):
+        raise ValueError("concept corpus must be a JSON object")
+    schema = corpus.get("schema")
+    if schema is not None and schema != CONCEPT_SCHEMA:
+        raise ValueError(f"unsupported concept schema: {schema!r}")
+    raw_concepts = corpus.get("concepts", {})
+    concepts, concept_meta = {}, {}
+    if isinstance(raw_concepts, dict):
+        items = raw_concepts.items()
+    elif isinstance(raw_concepts, list):
+        items = []
+        for entry in raw_concepts:
+            if not isinstance(entry, dict) or "id" not in entry:
+                raise ValueError("concept list entries must be objects with 'id'")
+            items.append((entry["id"], entry))
+    else:
+        raise ValueError("concepts must be an object or a list of objects")
+    for raw_name, raw_spec in items:
+        name = _nonempty_str(raw_name, "concept id")
+        if name in concepts:
+            raise ValueError(f"duplicate concept id: {name!r}")
+        if raw_spec is None:
+            concepts[name] = None
+            concept_meta[name] = {"basis": "hypothesis"}
+        elif isinstance(raw_spec, list):
+            concepts[name] = sorted({_nonempty_str(el, f"{name} element") for el in raw_spec})
+            concept_meta[name] = {"basis": "observed"}
+        elif isinstance(raw_spec, dict):
+            basis = raw_spec.get("basis", "observed")
+            if basis not in BASIS:
+                raise ValueError(f"unknown basis {basis!r} for concept {name!r}")
+            elems = raw_spec.get("elements")
+            if elems is None:
+                concepts[name] = None
+            elif isinstance(elems, list):
+                concepts[name] = sorted({_nonempty_str(el, f"{name} element") for el in elems})
+            else:
+                raise ValueError(f"elements for {name!r} must be a list or null")
+            concept_meta[name] = {**{k: v for k, v in raw_spec.items() if k not in ("id", "elements")}, "basis": basis}
+        else:
+            raise ValueError(f"concept spec for {name!r} must be a list, object, or null")
+    raw_similar = corpus.get("similar", [])
+    if not isinstance(raw_similar, list):
+        raise ValueError("similar must be a list")
+    pairs, neighbors = [], {name: {} for name in concepts}
+    for entry in raw_similar:
+        if isinstance(entry, (list, tuple)) and len(entry) == 2:
+            left, right, meta = entry[0], entry[1], {"basis": "observed"}
+        elif isinstance(entry, dict):
+            left = entry.get("left", entry.get("source"))
+            right = entry.get("right", entry.get("target"))
+            basis = entry.get("basis", "observed")
+            if basis not in BASIS:
+                raise ValueError(f"unknown basis {basis!r} in similar pair")
+            meta = {**{k: v for k, v in entry.items() if k not in ("left", "right", "source", "target")}, "basis": basis}
+        else:
+            raise ValueError("similar entries must be [left, right] or objects with left/right or source/target")
+        left = _nonempty_str(left, "similar left")
+        right = _nonempty_str(right, "similar right")
+        if left == right:
+            raise ValueError(f"self-similarity is invalid: {left!r}")
+        for end in (left, right):
+            if end not in concepts:
+                concepts[end] = None
+                concept_meta[end] = {"basis": "hypothesis"}
+                neighbors[end] = {}
+        a, b = sorted((left, right))
+        pairs.append({"left": a, "right": b, **meta})
+        # Keep the strongest basis if the same pair is cited multiple times.
+        for x, y in ((a, b), (b, a)):
+            prev = neighbors[x].get(y)
+            if prev is None or BASIS.index(meta["basis"]) > BASIS.index(prev):
+                neighbors[x][y] = meta["basis"]
+    return concepts, concept_meta, pairs, neighbors
+
+
+def _minimal_hitting_sets(requirements, *, max_keys=5, max_key_size=5):
+    """Minimal subsets of elements that intersect every non-empty difference set."""
+    if not requirements:
+        return [[]]
+    reduced = []
+    for req in sorted({frozenset(r) for r in requirements}, key=lambda r: (len(r), sorted(r))):
+        if not any(kept <= req for kept in reduced):
+            reduced.append(req)
+    max_size = min(max_key_size, len({el for req in reduced for el in req}))
+    found = []
+    for target_size in range(1, max_size + 1):
+        seen_states = set()
+
+        def search(chosen, uncovered):
+            if len(found) >= max_keys:
+                return
+            state = frozenset(chosen)
+            if state in seen_states:
+                return
+            seen_states.add(state)
+            if not uncovered:
+                found.append(sorted(chosen))
+                return
+            if len(chosen) >= target_size:
+                return
+            pivot = min(uncovered, key=lambda r: (len(r), sorted(r)))
+            for el in sorted(pivot):
+                nxt = chosen | {el}
+                if any(frozenset(prev) <= nxt for prev in found):
+                    continue
+                search(nxt, [r for r in uncovered if el not in r])
+                if len(found) >= max_keys:
+                    return
+
+        search(set(), reduced)
+        if len(found) >= max_keys:
+            break
+    return found
+
+
+def roundtrip_elements(corpus, elements):
+    """Reverse lookup (TalkCompress-style roundtrip): which observed concepts contain all ``elements``?"""
+    concepts, _, _, _ = _normalize_corpus(corpus)
+    if not isinstance(elements, (list, tuple, set)):
+        raise ValueError("elements must be a list")
+    query = sorted({_nonempty_str(el, "element") for el in elements})
+    qset = set(query)
+    matched = [name for name in sorted(concepts) if concepts[name] is not None and qset <= set(concepts[name])]
+    unobserved = [name for name in sorted(concepts) if concepts[name] is None]
+    verdict = "unique" if len(matched) == 1 else "collides" if len(matched) > 1 else "empty"
+    return {"schema": "ontautology-roundtrip/1", "query": query, "verdict": verdict,
+            "matched": matched, "unobserved": unobserved}
+
+
+def define_concepts(corpus, targets=None, *, max_keys=5, max_key_size=5):
+    """Derive genus (common elements across similar pairs) and differentia (minimal distinguishing keys)."""
+    concepts, _, pairs, neighbors = _normalize_corpus(corpus)
+    all_names = sorted(concepts)
+    if targets:
+        requested = list(dict.fromkeys(_nonempty_str(t, "target concept") for t in targets))
+        unknown = [t for t in requested if t not in concepts]
+        selected = [t for t in requested if t in concepts]
+    else:
+        unknown = []
+        selected = all_names
+    observed_names = [name for name in all_names if concepts[name] is not None]
+    results = {}
+    for name in selected:
+        elems = concepts[name]
+        sim_map = neighbors[name]
+        sim_names = sorted(sim_map)
+        if elems is None:
+            results[name] = {
+                "elements_observed": False,
+                "elements": None,
+                "similar": sim_names,
+                "status": "incomplete",
+                "basis": "hypothesis",
+                "genus": {"all_common": [], "by_similar": {}, "support": []},
+                "differentia": {"vs_similar": {}, "minimal_keys": [], "unavoidable_collisions": []},
+                "definition": {"genus": [], "differentia": [], "elements": [],
+                               "roundtrip": {"verdict": "incomplete", "matched": []}},
+            }
+            continue
+        elem_set = set(elems)
+        obs_sim = [s for s in sim_names if concepts[s] is not None]
+        unobs_sim = [s for s in sim_names if concepts[s] is None]
+        by_similar, vs_similar = {}, {}
+        for s in obs_sim:
+            s_set = set(concepts[s])
+            common = sorted(elem_set & s_set)
+            only_target = sorted(elem_set - s_set)
+            only_similar = sorted(s_set - elem_set)
+            by_similar[s] = {"common": common, "basis": sim_map[s]}
+            vs_similar[s] = {"only_target": only_target, "only_similar": only_similar}
+        if obs_sim:
+            common_sets = [elem_set] + [set(concepts[s]) for s in obs_sim]
+            all_common = sorted(set.intersection(*common_sets))
+        else:
+            all_common = []
+        cluster = [name] + obs_sim
+        support = [{"element": el, "count": sum(el in concepts[c] for c in cluster), "of": len(cluster)}
+                   for el in elems]
+        support.sort(key=lambda row: (-row["count"], row["element"]))
+        reqs, collisions = [], []
+        for other in observed_names:
+            if other == name:
+                continue
+            diff = elem_set - set(concepts[other])
+            if not diff:
+                collisions.append(other)
+            else:
+                reqs.append(diff)
+        minimal_keys = [] if collisions else _minimal_hitting_sets(reqs, max_keys=max_keys, max_key_size=max_key_size)
+        primary_diff = minimal_keys[0] if minimal_keys else []
+        def_elements = sorted(set(all_common) | set(primary_diff)) if primary_diff else elems
+        rt = roundtrip_elements(corpus, def_elements)
+        if collisions:
+            status, basis = "collides", "hypothesis"
+        elif unobs_sim:
+            status, basis = "incomplete", "hypothesis"
+        elif not obs_sim:
+            status, basis = ("unique_uncontrasted" if rt["verdict"] == "unique" else "incomplete"), "hypothesis"
+        elif not minimal_keys:
+            status, basis = "incomplete", "hypothesis"
+        else:
+            sim_bases = {sim_map[s] for s in obs_sim}
+            status = "unique"
+            basis = "hypothesis" if sim_bases == {"hypothesis"} else "derived"
+        results[name] = {
+            "elements_observed": True,
+            "elements": elems,
+            "similar": sim_names,
+            "unobserved_similar": unobs_sim,
+            "status": status,
+            "basis": basis,
+            "genus": {"all_common": all_common, "by_similar": by_similar, "support": support},
+            "differentia": {"vs_similar": vs_similar, "minimal_keys": minimal_keys, "unavoidable_collisions": collisions},
+            "definition": {"genus": all_common, "differentia": primary_diff, "elements": def_elements,
+                           "roundtrip": {"verdict": rt["verdict"], "matched": rt["matched"]}},
+        }
+    return {"schema": CONCEPT_SCHEMA, "similar_pairs": len(pairs),
+            "concepts": results, "unknown": unknown}
+
+
+def concept_edges(corpus):
+    """Project a concept-similarity corpus onto core edges for check / reach / why / cycles / ladder."""
+    concepts, concept_meta, pairs, _ = _normalize_corpus(corpus)
+    defined = define_concepts(corpus)
+    nodes, edges = {}, []
+    for name in sorted(concepts):
+        cid = f"concept:{name}"
+        nodes[cid] = {"id": cid, "type": "Concept", "name": name,
+                      "elements_observed": concepts[name] is not None}
+        if concepts[name] is not None:
+            c_basis = concept_meta[name]["basis"]
+            for el in concepts[name]:
+                eid = f"elem:{el}"
+                nodes.setdefault(eid, {"id": eid, "type": "Element", "name": el})
+                edges.append({"kind": "hasElement", "source": eid, "target": cid, "basis": c_basis})
+        info = defined["concepts"][name]
+        for el in info["definition"]["genus"]:
+            eid = f"elem:{el}"
+            nodes.setdefault(eid, {"id": eid, "type": "Element", "name": el})
+            edges.append({"kind": "genusElement", "source": eid, "target": cid, "basis": info["basis"]})
+        for el in info["definition"]["differentia"]:
+            eid = f"elem:{el}"
+            nodes.setdefault(eid, {"id": eid, "type": "Element", "name": el})
+            edges.append({"kind": "differentiaElement", "source": eid, "target": cid, "basis": info["basis"]})
+    for pair in pairs:
+        a, b = f"concept:{pair['left']}", f"concept:{pair['right']}"
+        extra = {k: v for k, v in pair.items() if k not in ("left", "right")}
+        edges.append({"kind": "similarTo", "source": a, "target": b, **extra})
+        edges.append({"kind": "similarTo", "source": b, "target": a, **extra})
+    return {"schema": "ontautology-concept-graph/1",
+            "nodes": [nodes[k] for k in sorted(nodes)],
+            "edges": edges}
+
+
 # ---------------------------------------------------------------- command line
 
 def _read_json(path):
@@ -661,17 +935,20 @@ def _read_json(path):
 
 
 def _load(path):
-    """(data, core edges, node ids or None) from an audit graph or a plain {"edges": [...]} file."""
+    """(data, core edges, node ids or None) from an audit graph, concept corpus, or plain {"edges": [...]} file."""
     data = _read_json(path)
     if data.get("schema") == KG_SCHEMA:
         validate(data)
         return data, edges_of(data), [node["id"] for node in data["nodes"]]
+    if data.get("schema") == CONCEPT_SCHEMA or ("concepts" in data and "similar" in data and "edges" not in data):
+        projected = concept_edges(data)
+        return data, projected["edges"], [node["id"] for node in projected["nodes"]]
     return data, data["edges"], data.get("nodes")
 
 
 def main(argv=None):
     """0 = answered, 1 = input error, 2 = answered and something needs a look (findings, a cycle, blocked or unknown)."""
-    parser = argparse.ArgumentParser(description="🔭 audit across repositories · 🧪 check · 💥 reach · 🔎 why · 🔁 cycles · 🪜 order / ladder / plan · 🔑 keys · 🐢 turtle · 🆚 diff")
+    parser = argparse.ArgumentParser(description="🔭 audit across repositories · 🧩 define / roundtrip · 🧪 check · 💥 reach · 🔎 why · 🔁 cycles · 🪜 order / ladder / plan · 🔑 keys · 🐢 turtle · 🆚 diff")
     commands = parser.add_subparsers(dest="command", required=True)
     add = commands.add_parser("audit", help="integration-audit/3 snapshots (one or more, kept as history) → graph")
     add.add_argument("inputs", nargs="+", type=Path)
@@ -684,10 +961,12 @@ def main(argv=None):
     for name, text, terms in (("reach", "what a change of these nodes touches", "node ids"), ("why", "what these nodes rest on", "node ids"),
                               ("order", "batches, sources first", "edge kinds that mean 'before' (default: all)"),
                               ("cycles", "representative cycles", "edge kinds to look at (default: all)"),
-                              ("keys", 'can these field sets be the key of "items"', "field sets like id+run")):
+                              ("keys", 'can these field sets be the key of "items"', "field sets like id+run"),
+                              ("define", "derive genus + differentia definitions from similar concept pairs", "concept names (default: all)"),
+                              ("roundtrip", "reverse-lookup concepts that satisfy all given elements", "elements")):
         add = commands.add_parser(name, help=text)
         add.add_argument("graph", type=Path)
-        add.add_argument("terms", nargs="*" if name in ("order", "cycles") else "+", help=terms)
+        add.add_argument("terms", nargs="*" if name in ("order", "cycles", "define") else "+", help=terms)
     add = commands.add_parser("diff", help="two audit graphs → what changed between their latest observations")
     add.add_argument("before", type=Path)
     add.add_argument("after", type=Path)
@@ -705,6 +984,12 @@ def main(argv=None):
         elif args.command == "diff":
             answer = observation_diff(*(_read_json(path) for path in (args.before, args.after)))
             look = bool(answer["added"] or answer["removed"] or answer["changed"])
+        elif args.command == "define":
+            answer = define_concepts(_read_json(args.graph), args.terms or None)
+            look = bool(answer["unknown"]) or any(c["status"] != "unique" for c in answer["concepts"].values())
+        elif args.command == "roundtrip":
+            answer = roundtrip_elements(_read_json(args.graph), args.terms)
+            look = answer["verdict"] != "unique"
         else:
             data, edges, nodes = _load(args.graph)
             if args.command == "check":
