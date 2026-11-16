@@ -9,12 +9,14 @@ decide goes to a judgment model (an LLM there). A rule is a feature name or ``[O
 AND OR NOT NAND NOR — JSON, so it travels unchanged through py_launch.cjs. ``judge`` runs a rule over every
 concept of a corpus (the core's ``define_concepts`` input) and counts FN / FP; ``rules`` builds the candidates
 from set operations on the common part (genus) and what tells the neighbours apart; ``equivalent`` checks two
-rules on every truth assignment, so a rewritten rule can be restored without loss (reversible).
+rules on every truth assignment, so a rewritten rule can be restored without loss (reversible). ``holdout`` and
+``guess`` measure the definitions on what they were not built from; ``wobble`` shakes the names (the corpus's name
+side) on TalkCompress's tiers: exact, notation folded, one character apart.
 
 Ladder: a rule with no FN and no FP over every observed concept is ``derived`` (it holds for what was
 collected, one more concept can refute it); an equivalence over every assignment is ``proof``.
 
-CLI: python -S tools/tautology.py rules | judge | equivalent ... (through the core's command line, so the core
+CLI: python -S tools/tautology.py rules | judge | equivalent | holdout | guess | wobble ... (through the core's command line, so the core
 commands and exit codes come along).
 
 Dependency goes one way: tools/ import the core, the core never imports tools/.
@@ -24,12 +26,13 @@ import itertools
 import json
 import math
 import sys
+import unicodedata
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import ontautology as ot  # noqa: E402
 
-__all__ = ["standing", "gaps", "entailed", "holds", "atoms", "judge", "rules", "holdout", "guess", "guess_report", "equivalent", "main"]
+__all__ = ["standing", "gaps", "entailed", "holds", "atoms", "judge", "rules", "holdout", "guess", "guess_report", "wobble", "equivalent", "main"]
 OPS = {"AND": all, "OR": any, "NAND": lambda v: not all(v), "NOR": lambda v: not any(v), "NOT": lambda v: not v[0]}
 
 
@@ -127,12 +130,13 @@ def rules(corpus, concept):
 
 
 def _without(corpus, name):
-    """The corpus with one concept masked out: its elements and every similar pair that names it."""
+    """The corpus with one concept masked out: its elements, its maybe and names, and every similar pair that names it."""
     concepts = corpus.get("concepts", {})
     concepts = ({k: v for k, v in concepts.items() if k != name} if isinstance(concepts, dict)
                 else [entry for entry in concepts if entry.get("id") != name])
     ends = lambda e: e if isinstance(e, (list, tuple)) else (e.get("left", e.get("source")), e.get("right", e.get("target")))
-    return {**corpus, "concepts": concepts, "similar": [e for e in corpus.get("similar", []) if name not in ends(e)]}
+    beside = {key: {k: v for k, v in corpus[key].items() if k != name} for key in ("maybe", "names") if isinstance(corpus.get(key), dict)}
+    return {**corpus, **beside, "concepts": concepts, "similar": [e for e in corpus.get("similar", []) if name not in ends(e)]}
 
 
 def holdout(corpus, names=None):
@@ -193,7 +197,7 @@ def guess(corpus, target, *, lies=0, forget=(), known=True):
     concepts, _, _, _ = ot._normalize_corpus(corpus)
     if concepts.get(target) is None:
         raise ValueError(f"unknown or unobserved concept: {target!r}")
-    maybe = ot._maybe(corpus, concepts)
+    maybe = ot._beside(corpus, concepts, "maybe")
     truth = set(concepts[target]) - set(forget)
     book = {name: (set(found), set(maybe.get(name, ()))) for name, found in concepts.items()
             if found is not None and (known or name != target)}
@@ -257,6 +261,81 @@ def guess_report(corpus, names=None, *, lies=0):
     return {"lies": lies, "estimate": scenes["honest"][0]["estimate"] if names else 0,
             "summary": {scene: tally(games) for scene, games in scenes.items()},
             "honest": {g["target"]: {"count": g["count"], "guess": g["guess"], "questions": g["questions"]} for g in scenes["honest"]}}
+
+
+def _notation(text):
+    """A written form with its notation folded, as TalkCompress's notation_tolerant tier: width (NFKC), case,
+    separators (space - _ ・ ·), katakana as hiragana, and a long-vowel mark ー as the vowel before it."""
+    out = []
+    for ch in unicodedata.normalize("NFKC", text).casefold():
+        if ch in " -_・·":
+            continue
+        if "ァ" <= ch <= "ヶ":
+            ch = chr(ord(ch) - 0x60)
+        if ch == "ー" and out and "ぁ" <= out[-1] <= "ゖ" and unicodedata.name(out[-1])[-1] in "AIUEO":
+            ch = "あいうえお"["AIUEO".index(unicodedata.name(out[-1])[-1])]
+        out.append(ch)
+    return "".join(out)
+
+
+def _one_apart(a, b):
+    """One character inserted, deleted or replaced (and not equal)."""
+    if a == b or abs(len(a) - len(b)) > 1:
+        return False
+    a, b = sorted((a, b), key=len)
+    i = next((k for k, (x, y) in enumerate(zip(a, b)) if x != y), len(a))
+    return a[i + (len(a) == len(b)):] == b[i + 1:]
+
+
+def wobble(corpus, words=()):
+    """🔤 Shake the names and see what comes out, on TalkCompress's tiers: exact ⊂ notation ⊂ near.
+
+    Each concept's written forms are its own name and the values of its ``names`` (読み:さけ → さけ), folded by
+    ``_notation``. A word of one character is near any other, so near compares forms of two or more.
+    words     each word looked up: exact, the same once folded, or one character apart. ``via`` is the name it
+              hit: 酒 hits 鮭 through 同音語:酒, a word that sounds the same, not 鮭 itself
+    near      concepts whose forms are one character apart (マリオ・ワリオ), and whether they are similar too
+    same      a folded form two concepts share: that name splits
+    rephrase  thing-side elements that contain the concept's own name or reading: they only restate the name
+              (白鮭 has 鮭 in it, サケ属 has さけ), so they belong on the name side. Anything here is worth a look.
+    """
+    concepts, _, pairs, _ = ot._normalize_corpus(corpus)
+    called = ot._beside(corpus, concepts, "names")
+    forms = {name: [(name, name), *((el, el.split(":", 1)[-1]) for el in called.get(name, ()))] for name in sorted(concepts)}
+    folded = {name: [(via, text, _notation(text)) for via, text in rows] for name, rows in forms.items()}
+    near_enough = lambda a, b: min(len(a), len(b)) > 1 and _one_apart(a, b)
+
+    def look(word):
+        key, found, seen = _notation(word), {"exact": [], "notation": [], "near": []}, set()
+        for tier, hit in (("exact", lambda text, f: text == word), ("notation", lambda text, f: f == key),
+                          ("near", lambda text, f: near_enough(f, key))):
+            for name, rows in folded.items():
+                for via, text, f in rows:
+                    if (name, via) not in seen and hit(text, f):
+                        seen.add((name, via))
+                        found[tier].append({"concept": name, "via": via})
+        return found
+
+    similar = {frozenset((p["left"], p["right"])) for p in pairs}
+    near = []
+    for a, b in itertools.combinations(folded, 2):
+        hit = next(([va, vb] for va, _, fa in folded[a] for vb, _, fb in folded[b] if near_enough(fa, fb)), None)
+        if hit:
+            near.append({"pair": [a, b], "via": hit, "similar": frozenset((a, b)) in similar})
+    shared = {}
+    for name, rows in folded.items():
+        for _, _, f in rows:
+            shared.setdefault(f, set()).add(name)
+    same = [{"form": f, "concepts": sorted(names)} for f, names in sorted(shared.items()) if len(names) > 1]
+    rephrase = {}
+    for name, elements in sorted(concepts.items()):
+        keys = [folded[name][0][2], *(f for _, _, f in folded[name][1:] if len(f) > 1)]
+        hits = [el for el in elements or () if any(k in _notation(el) for k in keys)]
+        if hits:
+            rephrase[name] = hits
+    return {"words": {word: look(word) for word in words}, "near": near, "same": same, "rephrase": rephrase,
+            "summary": {"concepts": len(forms), "named": len(called), "near": len(near), "near_similar": sum(row["similar"] for row in near),
+                        "same": len(same), "rephrase": sum(map(len, rephrase.values()))}}
 
 
 def equivalent(left, right, *, limit=16):
@@ -338,6 +417,16 @@ def _holdout(args):
     return found, bool(summary["unseen"]["fp"]) or summary["defined"] < summary["seeds"]
 
 
+def _wobble_arguments(parser):
+    _corpus(parser)
+    parser.add_argument("words", nargs="*", help="words to look up by their names: exact, notation folded, one character apart")
+
+
+def _wobble(args):
+    found = wobble(ot._read_json(args.graph), args.words)
+    return found, bool(found["rephrase"])
+
+
 def main(argv=None):
     """Exit codes as the core: 0 answered, 1 input error, 2 answered and something needs a look."""
     return ot.main(argv, commands=(
@@ -345,7 +434,8 @@ def main(argv=None):
         ("judge", "🧩 第二弾 · 🧮 one rule as the judge of a concept: FN / FP / accuracy / propositions", _judge_arguments, _judge),
         ("equivalent", "🧩 第二弾 · ✅ two rules on every truth assignment (proof) or a counterexample", _equivalent_arguments, _equivalent),
         ("holdout", "🧩 第二弾 · 🙈 unseen concepts and 🎭 masked elements: how definitions hold on what they were not built from", _rules_arguments, _holdout),
-        ("guess", "🧩 第二弾 · 🎯 guessing game: questions to reach each concept, honest / forgetting / unseen", _guess_arguments, _guess)))
+        ("guess", "🧩 第二弾 · 🎯 guessing game: questions to reach each concept, honest / forgetting / unseen", _guess_arguments, _guess),
+        ("wobble", "🧩 第二弾 · 🔤 shake the names: near names, a name that splits, names inside the thing side", _wobble_arguments, _wobble)))
 
 
 if __name__ == "__main__":

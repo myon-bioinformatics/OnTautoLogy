@@ -141,13 +141,33 @@ class WatchLayerTests(unittest.TestCase):
 
     def test_the_snapshot_ignores_input_order_and_follows_content(self):
         corpus = _load_example()
-        shuffled = {"similar": list(reversed(corpus["similar"])),
-                    "concepts": {k: list(reversed(v)) for k, v in reversed(list(corpus["concepts"].items()))}}
+        flip = lambda side: {k: list(reversed(v)) for k, v in reversed(list(corpus[side].items()))}
+        shuffled = {"similar": list(reversed(corpus["similar"])), "concepts": flip("concepts"), "names": flip("names")}
         snapshot = lambda c: next(n["id"] for n in self.graph(c)[0]["nodes"] if n["type"] == "Snapshot")
         self.assertEqual(snapshot(corpus), snapshot(shuffled))
-        changed = copy.deepcopy(corpus)
-        changed["concepts"]["ギター"].append("12弦もある")
-        self.assertNotEqual(snapshot(corpus), snapshot(changed))
+        for side, name, element in (("concepts", "ギター", "12弦もある"), ("names", "ギター", "読み:ぎたあ")):
+            changed = copy.deepcopy(corpus)
+            changed[side][name].append(element)
+            self.assertNotEqual(snapshot(corpus), snapshot(changed))
+
+    def test_names_are_the_observed_name_side_and_define_nothing(self):
+        corpus = _load_example()
+        graph, nodes = self.graph(corpus)
+        observed = {e["target"]: e["source"] for e in graph["edges"] if e["kind"] == "observes"}
+        named = [e for e in graph["edges"] if e["kind"] == "hasName"]
+        self.assertIn(("name:読み:しゃけ", "concept:鮭"), {(e["source"], e["target"]) for e in named})
+        self.assertTrue(all(e["basis"] == "observed" and e["lock"] == observed[e["target"]] and nodes[e["source"]]["type"] == "Name"
+                            for e in named))
+        self.assertEqual(ot.define_concepts(corpus), ot.define_concepts({k: v for k, v in corpus.items() if k != "names"}))
+        # the name of a concept nobody has looked at yet rests on the snapshot that wrote it down
+        corpus["similar"].append(["ギター", "マンドリン"])
+        corpus["names"]["マンドリン"] = ["英名:Mandolin"]
+        graph, nodes = self.graph(corpus)
+        edge = next(e for e in graph["edges"] if e["kind"] == "hasName" and e["target"] == "concept:マンドリン")
+        self.assertEqual(nodes[edge["lock"]]["type"], "Snapshot")
+        for bad in ({"names": []}, {"names": {"幽霊": ["英名:Ghost"]}}, {"names": {"ギター": "英名:Guitar"}}):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                ot.concept_edges({**_load_example(), **bad})
 
     def test_captured_at_is_the_observation_time_and_must_carry_a_timezone(self):
         corpus = dict(_load_example(), captured_at="2026-11-16T18:00:00+09:00")
