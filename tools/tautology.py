@@ -82,14 +82,16 @@ def judge(corpus, concept, rule):
 
 
 def rules(corpus, concept):
-    """Candidate rules for ``concept`` from set operations, each judged; reversible first, then fewer features,
-    then the order below.
+    """Candidate rules for ``concept`` from set operations, each judged; reversible first, then accuracy, then
+    what the concept has before what it lacks, then fewer features, then the order below.
 
-    genus                  AND of the common part with the similar concepts (the control: it also lets them in)
-    genus-nor-neighbours   genus AND NOR(what only the similar concepts have)
-    genus-nand-neighbours  genus AND NAND(what only the similar concepts have) — weaker: not all of it
-    genus-or-differentia   genus AND OR(each shortest distinguishing key)
-    all-elements           AND of every observed element
+    genus                   AND of the common part with the similar concepts (the control: it also lets them in)
+    genus-most-differentia  genus AND all but one of the shortest distinguishing keys (one may be missing)
+    genus-nor-neighbours    genus AND NOR(what only the similar concepts have) — knows only the neighbours it saw
+    genus-nand-neighbours   genus AND NAND(what only the similar concepts have) — weaker: not all of it
+    all-elements            AND of every observed element
+    What the concept has comes before what it lacks (the -neighbours shapes): an unseen neighbour lacks the seen
+    neighbours' features too, so a NOR of them lets it in. Those two are the fallback.
     ``definition`` is the first reversible rule, or None while every candidate is refuted or undecided.
     """
     info = ot.define_concepts(corpus, [concept])["concepts"].get(concept)
@@ -99,15 +101,18 @@ def rules(corpus, concept):
     neighbours = sorted({el for side in info["differentia"]["vs_similar"].values() for el in side["only_similar"]})
     # Only the shortest keys: a longer key is a combination of features others share, and it lets unseen neighbours in.
     shortest = min((len(key) for key in info["differentia"]["minimal_keys"] if key), default=0)
-    keys = [["AND", *key] for key in info["differentia"]["minimal_keys"] if key and len(key) == shortest]
+    keys = [key for key in info["differentia"]["minimal_keys"] if key and len(key) == shortest]
+    # All but one: a masked observation may take one key away, but one key an unseen neighbour shares is not enough.
+    most = ["OR", *(["AND", *sorted({el for key in group for el in key})] for group in itertools.combinations(keys, max(1, len(keys) - 1)))]
     shapes = [("genus", ["AND", *genus], genus),
+              ("genus-most-differentia", ["AND", *genus, most], keys),
               ("genus-nor-neighbours", ["AND", *genus, ["NOR", *neighbours]], genus and neighbours),
               ("genus-nand-neighbours", ["AND", *genus, ["NAND", *neighbours]], genus and neighbours),
-              ("genus-or-differentia", ["AND", *genus, ["OR", *keys]], keys),
               ("all-elements", ["AND", *info["elements"]], True)]
     found = [{"shape": shape, "atoms": len(atoms(rule)), **judge(corpus, concept, rule)} for shape, rule, usable in shapes if usable]
     rank = [shape for shape, _, _ in shapes]  # on a tie, the genus-built shapes come before listing every element
-    found.sort(key=lambda row: (row["verdict"] != "reversible", -(row["accuracy"] or 0), row["atoms"], rank.index(row["shape"])))
+    found.sort(key=lambda row: (row["verdict"] != "reversible", -(row["accuracy"] or 0), row["shape"].endswith("-neighbours"),
+                                row["atoms"], rank.index(row["shape"])))
     definition = next((row["rule"] for row in found if row["verdict"] == "reversible"), None)
     return {"concept": concept, "candidates": found, "definition": definition, "to_model": found[0]["to_model"] if found else []}
 

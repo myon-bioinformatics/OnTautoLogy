@@ -25,15 +25,15 @@ class ConceptDefinitionTests(unittest.TestCase):
     def test_example_pairs_derive_genus_differentia_and_unique_roundtrip(self):
         corpus = _load_example()
         defined = ot.define_concepts(corpus)
-        self.assertEqual(defined["similar_pairs"], 10)
+        self.assertEqual(defined["similar_pairs"], 15)
         self.assertEqual(defined["unknown"], [])
         concepts = defined["concepts"]
         expected_genus = {
             "ギター": ["ボディ", "弦楽器", "楽器"],  # with ウクレレ・三味線・バイオリン the common part narrows
             "ピカチュウ": ["でんきタイプ", "ねずみ分類", "ポケモン"],
             "鮭": ["サケ属", "サケ科", "遡河回遊魚", "食用", "魚類"],
-            "iPhone": ["アプリ実行環境", "スマートフォン", "タッチパネル", "モバイル通信"],
-            "エナジードリンク": ["カフェイン含有", "覚醒目的", "飲料"],
+            "iPhone": ["アプリ実行環境", "タッチパネル"],  # iPad is no smartphone, and its mobile link is only maybe
+            "エナジードリンク": ["飲料"],  # カクテル has no caffeine
             "マリオ": ["オーバーオール", "ゲームキャラクター", "人間", "任天堂", "帽子", "配管工"],
         }
         for name, genus in expected_genus.items():
@@ -100,8 +100,8 @@ class ConceptDefinitionTests(unittest.TestCase):
         nodes = [n["id"] for n in projected["nodes"]]
         edges = projected["edges"]
         self.assertEqual(ot.check(edges, nodes), [])
-        reached = ot.reach(edges, ["elem:カフェイン含有"])
-        self.assertEqual({r["node"] for r in reached["rows"]}, {"concept:エナジードリンク", "concept:コーヒー"})
+        reached = ot.reach(edges, ["elem:カフェイン含有"])  # カクテル has none, but it is similar to one that has: look again
+        self.assertEqual({r["node"] for r in reached["rows"]}, {"concept:エナジードリンク", "concept:カクテル", "concept:コーヒー"})
         why = ot.why(edges, "concept:ギター", depth=1)
         self.assertTrue(any(r["edge"]["kind"] == "similarTo" and r["edge"]["source"] == "concept:ベース" for r in why["rows"]))
         counts = ot.ladder(edges)["basis"]
@@ -205,7 +205,7 @@ class ConceptCliTests(unittest.TestCase):
         p = self.run_cli("reach", str(EXAMPLE_PATH), "elem:カフェイン含有")
         self.assertEqual(p.returncode, 0, p.stderr)
         self.assertEqual({r["node"] for r in json.loads(p.stdout)["rows"]},
-                         {"concept:エナジードリンク", "concept:コーヒー"})
+                         {"concept:エナジードリンク", "concept:カクテル", "concept:コーヒー"})
 
 
 if __name__ == "__main__":

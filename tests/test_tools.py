@@ -306,16 +306,43 @@ class JudgeTests(unittest.TestCase):
         self.assertEqual(run_cli(script, "equivalent", '["NAND", "a", "b"]', '["NOR", "a", "b"]').returncode, 2)
         self.assertEqual(run_cli(script, "judge", corpus_path, "存在しない", "a").returncode, 1)
 
-    def test_on_a_tie_the_definition_is_built_from_the_genus(self):
+    def test_the_definition_is_built_from_what_the_concept_has(self):
         corpus = concepts()
-        self.assertEqual(tautology.rules(corpus, "ルイージ")["definition"],  # ties with all-elements at 8 features
-                         ["AND", "オーバーオール", "ゲームキャラクター", "人間", "任天堂", "帽子", "配管工", ["NOR", "兄", "赤色"]])
+        # four keys, any three of them; 配管工 is no key (マリオ has it too)
+        three = [["AND", *group] for group in (["初登場年:1983", "帽子のマーク:L", "弟"], ["初登場年:1983", "帽子のマーク:L", "緑色"],
+                                               ["初登場年:1983", "弟", "緑色"], ["帽子のマーク:L", "弟", "緑色"])]
+        self.assertEqual(tautology.rules(corpus, "ルイージ")["definition"],
+                         ["AND", "オーバーオール", "ゲームキャラクター", "人間", "任天堂", "帽子", ["OR", *three]])
         # ピアノ shares the genus of ギター without being similar, so excluding the neighbours is not enough there
         self.assertEqual(tautology.rules(corpus, "ギター")["definition"],
                          ["AND", "ボディ", "弦楽器", "楽器", ["OR", ["AND", "6弦標準"], ["AND", "開放弦:EADGBE"]]])
         for seed in corpus["seeds"]:
             with self.subTest(seed=seed):
-                self.assertNotEqual(tautology.rules(corpus, seed)["candidates"][0]["shape"], "all-elements")
+                self.assertEqual(tautology.rules(corpus, seed)["candidates"][0]["shape"], "genus-most-differentia")
+
+    def test_one_key_shared_with_an_unseen_twin_is_not_enough(self):
+        # 配管工 is only マリオ's and ルイージ's. With マリオ hidden it looks like a key of ルイージ; any one key would let
+        # マリオ in, all but one of the three keeps him out.
+        corpus = {"seeds": ["ルイージ"], "similar": [["ルイージ", "マリオ"], ["ルイージ", "ワリオ"]],
+                  "concepts": {"ルイージ": ["人間", "配管工", "緑色", "弟"], "マリオ": ["人間", "配管工", "赤色", "兄"],
+                               "ワリオ": ["人間", "黄色"]}}
+        rule = tautology.rules(tautology._without(corpus, "マリオ"), "ルイージ")["definition"]
+        self.assertEqual(rule, ["AND", "人間", ["OR", ["AND", "弟", "緑色"], ["AND", "弟", "配管工"], ["AND", "緑色", "配管工"]]])
+        self.assertTrue(tautology.holds(["AND", "人間", ["OR", "配管工", "緑色", "弟"]], set(corpus["concepts"]["マリオ"])))
+        self.assertEqual(tautology.holdout(corpus)["concepts"]["ルイージ"]["unseen"]["fp"], [])
+
+    def test_a_nor_of_the_seen_neighbours_is_only_the_fallback(self):
+        # With コーヒー hidden, "a drink that is not カクテル" is shorter and reversible on what is left, but it knows only
+        # カクテル: the unseen コーヒー is not カクテル either. What エナジードリンク has comes first.
+        corpus = {"seeds": ["エナジードリンク"], "similar": [["エナジードリンク", "コーヒー"], ["エナジードリンク", "カクテル"]],
+                  "concepts": {"エナジードリンク": ["飲料", "カフェイン含有", "炭酸", "甘味料"], "コーヒー": ["飲料", "カフェイン含有", "苦味"],
+                               "カクテル": ["飲料", "アルコール含有"]}}
+        found = tautology.rules(tautology._without(corpus, "コーヒー"), "エナジードリンク")["candidates"]
+        nor = next(row for row in found if row["shape"] == "genus-nor-neighbours")
+        self.assertEqual((nor["verdict"], nor["atoms"] < found[0]["atoms"]), ("reversible", True))
+        self.assertTrue(tautology.holds(nor["rule"], set(corpus["concepts"]["コーヒー"])))
+        self.assertEqual(found[0]["shape"], "genus-most-differentia")
+        self.assertEqual(tautology.holdout(corpus)["concepts"]["エナジードリンク"]["unseen"]["fp"], [])
 
     def test_holdout_shows_the_one_similar_trap(self):
         # With one similar concept, hiding it leaves only the far ピアノ to tell ギター from: a short key (撥弦)
@@ -341,12 +368,11 @@ class JudgeTests(unittest.TestCase):
         found = tautology.holdout(corpus)
         rows = found["concepts"]
         self.assertEqual(list(rows), corpus["seeds"])
-        # ≥2 similar concepts plus the attributes that really differ (open strings, stage, base stats): no unseen FP
-        self.assertEqual((rows["ギター"]["unseen"]["fp"], rows["ピカチュウ"]["unseen"]["fp"]), ([], []))
-        # one similar concept each: hiding it lets it in (the one-similar trap)
-        for seed, similar in (("鮭", "サクラマス"), ("iPhone", "Android"), ("エナジードリンク", "コーヒー"), ("ルイージ", "マリオ")):
+        # every seed has ≥2 similar concepts and attributes that really differ (open strings, base stats, spawning,
+        # cap mark …), and the definition needs all but one key: no unseen concept is let in
+        for seed in corpus["seeds"]:
             with self.subTest(seed=seed):
-                self.assertEqual(rows[seed]["unseen"]["fp"], [similar])
+                self.assertEqual(rows[seed]["unseen"]["fp"], [])
         summary = found["summary"]
         self.assertEqual(summary["unseen"]["tested"], sum(r["unseen"]["tested"] for r in rows.values()))
         self.assertEqual(summary["unseen"]["fp"], sum(len(r["unseen"]["fp"]) for r in rows.values()))
@@ -355,7 +381,7 @@ class JudgeTests(unittest.TestCase):
         self.assertEqual(rows["ギター"]["masked"]["fn"], sorted(["ボディ", "弦楽器", "楽器"]))
         self.assertEqual(rows["ピカチュウ"]["masked"]["fn"], sorted(["でんきタイプ", "ねずみ分類", "ポケモン"]))
         from test_ontautology import run_cli
-        self.assertEqual(run_cli(ROOT / "tools/tautology.py", "holdout", str(ROOT / "examples/concepts-20261115.json")).returncode, 2)
+        self.assertEqual(run_cli(ROOT / "tools/tautology.py", "holdout", str(ROOT / "examples/concepts-20261115.json")).returncode, 0)
 
     def test_only_the_shortest_keys_are_joined_by_or(self):
         # With ウクレレ hidden, 中高音主体 ∧ 撥弦 also tells ギター from the rest; joined by OR it would let ウクレレ in.
@@ -449,7 +475,8 @@ class GuessTests(unittest.TestCase):
     def test_an_unseen_target_should_end_in_no_guess(self):
         corpus = concepts()
         unseen = tautology.guess(corpus, "鮭", known=False)
-        self.assertEqual((unseen["guess"], unseen["reached"]), ("サクラマス", False))  # the one-similar trap again
+        # one question (産卵: 一生に一度) leaves サクラマス alone, and the game stops there without checking it
+        self.assertEqual((unseen["guess"], unseen["reached"]), ("サクラマス", False))
         self.assertTrue(tautology.guess(corpus, "ピアノ", known=True)["reached"])
 
     def test_a_maybe_link_never_counts_against_a_candidate(self):
@@ -465,7 +492,8 @@ class GuessTests(unittest.TestCase):
         graph = ot.concept_edges(corpus)
         maybe = [e for e in graph["edges"] if e.get("maybe")]
         self.assertEqual(sorted((e["source"], e["target"]) for e in maybe),
-                         [("elem:エレキ", "concept:ベース"), ("elem:缶入り", "concept:エナジードリンク"), ("elem:金属弦", "concept:ギター")])
+                         [("elem:エレキ", "concept:ベース"), ("elem:モバイル通信", "concept:iPad"), ("elem:炭酸", "concept:カクテル"),
+                          ("elem:缶入り", "concept:エナジードリンク"), ("elem:金属弦", "concept:ギター")])
         self.assertTrue(all(e["basis"] == "hypothesis" for e in maybe))
         self.assertEqual(ot.reach(graph["edges"], ["elem:金属弦"])["rows"], [])
         without = {k: v for k, v in corpus.items() if k != "maybe"}
