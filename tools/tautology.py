@@ -32,7 +32,17 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import ontautology as ot  # noqa: E402
 
-__all__ = ["standing", "gaps", "entailed", "holds", "atoms", "judge", "rules", "holdout", "guess", "guess_report", "wobble", "equivalent", "main"]
+__all__ = ["standing", "gaps", "entailed", "holds", "atoms", "judge", "rules", "holdout", "guess", "guess_report",
+           "wobble", "name_index", "equivalent", "main"]
+# 属性名が言語と種別を兼ねる。SKOS の prefLabel / altLabel に相当。同音語は同じ概念にしない。
+_NAME_PREFIX = {
+    "英名": ("en", "pref"),
+    "和名": ("ja", "pref"),
+    "別名": (None, "alt"),
+    "略語": (None, "abbr"),
+    "読み": ("ja", "variant"),
+    "学名": ("la", "alt"),
+}
 OPS = {"AND": all, "OR": any, "NAND": lambda v: not all(v), "NOR": lambda v: not any(v), "NOT": lambda v: not v[0]}
 
 
@@ -135,8 +145,12 @@ def _without(corpus, name):
     concepts = ({k: v for k, v in concepts.items() if k != name} if isinstance(concepts, dict)
                 else [entry for entry in concepts if entry.get("id") != name])
     ends = lambda e: e if isinstance(e, (list, tuple)) else (e.get("left", e.get("source")), e.get("right", e.get("target")))
-    beside = {key: {k: v for k, v in corpus[key].items() if k != name} for key in ("maybe", "names") if isinstance(corpus.get(key), dict)}
-    return {**corpus, **beside, "concepts": concepts, "similar": [e for e in corpus.get("similar", []) if name not in ends(e)]}
+    # 第三弾の任意フィールドも、隠した概念の分だけ落とす。無いコーパスでは何もしない。
+    beside = {key: {k: v for k, v in corpus[key].items() if k != name}
+              for key in ("maybe", "names", "labels") if isinstance(corpus.get(key), dict)}
+    lists = {key: [row for row in corpus[key] if row.get("concept") != name]
+             for key in ("observations", "judgments", "candidates") if isinstance(corpus.get(key), list)}
+    return {**corpus, **beside, **lists, "concepts": concepts, "similar": [e for e in corpus.get("similar", []) if name not in ends(e)]}
 
 
 def holdout(corpus, names=None):
@@ -317,6 +331,55 @@ def _one_apart(a, b):
     return a[i + (len(a) == len(b)):] == b[i + 1:]
 
 
+def name_index(corpus):
+    """意味解釈。名前側の属性から言語と種別を読み、安定 ID にぶら下げる。
+
+    英名は英語の正式名、別名は alt、略語は abbr、読みは日本語の表記揺れ。同じ ID の別言語は同じ概念。
+    言語が同じという理由では結ばない。同音語・名前の由来・シリーズ名は同一概念のラベルにしない。
+    外部候補（candidates）はここには入れない。ID が無ければ概念の名前を使う。
+    """
+    found = ot.concept_lexicon(corpus)
+    concepts, meta = found["concepts"], found["meta"]
+    called = ot._beside(corpus, concepts, "names") if isinstance(corpus.get("names"), dict) else {}
+    rows = []
+    for name in sorted(concepts):
+        token = meta[name].get("concept_id") or name
+        notation = meta[name].get("notation") or name
+        rows.append({"concept": name, "id": token, "text": name, "lang": None, "kind": "pref", "via": name, "notation": notation})
+        for el in called.get(name, ()):
+            if ":" not in el:
+                continue
+            prefix, value = el.split(":", 1)
+            mapped = _NAME_PREFIX.get(prefix)
+            if not mapped or not value:
+                continue
+            lang, kind = mapped
+            rows.append({"concept": name, "id": token, "text": value, "lang": lang, "kind": kind, "via": el, "notation": notation})
+        for row in found["labels"]:
+            if row["concept"] != name:
+                continue
+            rows.append({"concept": name, "id": token, "text": row["text"], "lang": row["lang"], "kind": row["kind"],
+                         "via": "labels", "notation": notation, **({"context": row["context"]} if row.get("context") else {})})
+    return {"labels": rows, "ids": {name: meta[name].get("concept_id") or name for name in concepts}}
+
+
+def _roundtrip_tally(trials, questions):
+    """判断評価。揺らした表記が同じ概念に戻った率と、別概念に当たった件数。ID は変えない。"""
+    returned = sum(trial["concept"] in trial["hits"] for trial in trials)
+    strict = sum(set(trial["hits"]) == {trial["concept"]} for trial in trials)
+    false = [{"concept": trial["concept"], "other": other, "query": trial["query"], "via": trial["via"]}
+             for trial in trials for other in trial["hits"] if other != trial["concept"]]
+    false.sort(key=lambda row: (row["concept"], row["other"], row["via"], row["query"]))
+    counts = [questions[name] for name in sorted(questions)]
+    size = len(trials)
+    return {"trials": size, "returned": returned, "false_merges": len(false),
+            "accuracy": round(strict / size, 4) if size else None,
+            "mean_questions": round(sum(counts) / len(counts), 2) if counts else None,
+            "max_questions": max(counts) if counts else None,
+            "rate": round(returned / size, 4) if size else None,
+            "examples": false[:12]}
+
+
 def wobble(corpus, words=()):
     """🔤 Shake the names and see what comes out, on TalkCompress's tiers: exact ⊂ notation ⊂ near.
 
@@ -328,10 +391,25 @@ def wobble(corpus, words=()):
     same      a folded form two concepts share: that name splits
     rephrase  thing-side elements that contain the concept's own name or reading: they only restate the name
               (白鮭 has 鮭 in it, サケ属 has さけ), so they belong on the name side. Anything here is worth a look.
+    roundtrip 各表記を畳んだ文字列で引き直す。同じ概念に戻った率（rate）と、別概念に当たった件数（false_merges）。
+              質問数は概念ごとの表記の数。当たっても ID はまとめない。
     """
     concepts, _, pairs, _ = ot._normalize_corpus(corpus)
     called = ot._beside(corpus, concepts, "names")
-    forms = {name: [(name, name), *((el, el.split(":", 1)[-1]) for el in called.get(name, ()))] for name in sorted(concepts)}
+    indexed = name_index(corpus)
+    extra_labels = {}
+    for row in indexed["labels"]:
+        if row["via"] == "labels":
+            extra_labels.setdefault(row["concept"], []).append(row["text"])
+    forms = {}
+    for name in sorted(concepts):
+        rows = [(name, name), *((el, el.split(":", 1)[-1]) for el in called.get(name, ()))]
+        seen_text = {text for _, text in rows}
+        for text in extra_labels.get(name, ()):
+            if text not in seen_text:
+                rows.append((f"labels:{text}", text))
+                seen_text.add(text)
+        forms[name] = rows
     folded = {name: [(via, text, _notation(text)) for via, text in rows] for name, rows in forms.items()}
     near_enough = lambda a, b: min(len(a), len(b)) > 1 and _one_apart(a, b)
 
@@ -363,9 +441,31 @@ def wobble(corpus, words=()):
         hits = [el for el in elements or () if any(k in _notation(el) for k in keys)]
         if hits:
             rephrase[name] = hits
+    # わざと畳んだ表記で引き直す。近傍の別概念は件数に残し、同じ ID にはしない。
+    trials, questions = [], {}
+    for name, rows in folded.items():
+        questions[name] = 0
+        for via, _text, folded_text in rows:
+            questions[name] += 1
+            hits, seen_hit = [], set()
+            for tier_hits in look(folded_text).values():
+                for hit in tier_hits:
+                    if hit["concept"] not in seen_hit:
+                        seen_hit.add(hit["concept"])
+                        hits.append(hit["concept"])
+            trials.append({"concept": name, "via": via, "query": folded_text, "hits": hits})
+    roundtrip = _roundtrip_tally(trials, questions)
+    seeds = [name for name in corpus.get("seeds") or [] if name in folded]
+    if seeds:
+        seed_trials = [trial for trial in trials if trial["concept"] in set(seeds)]
+        roundtrip_seeds = _roundtrip_tally(seed_trials, {name: questions[name] for name in seeds})
+    else:
+        roundtrip_seeds = None
     return {"words": {word: look(word) for word in words}, "near": near, "same": same, "rephrase": rephrase,
+            "roundtrip": roundtrip, "roundtrip_seeds": roundtrip_seeds,
             "summary": {"concepts": len(forms), "named": len(called), "near": len(near), "near_similar": sum(row["similar"] for row in near),
-                        "same": len(same), "rephrase": sum(map(len, rephrase.values()))}}
+                        "same": len(same), "rephrase": sum(map(len, rephrase.values())),
+                        "false_merges": roundtrip["false_merges"], "roundtrip_rate": roundtrip["rate"]}}
 
 
 def equivalent(left, right, *, limit=16):
@@ -467,7 +567,7 @@ def main(argv=None):
         ("equivalent", "🧩 第二弾 · ✅ two rules on every truth assignment (proof) or a counterexample", _equivalent_arguments, _equivalent),
         ("holdout", "🧩 第二弾 · 🙈 unseen concepts and 🎭 masked elements: how definitions hold on what they were not built from", _rules_arguments, _holdout),
         ("guess", "🧩 第二弾 · 🎯 guessing game: questions to reach each concept, honest / forgetting / unseen", _guess_arguments, _guess),
-        ("wobble", "🧩 第二弾 · 🔤 shake the names: near names, a name that splits, names inside the thing side", _wobble_arguments, _wobble)))
+        ("wobble", "🧩 🔤 名前を揺らす。同じ概念に戻る率と、別概念への当たり件数。自動では同じ ID にしない", _wobble_arguments, _wobble)))
 
 
 if __name__ == "__main__":

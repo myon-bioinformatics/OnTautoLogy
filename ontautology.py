@@ -36,8 +36,8 @@ from pathlib import Path
 # ---------------------------------------------------------------- 1. core
 
 BASIS = ("hypothesis", "derived", "observed", "proof")
-__all__ = ["BASIS", "check", "reach", "why", "cycles", "order", "ladder", "key_report",
-           "digest", "timestamp", "define_concepts", "roundtrip_elements", "concept_edges", "main"]
+__all__ = ["BASIS", "LABEL_KINDS", "check", "reach", "why", "cycles", "order", "ladder", "key_report",
+           "digest", "timestamp", "define_concepts", "roundtrip_elements", "concept_edges", "concept_lexicon", "main"]
 
 
 def digest(value):
@@ -231,6 +231,9 @@ def key_report(items, candidates):
 # ---------------------------------------------------------------- 3. concept similarity & definition
 
 CONCEPT_SCHEMA = "ontautology-concepts/1"
+# 第三弾の試作。種別は SKOS の prefLabel / altLabel に相当する呼び名で、語彙そのものは導入しない。
+LABEL_KINDS = ("pref", "alt", "abbr", "variant", "translation")
+_PHASE3_LISTS = ("observations", "judgments", "candidates")
 
 
 def _nonempty_str(value, label):
@@ -254,7 +257,13 @@ def _normalize_corpus(corpus):
     raw_concepts = corpus.get("concepts", {})
     concepts, concept_meta = {}, {}
     if isinstance(raw_concepts, dict):
-        items = raw_concepts.items()
+        # 辞書のキーが概念の名前。中の id は言語に依存しない安定 ID（例: C006-salmon）。無いときは名前のまま。
+        items = []
+        for raw_name, raw_spec in raw_concepts.items():
+            if isinstance(raw_spec, dict) and "id" in raw_spec:
+                raw_spec = dict(raw_spec)
+                raw_spec["concept_id"] = raw_spec.pop("id")
+            items.append((raw_name, raw_spec))
     elif isinstance(raw_concepts, list):
         items = []
         for entry in raw_concepts:
@@ -284,6 +293,10 @@ def _normalize_corpus(corpus):
                 concepts[name] = sorted({_nonempty_str(el, f"{name} element") for el in elems})
             else:
                 raise ValueError(f"elements for {name!r} must be a list or null")
+            if "concept_id" in raw_spec:
+                _nonempty_str(raw_spec["concept_id"], f"{name} id")
+            if "notation" in raw_spec and raw_spec["notation"] is not None:
+                _nonempty_str(raw_spec["notation"], f"{name} notation")
             concept_meta[name] = {**{k: v for k, v in raw_spec.items() if k not in ("id", "elements")}, "basis": basis}
         else:
             raise ValueError(f"concept spec for {name!r} must be a list, object, or null")
@@ -319,6 +332,13 @@ def _normalize_corpus(corpus):
             prev = neighbors[x].get(y)
             if prev is None or BASIS.index(meta["basis"]) > BASIS.index(prev):
                 neighbors[x][y] = meta["basis"]
+    # 安定 ID と、ID を書かなかった概念の名前が、グラフ上で重ならないこと。
+    seen_tokens = {}
+    for uname, meta in concept_meta.items():
+        token = meta.get("concept_id") or uname
+        if token in seen_tokens:
+            raise ValueError(f"概念の ID が重なっています: {token!r}（{seen_tokens[token]!r} と {uname!r}）")
+        seen_tokens[token] = uname
     return concepts, concept_meta, pairs, neighbors
 
 
@@ -488,6 +508,141 @@ def define_concepts(corpus, targets=None, *, max_keys=5, max_key_size=5):
             "concepts": results, "unknown": unknown}
 
 
+def _bcp47(value, label):
+    """言語タグ。ja / en / ko のような BCP 47。空や空白、日本語の文字そのものは受けない。"""
+    parts = value.split("-") if isinstance(value, str) else []
+    head, rest = (parts[0], parts[1:]) if parts else ("", [])
+
+    def _ascii(text, lo, hi, digits):
+        if not lo <= len(text) <= hi:
+            return False
+        for ch in text:
+            letter = ("A" <= ch <= "Z") or ("a" <= ch <= "z")
+            number = digits and ("0" <= ch <= "9")
+            if not (letter or number):
+                return False
+        return True
+
+    if not (_ascii(head, 2, 3, False) and all(_ascii(part, 2, 8, True) for part in rest)):
+        raise ValueError(f"{label} は BCP 47 の言語タグ（ja, en など）でなければなりません: {value!r}")
+    return value
+
+
+def _phase3_records(corpus, concepts):
+    """観測・判断・外部候補。人が確定するまで判断は hypothesis。外部候補は書かれた basis を上げない。
+
+    人の名前はノードにしない。actor と role は記録の別フィールドとして返す。
+    """
+    found = {key: [] for key in _PHASE3_LISTS}
+    if not any(key in corpus for key in ("labels", *_PHASE3_LISTS)):
+        labels = []
+    else:
+        labels = _structured_labels(corpus, concepts)
+    for key in _PHASE3_LISTS:
+        if key not in corpus:
+            continue
+        raw = corpus[key]
+        if not isinstance(raw, list):
+            raise ValueError(f"{key} はオブジェクトの配列です")
+        for item in raw:
+            if not isinstance(item, dict):
+                raise ValueError(f"{key} の要素はオブジェクトです")
+            concept = _nonempty_str(item.get("concept"), f"{key} concept")
+            if concept not in concepts:
+                raise ValueError(f"{key} に未知の概念があります: {concept!r}")
+            row = {"concept": concept}
+            for field in ("actor", "role", "evidence", "context", "statement", "note", "generator", "model"):
+                if field in item and item[field] is not None:
+                    row[field] = _nonempty_str(item[field], f"{key} {field}")
+            if "slots" in item and item["slots"] is not None:
+                slots = item["slots"]
+                if not isinstance(slots, dict) or not slots:
+                    raise ValueError(f"{key} の slots は空でないオブジェクトです")
+                row["slots"] = { _nonempty_str(k, "slot"): _nonempty_str(v, "slot") for k, v in slots.items()}
+            if key == "judgments":
+                basis = item.get("basis", "hypothesis")
+                if basis not in BASIS:
+                    raise ValueError(f"判断の basis が不明です: {basis!r}")
+                row["basis"] = basis
+                rests = item.get("rests_on", [concept])
+                if not isinstance(rests, list) or not rests:
+                    raise ValueError("判断の rests_on は概念名の配列です")
+                row["rests_on"] = [_nonempty_str(name, "rests_on") for name in rests]
+                unknown = [name for name in row["rests_on"] if name not in concepts]
+                if unknown:
+                    raise ValueError(f"判断が未知の概念に拠っています: {unknown!r}")
+            if key == "candidates":
+                # 外部モデルの出力。observed や proof と書いてあっても hypothesis のまま置く。
+                claimed = item.get("basis", "hypothesis")
+                if claimed not in BASIS:
+                    raise ValueError(f"候補の basis が不明です: {claimed!r}")
+                row["basis"] = "hypothesis"
+                if claimed != "hypothesis":
+                    row["claimed_basis"] = claimed
+                row["text"] = _nonempty_str(item.get("text"), "candidate text")
+                row["lang"] = _bcp47(item.get("lang"), "candidate lang")
+                if item.get("kind") not in LABEL_KINDS:
+                    raise ValueError(f"候補の kind は {LABEL_KINDS} のいずれかです: {item.get('kind')!r}")
+                row["kind"] = item["kind"]
+                if "confidence" in item and item["confidence"] is not None:
+                    score = item["confidence"]
+                    if isinstance(score, bool) or not isinstance(score, (int, float)) or not 0 <= score <= 1:
+                        raise ValueError(f"候補の confidence は 0 以上 1 以下の数です: {score!r}")
+                    row["confidence"] = score
+            found[key].append(row)
+    return labels, found
+
+
+def _structured_labels(corpus, concepts):
+    """属性名では書ききれない表記（文脈つきなど）。無いコーパスでは空で、名前側の文字列は触らない。"""
+    raw = corpus.get("labels", {})
+    if raw is None:
+        return []
+    if not isinstance(raw, dict):
+        raise ValueError("labels は概念からラベル配列へのオブジェクトです")
+    rows, seen_pref = [], set()
+    for name, items in raw.items():
+        if name not in concepts:
+            raise ValueError(f"labels に未知の概念があります: {name!r}")
+        if not isinstance(items, list):
+            raise ValueError(f"labels[{name!r}] はオブジェクトの配列です")
+        for item in items:
+            if not isinstance(item, dict):
+                raise ValueError("labels の要素は text, lang, kind を持つオブジェクトです（文字列は names に書いてください）")
+            unknown = set(item) - {"text", "lang", "kind", "context"}
+            if unknown:
+                raise ValueError(f"labels に未知のフィールドがあります: {sorted(unknown)}")
+            text = _nonempty_str(item.get("text"), "label text")
+            lang = _bcp47(item.get("lang"), "label lang")
+            kind = item.get("kind")
+            if kind not in LABEL_KINDS:
+                raise ValueError(f"label kind は {LABEL_KINDS} のいずれかです: {kind!r}")
+            context = item.get("context")
+            if context is not None:
+                context = _nonempty_str(context, "label context")
+            pref_key = (name, lang.lower(), context)
+            if kind == "pref" and pref_key in seen_pref:
+                raise ValueError(f"pref ラベルが同じ概念・言語・文脈で重複しています: {name!r} {lang} {context!r}")
+            if kind == "pref":
+                seen_pref.add(pref_key)
+            row = {"concept": name, "text": text, "lang": lang, "kind": kind}
+            if context:
+                row["context"] = context
+            rows.append(row)
+    rows.sort(key=lambda row: (row["concept"], row["lang"].lower(), row["kind"], row["text"], row.get("context") or ""))
+    return rows
+
+
+def concept_lexicon(corpus):
+    """入力。安定 ID・任意の構造化ラベル・観測・判断・外部候補を正規化する。定義と当てっこはこれを見ない。
+
+    names の「英名:Guitar」形式はここでは解釈しない（表記の言語と種別は tools 側が属性名から読む）。
+    """
+    concepts, concept_meta, _, _ = _normalize_corpus(corpus)
+    labels, records = _phase3_records(corpus, concepts)
+    return {"concepts": concepts, "meta": concept_meta, "labels": labels, **records}
+
+
 def concept_edges(corpus):
     """Project a concept-similarity corpus onto core edges for check / reach / why / cycles / ladder.
 
@@ -498,21 +653,47 @@ def concept_edges(corpus):
     ``maybe`` elements (links allowed to be wrong) become hasElement edges at the hypothesis level; nothing
     observed them, so their ``lock`` is the snapshot that wrote them down. ``names`` become Name nodes with an
     observed hasName edge (the name side: read, written, translated, called), locked like the elements.
+
+    安定 ID（concept_id）が無い概念のノードは、これまでどおり ``concept:名前`` です。ID があるときだけ
+    ``concept:そのID`` になり、名前はノードの name に残します。人の名前はノードにしません。
     """
     concepts, concept_meta, pairs, _ = _normalize_corpus(corpus)
     maybe, called = _beside(corpus, concepts, "maybe"), _beside(corpus, concepts, "names")
+    labels, records = _phase3_records(corpus, concepts)
     defined = define_concepts(corpus)
     seen_at = corpus.get("captured_at")
     if seen_at is not None:
         timestamp(seen_at)
     when = {"observed_at": seen_at} if seen_at else {}
-    snapshot = digest({"concepts": concepts, "similar": sorted(pairs, key=digest), **({"names": called} if called else {})})
+    payload = {"concepts": concepts, "similar": sorted(pairs, key=digest)}
+    if called:
+        payload["names"] = called
+    idents = {name: meta["concept_id"] for name, meta in concept_meta.items() if meta.get("concept_id")}
+    notations = {name: meta["notation"] for name, meta in concept_meta.items() if meta.get("notation")}
+    # 第二弾のコーパスにはこれらのキーを足さない。digest が変わるとスナップショットが別物になる。
+    if idents:
+        payload["concept_ids"] = idents
+    if notations:
+        payload["notation"] = notations
+    if labels:
+        payload["labels"] = labels
+    for key, rows in records.items():
+        if rows:
+            payload[key] = rows
+    snapshot = digest(payload)
     sid = "snapshot:" + snapshot
     nodes, edges = {sid: {"id": sid, "type": "Snapshot", **({"captured_at": seen_at} if seen_at else {})}}, []
+    cid_of = {}
     for name in sorted(concepts):
-        cid = f"concept:{name}"
+        token = concept_meta[name].get("concept_id") or name
+        cid = f"concept:{token}"
+        cid_of[name] = cid
         nodes[cid] = {"id": cid, "type": "Concept", "name": name,
                       "elements_observed": concepts[name] is not None}
+        if concept_meta[name].get("concept_id"):
+            nodes[cid]["concept_id"] = concept_meta[name]["concept_id"]
+        if concept_meta[name].get("notation"):
+            nodes[cid]["notation"] = concept_meta[name]["notation"]
         if concepts[name] is not None:
             oid = f"observation:{snapshot}:{cid}"
             nodes[oid] = {"id": oid, "type": "Observation", "snapshot": sid, **when}
@@ -527,11 +708,27 @@ def concept_edges(corpus):
             eid = f"elem:{el}"
             nodes.setdefault(eid, {"id": eid, "type": "Element", "name": el})
             edges.append({"kind": "hasElement", "source": eid, "target": cid, "basis": "hypothesis", "maybe": True, "lock": sid, **when})
+        # 名前の辺が無い概念でも、構造化ラベルの lock は同じ規則（見た概念は観測、まだならスナップショット）。
+        name_lock = f"observation:{snapshot}:{cid}" if concepts[name] is not None else sid
         for el in called.get(name, ()):  # 🏷️ the name side: how it is read, written, translated or called
             nid = f"name:{el}"
             nodes.setdefault(nid, {"id": nid, "type": "Name", "name": el})
-            lock = f"observation:{snapshot}:{cid}" if concepts[name] is not None else sid
-            edges.append({"kind": "hasName", "source": nid, "target": cid, "basis": "observed", "lock": lock, **when})
+            edges.append({"kind": "hasName", "source": nid, "target": cid, "basis": "observed", "lock": name_lock, **when})
+        for row in labels:
+            if row["concept"] != name:
+                continue
+            # 概念ごとに別ノード。同じ日本語というだけでは、別の概念と結ばない。
+            nid = "label:" + token + ":" + row["lang"] + ":" + row["kind"] + ":" + row["text"]
+            if row.get("context"):
+                nid += ":" + row["context"]
+            node = {"id": nid, "type": "Name", "name": row["text"], "lang": row["lang"], "label_kind": row["kind"]}
+            edge = {"kind": "hasName", "source": nid, "target": cid, "basis": "observed", "lang": row["lang"],
+                    "label_kind": row["kind"], "lock": name_lock, **when}
+            if row.get("context"):
+                node["context"] = row["context"]
+                edge["context"] = row["context"]
+            nodes.setdefault(nid, node)
+            edges.append(edge)
         info = defined["concepts"][name]
         for el in info["definition"]["genus"]:
             eid = f"elem:{el}"
@@ -542,10 +739,57 @@ def concept_edges(corpus):
             nodes.setdefault(eid, {"id": eid, "type": "Element", "name": el})
             edges.append({"kind": "differentiaElement", "source": eid, "target": cid, "basis": info["basis"]})
     for pair in pairs:
-        a, b = f"concept:{pair['left']}", f"concept:{pair['right']}"
+        a, b = cid_of[pair["left"]], cid_of[pair["right"]]
         extra = {k: v for k, v in pair.items() if k not in ("left", "right")}
         edges.append({"kind": "similarTo", "source": a, "target": b, **extra})
         edges.append({"kind": "similarTo", "source": b, "target": a, **extra})
+    speeches = {}
+    for row in records["observations"]:
+        # 発言は要素の観測とは別の Observation。actor と role はフィールドで、人や役職のノードは作らない。
+        oid = "observation:" + snapshot + ":note:" + digest(row)
+        node = {"id": oid, "type": "Observation", "snapshot": sid, **when}
+        for field in ("actor", "role", "evidence", "context", "statement"):
+            if field in row:
+                node[field] = row[field]
+        if "slots" in row:
+            node["slots"] = row["slots"]
+        nodes[oid] = node
+        cid = cid_of[row["concept"]]
+        edges.append({"kind": "observes", "source": oid, "target": cid, "basis": "observed", "lock": oid, **when})
+        edges.append({"kind": "derived_from", "source": oid, "target": sid, "basis": "observed", "lock": oid, **when})
+        speeches.setdefault(row["concept"], []).append(oid)
+    for row in records["judgments"]:
+        # 判断は観測とは別の記録。basis を書かなければ hypothesis のままで、自動では上げない。
+        jid = "judgment:" + digest({k: v for k, v in row.items()})
+        basis = row["basis"]
+        node = {"id": jid, "type": "Judgment", "basis": basis, **when}
+        for field in ("actor", "role", "evidence", "context", "statement"):
+            if field in row:
+                node[field] = row[field]
+        nodes[jid] = node
+        edges.append({"kind": "judges", "source": jid, "target": cid_of[row["concept"]], "basis": basis, "lock": jid, **when})
+        for target_name in row["rests_on"]:
+            noted = speeches.get(target_name) or []
+            if not noted and concepts[target_name] is not None:
+                noted = [f"observation:{snapshot}:{cid_of[target_name]}"]
+            if not noted:
+                raise ValueError(f"判断が拠る観測がありません: {target_name!r}")
+            for tid in noted:
+                edges.append({"kind": "restsOn", "source": jid, "target": tid, "basis": basis, "lock": jid, **when})
+    for row in records["candidates"]:
+        # 外部候補は Name への hypothesis だけ。names には写さないので、表記の確定にはならない。
+        nid = "candidate:" + cid_of[row["concept"]].split(":", 1)[1] + ":" + row["lang"] + ":" + row["kind"] + ":" + row["text"]
+        nodes.setdefault(nid, {"id": nid, "type": "Name", "name": row["text"], "lang": row["lang"],
+                               "label_kind": row["kind"], "candidate": True})
+        edge = {"kind": "hasName", "source": nid, "target": cid_of[row["concept"]], "basis": "hypothesis",
+                "lang": row["lang"], "label_kind": row["kind"], "candidate": True, "lock": sid, **when}
+        if row.get("context"):
+            edge["context"] = row["context"]
+        if "claimed_basis" in row:
+            edge["claimed_basis"] = row["claimed_basis"]
+        if "confidence" in row:
+            edge["confidence"] = row["confidence"]
+        edges.append(edge)
     return {"schema": "ontautology-concept-graph/1",
             "nodes": [nodes[k] for k in sorted(nodes)],
             "edges": edges}
