@@ -436,7 +436,7 @@ class JudgeTests(unittest.TestCase):
     def test_one_more_concept_can_refute_a_reversible_definition(self):
         corpus = concepts()
         rule = tautology.rules(corpus, "ギター")["definition"]
-        corpus["concepts"]["ギターのコピー"] = list(corpus["concepts"]["ギター"])
+        corpus["concepts"]["ギターのコピー"] = list(corpus["concepts"]["ギター"]["elements"])  # the elements, not the ID
         self.assertEqual(tautology.judge(corpus, "ギター", rule)["fp"], ["ギターのコピー"])
 
     def test_de_morgan_is_proof_and_a_wrong_rewrite_has_a_counterexample(self):
@@ -477,7 +477,8 @@ class GuessTests(unittest.TestCase):
         report = tautology.guess_report(corpus)
         honest = report["summary"]["honest"]
         self.assertEqual((honest["reached"], honest["games"]), (len(corpus["concepts"]), len(corpus["concepts"])))
-        self.assertLessEqual(honest["mean_questions"], report["estimate"])
+        # finding the one takes no more than the yes / no estimate; confirming it is the question on top
+        self.assertLessEqual(tautology.guess_report(corpus, sure=0)["summary"]["honest"]["mean_questions"], report["estimate"])
         self.assertIn("開放弦:?", [q["ask"] for q in report["honest"]["ギター"]["questions"]])
         self.assertEqual(tautology.guess_report(corpus), report)  # the same questions every time
 
@@ -535,7 +536,7 @@ class GuessTests(unittest.TestCase):
                          [("elem:アクセサリ:Sペン", "concept:Android"), ("elem:エレキ", "concept:ベース"),
                           ("elem:モバイル通信", "concept:iPad"),
                           ("elem:有名なリフ:Seven Nation Army", "concept:ベース"), ("elem:流通名:トラウトサーモン", "concept:スチールヘッド"),
-                          ("elem:炭酸", "concept:カクテル"), ("elem:缶入り", "concept:エナジードリンク"), ("elem:金属弦", "concept:ギター"),
+                          ("elem:炭酸", "concept:カクテル"), ("elem:缶入り", "concept:C004-energy-drink"), ("elem:金属弦", "concept:C005-guitar"),
                           ("elem:黄色", "concept:ミミッキュ")])
         self.assertTrue(all(e["basis"] == "hypothesis" for e in maybe))
         self.assertEqual(ot.reach(graph["edges"], ["elem:金属弦"])["rows"], [])
@@ -600,8 +601,32 @@ class WobbleTests(unittest.TestCase):
 
     def test_one_character_apart(self):
         apart = tautology._one_apart
-        self.assertTrue(all(apart(a, b) for a, b in (("まりお", "わりお"), ("ぴちゅう", "ぴかちゅう"), ("るいじ", "るいいじ"))))
-        self.assertFalse(any(apart(a, b) for a, b in (("まりお", "まりお"), ("ab", "ba"), ("abcd", "ab"))))
+        self.assertTrue(all(apart(a, b) for a, b in (("まりお", "わりお"), ("ぴちゅう", "ぴかちゅう"), ("るいじ", "るいいじ"),
+                                                    ("ab", "ba"), ("andriod", "android"))))  # two neighbours swapped is one slip too
+        self.assertFalse(any(apart(a, b) for a, b in (("まりお", "まりお"), ("abcd", "ab"), ("abc", "cba"), ("abcd", "badc"))))
+
+    def test_shaking_a_name_on_purpose(self):
+        kinds = lambda word: {kind for kind, _ in tautology._shake(word)}
+        self.assertEqual(dict(tautology._shake("ピカチュウ")[:2]), {"kana": "ぴかちゅう", "long": "ピカチュー"})
+        self.assertEqual(kinds("Spider-Man"), {"width", "case", "space", "drop", "swap"})
+        self.assertEqual(tautology._shake("鮭"), [])  # one character: nothing to drop or swap, no kana to swap
+        self.assertTrue(all(variant != "ルイージ" for _, variant in tautology._shake("ルイージ")))
+
+    def test_shaken_names_come_back_and_a_slip_onto_a_neighbour_is_only_counted(self):
+        found = tautology.wobble(concepts())
+        shaken = found["shaken"]
+        # notation folds back every time and lands on no one else
+        self.assertEqual((shaken["notation"]["rate"], shaken["notation"]["false_merges"]), (1.0, 0))
+        self.assertTrue(all(shaken["kinds"][kind]["rate"] == 1.0 for kind in ("kana", "long", "width", "case", "space")))
+        # one slip mostly comes back; ピカチュウ minus カ is ピチュー's notation, so the first answer is the neighbour
+        self.assertGreater(shaken["typo"]["rate"], 0.9)
+        self.assertIn({"concept": "ピカチュウ", "other": "ピチュー", "via": "ピカチュウ", "kind": "drop", "query": "ピチュウ"}, shaken["merges"])
+        # a slip before ー changes how ー reads: エスカ(レ)ーション is two apart once folded, so it stays a miss
+        self.assertIn({"concept": "エスカレーション", "via": "エスカレーション", "kind": "drop", "query": "エスカーション"}, shaken["misses"])
+        self.assertEqual(found["summary"]["shaken"], {"notation": 1.0, "typo": shaken["typo"]["rate"]})
+        self.assertEqual(found["words"], {})
+        hit = tautology.wobble(concepts(), ["しゃけ"])["words"]["しゃけ"]
+        self.assertEqual([(row["concept"], row["id"]) for row in hit["exact"]], [("鮭", "C006-salmon")])
 
     def test_the_example_shows_near_names_and_a_name_inside_the_thing_side(self):
         found = tautology.wobble(concepts())
@@ -728,8 +753,8 @@ class RedisCrossCheck(unittest.TestCase):
     def test_genus_and_differentia_agree_with_sinter_and_sdiff(self):
         corpus = concepts()
         defined = ot.define_concepts(corpus)["concepts"]
-        for name, elements in corpus["concepts"].items():
-            self.client.sadd("elem:" + name, *elements)
+        for name, spec in corpus["concepts"].items():
+            self.client.sadd("elem:" + name, *(spec["elements"] if isinstance(spec, dict) else spec))  # a seed carries its ID
         for pair in corpus["similar"]:
             left, right = pair["left"], pair["right"]
             with self.subTest(pair=(left, right)):

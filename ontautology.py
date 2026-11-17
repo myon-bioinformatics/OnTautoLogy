@@ -245,6 +245,8 @@ def _normalize_corpus(corpus):
     Accepts {"concepts": ..., "similar": [...]} (concepts as dict or list of objects;
     similar entries as [left, right] or {"left"/"source", "right"/"target", ...}).
     Missing concepts mentioned in ``similar`` are kept with elements=None (unobserved).
+    In the dict form an object may carry ``id``: a stable concept ID that does not depend on the language
+    (number + what it names, e.g. C006-salmon). Without it the name is the ID; no two concepts share one.
     """
     if not isinstance(corpus, dict):
         raise ValueError("concept corpus must be a JSON object")
@@ -252,8 +254,8 @@ def _normalize_corpus(corpus):
     if schema is not None and schema != CONCEPT_SCHEMA:
         raise ValueError(f"unsupported concept schema: {schema!r}")
     raw_concepts = corpus.get("concepts", {})
-    concepts, concept_meta = {}, {}
-    if isinstance(raw_concepts, dict):
+    concepts, concept_meta, keyed = {}, {}, isinstance(raw_concepts, dict)
+    if keyed:
         items = raw_concepts.items()
     elif isinstance(raw_concepts, list):
         items = []
@@ -285,6 +287,8 @@ def _normalize_corpus(corpus):
             else:
                 raise ValueError(f"elements for {name!r} must be a list or null")
             concept_meta[name] = {**{k: v for k, v in raw_spec.items() if k not in ("id", "elements")}, "basis": basis}
+            if keyed and "id" in raw_spec:
+                concept_meta[name]["id"] = _nonempty_str(raw_spec["id"], f"{name} id")
         else:
             raise ValueError(f"concept spec for {name!r} must be a list, object, or null")
     raw_similar = corpus.get("similar", [])
@@ -319,6 +323,11 @@ def _normalize_corpus(corpus):
             prev = neighbors[x].get(y)
             if prev is None or BASIS.index(meta["basis"]) > BASIS.index(prev):
                 neighbors[x][y] = meta["basis"]
+    owners = {}
+    for name in concepts:
+        owner = owners.setdefault(concept_meta[name].get("id", name), name)
+        if owner != name:
+            raise ValueError(f"concept id {concept_meta[name].get('id', name)!r} is used by both {owner!r} and {name!r}")
     return concepts, concept_meta, pairs, neighbors
 
 
@@ -498,6 +507,8 @@ def concept_edges(corpus):
     ``maybe`` elements (links allowed to be wrong) become hasElement edges at the hypothesis level; nothing
     observed them, so their ``lock`` is the snapshot that wrote them down. ``names`` become Name nodes with an
     observed hasName edge (the name side: read, written, translated, called), locked like the elements.
+    A concept with a stable ``id`` is the node ``concept:<id>`` (its name stays the node's ``name``); one
+    without it is ``concept:<name>`` as before.
     """
     concepts, concept_meta, pairs, _ = _normalize_corpus(corpus)
     maybe, called = _beside(corpus, concepts, "maybe"), _beside(corpus, concepts, "names")
@@ -506,11 +517,14 @@ def concept_edges(corpus):
     if seen_at is not None:
         timestamp(seen_at)
     when = {"observed_at": seen_at} if seen_at else {}
-    snapshot = digest({"concepts": concepts, "similar": sorted(pairs, key=digest), **({"names": called} if called else {})})
+    ids = {name: meta["id"] for name, meta in concept_meta.items() if "id" in meta}
+    snapshot = digest({"concepts": concepts, "similar": sorted(pairs, key=digest), **({"names": called} if called else {}),
+                       **({"ids": ids} if ids else {})})
     sid = "snapshot:" + snapshot
+    node_of = {name: f"concept:{concept_meta[name].get('id', name)}" for name in concepts}  # a stable ID, else the name
     nodes, edges = {sid: {"id": sid, "type": "Snapshot", **({"captured_at": seen_at} if seen_at else {})}}, []
     for name in sorted(concepts):
-        cid = f"concept:{name}"
+        cid = node_of[name]
         nodes[cid] = {"id": cid, "type": "Concept", "name": name,
                       "elements_observed": concepts[name] is not None}
         if concepts[name] is not None:
@@ -542,7 +556,7 @@ def concept_edges(corpus):
             nodes.setdefault(eid, {"id": eid, "type": "Element", "name": el})
             edges.append({"kind": "differentiaElement", "source": eid, "target": cid, "basis": info["basis"]})
     for pair in pairs:
-        a, b = f"concept:{pair['left']}", f"concept:{pair['right']}"
+        a, b = node_of[pair["left"]], node_of[pair["right"]]
         extra = {k: v for k, v in pair.items() if k not in ("left", "right")}
         edges.append({"kind": "similarTo", "source": a, "target": b, **extra})
         edges.append({"kind": "similarTo", "source": b, "target": a, **extra})
