@@ -352,6 +352,38 @@ def _beside(corpus, concepts, key):
     return found
 
 
+def _broader(corpus):
+    """The upper layer: element → the elements one step above it (楽器 → 区分:道具 → 上位:もの), as SKOS broader.
+
+    Definitions keep the nearest genus and never rest on it. The guessing game asks about it, so one question can
+    split groups that share nothing else. A loop (an element above itself) is an input error.
+    """
+    raw = corpus.get("broader", {})
+    if not isinstance(raw, dict):
+        raise ValueError("broader must be an object of element → [upper elements]")
+    found = {}
+    for element, upper in raw.items():
+        element = _nonempty_str(element, "broader element")
+        if not isinstance(upper, list):
+            raise ValueError(f"broader for {element!r} must be a list")
+        found[element] = sorted({_nonempty_str(up, f"{element} broader") for up in upper})
+    for element in found:
+        if element in _above(found, [element]):
+            raise ValueError(f"broader loops back to {element!r}")
+    return found
+
+
+def _above(broader, elements):
+    """Every element above these, all the way up (the elements themselves only if a loop brings one back)."""
+    seen, todo = set(), [up for el in elements for up in broader.get(el, ())]
+    while todo:
+        el = todo.pop()
+        if el not in seen:
+            seen.add(el)
+            todo += broader.get(el, ())
+    return seen
+
+
 def _minimal_hitting_sets(requirements, *, max_keys=5, max_key_size=5):
     """Minimal subsets of elements that intersect every non-empty difference set."""
     if not requirements:
@@ -508,10 +540,11 @@ def concept_edges(corpus):
     observed them, so their ``lock`` is the snapshot that wrote them down. ``names`` become Name nodes with an
     observed hasName edge (the name side: read, written, translated, called), locked like the elements.
     A concept with a stable ``id`` is the node ``concept:<id>`` (its name stays the node's ``name``); one
-    without it is ``concept:<name>`` as before.
+    without it is ``concept:<name>`` as before. ``broader`` (the upper layer) becomes ``narrower`` edges from
+    the upper element down to the one below it, so ``reach`` from 上位:もの touches everything under it.
     """
     concepts, concept_meta, pairs, _ = _normalize_corpus(corpus)
-    maybe, called = _beside(corpus, concepts, "maybe"), _beside(corpus, concepts, "names")
+    maybe, called, broader = _beside(corpus, concepts, "maybe"), _beside(corpus, concepts, "names"), _broader(corpus)
     defined = define_concepts(corpus)
     seen_at = corpus.get("captured_at")
     if seen_at is not None:
@@ -519,7 +552,7 @@ def concept_edges(corpus):
     when = {"observed_at": seen_at} if seen_at else {}
     ids = {name: meta["id"] for name, meta in concept_meta.items() if "id" in meta}
     snapshot = digest({"concepts": concepts, "similar": sorted(pairs, key=digest), **({"names": called} if called else {}),
-                       **({"ids": ids} if ids else {})})
+                       **({"ids": ids} if ids else {}), **({"broader": broader} if broader else {})})
     sid = "snapshot:" + snapshot
     node_of = {name: f"concept:{concept_meta[name].get('id', name)}" for name in concepts}  # a stable ID, else the name
     nodes, edges = {sid: {"id": sid, "type": "Snapshot", **({"captured_at": seen_at} if seen_at else {})}}, []
@@ -555,6 +588,11 @@ def concept_edges(corpus):
             eid = f"elem:{el}"
             nodes.setdefault(eid, {"id": eid, "type": "Element", "name": el})
             edges.append({"kind": "differentiaElement", "source": eid, "target": cid, "basis": info["basis"]})
+    for element, upper in sorted(broader.items()):  # 🪜 the upper layer, written down by the corpus
+        for up in upper:
+            for el in (element, up):
+                nodes.setdefault(f"elem:{el}", {"id": f"elem:{el}", "type": "Element", "name": el})
+            edges.append({"kind": "narrower", "source": f"elem:{up}", "target": f"elem:{element}", "basis": "observed", "lock": sid, **when})
     for pair in pairs:
         a, b = node_of[pair["left"]], node_of[pair["right"]]
         extra = {k: v for k, v in pair.items() if k not in ("left", "right")}

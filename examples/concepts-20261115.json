@@ -1,6 +1,6 @@
 {
   "schema": "ontautology-concepts/1",
-  "note": "Phase 2 similarity pairs, with the phase 3 words (スパイダーマン・AIエージェント・インシデント・不安・エスカレーション) added, with attributes whose values tell them apart (出版社・初登場年・作者・拠点・能力の由来, 手順・外部の道具・出力, 起点・急ぎ・例, 対象・時・行動・エクマンの6感情, 向き・判断の持ち主・契機・例). Every seed has at least two similar concepts; ギター also has a near miss (ピアノ, no similar link). concepts hold the thing side, as 属性:値 where values tell them apart (open strings, models, riffs, base stats, types, spawning, dishes, cap mark, products, share); names hold the name side (英名・学名・和名・読み・同音語・別名・名前の由来・シリーズ名): asking for a name is calling the answer, so definitions and questions use the thing side only. 国内OSシェア is the MMD研究所 survey of 2026-08 (main phone OS). Seeds carry a stable concept id (number + what it names, independent of the language); the names hang off it. Used for definitions, roundtrip, holdout (unseen / masked), guess and wobble checks.",
+  "note": "Phase 2 similarity pairs, with the phase 3 words (スパイダーマン・AIエージェント・インシデント・不安・エスカレーション) added, with attributes whose values tell them apart (出版社・初登場年・作者・拠点・能力の由来, 手順・外部の道具・出力, 起点・急ぎ・例, 対象・時・行動・エクマンの6感情, 向き・判断の持ち主・契機・例). Every seed has at least two similar concepts; ギター also has a near miss (ピアノ, no similar link). concepts hold the thing side, as 属性:値 where values tell them apart (open strings, models, riffs, base stats, types, spawning, dishes, cap mark, products, share); names hold the name side (英名・学名・和名・読み・同音語・別名・名前の由来・シリーズ名): asking for a name is calling the answer, so definitions and questions use the thing side only. 国内OSシェア is the MMD研究所 survey of 2026-08 (main phone OS). Seeds carry a stable concept id (number + what it names, independent of the language); the names hang off it. broader is the upper layer (one step above each group's nearest genus, then 上位 もの / こと and 実在): definitions keep the nearest genus, guess asks about it too. Used for definitions, roundtrip, holdout (unseen / masked), guess and wobble checks.",
   "seeds": ["ギター", "ピカチュウ", "鮭", "iPhone", "エナジードリンク", "ルイージ", "スパイダーマン", "AIエージェント", "インシデント", "不安", "エスカレーション"],
   "maybe": {"ギター": ["金属弦"], "ベース": ["エレキ", "有名なリフ:Seven Nation Army"], "エナジードリンク": ["缶入り"], "iPad": ["モバイル通信"], "カクテル": ["炭酸"], "ミミッキュ": ["黄色"], "Android": ["アクセサリ:Sペン"], "スチールヘッド": ["流通名:トラウトサーモン"]},
   "similar": [
@@ -125,5 +125,27 @@
     "エスカレーション": ["英名:escalation", "読み:えすかれーしょん", "略語:エスカレ"],
     "状況報告": ["英名:status report"],
     "担当引き継ぎ": ["英名:handover"]
+  },
+  "broader": {
+    "楽器": ["区分:道具"],
+    "アプリ実行環境": ["区分:道具"],
+    "飲料": ["区分:飲食物"],
+    "魚類": ["区分:生き物"],
+    "ポケモン": ["区分:架空の生き物"],
+    "ゲームキャラクター": ["区分:架空の人物"],
+    "フィクション": ["区分:架空の人物"],
+    "ソフトウェア": ["区分:仕組み"],
+    "運用の出来事": ["区分:出来事"],
+    "感情": ["区分:心の状態"],
+    "連絡": ["区分:行い"],
+    "区分:道具": ["上位:もの", "実在:する"],
+    "区分:飲食物": ["上位:もの", "実在:する"],
+    "区分:生き物": ["上位:もの", "実在:する"],
+    "区分:架空の生き物": ["上位:もの", "実在:しない"],
+    "区分:架空の人物": ["上位:もの", "実在:しない"],
+    "区分:仕組み": ["上位:もの", "実在:する"],
+    "区分:出来事": ["上位:こと", "実在:する"],
+    "区分:心の状態": ["上位:こと", "実在:する"],
+    "区分:行い": ["上位:こと", "実在:する"]
   }
 }

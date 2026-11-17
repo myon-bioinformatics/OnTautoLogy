@@ -188,7 +188,8 @@ def guess(corpus, target, *, lies=0, forget=(), known=True, sure=1):
     """🎯 A guessing game over the corpus: ask until one candidate is left, like twenty questions or Numeron.
 
     Two kinds of question: "does it have e?" (yes / no) and, for ``属性:値`` elements, "what is its 属性?" (the
-    values, as Numeron answers more than yes or no). Each turn takes the question whose worst answer leaves the
+    values, as Numeron answers more than yes or no). The upper layer (``broader``: 楽器 → 区分:道具 → 上位:もの) is asked about
+    too, so one question can split groups that share nothing else. Each turn takes the question whose worst answer leaves the
     fewest candidates. A candidate dies after more than ``lies`` answers against it; its ``maybe`` elements
     (links allowed to be wrong) never count against it. The answerer answers from the target's elements but
     says no to the ones in ``forget`` (a person who forgot). With ``known=False`` the target is not among the
@@ -205,9 +206,10 @@ def guess(corpus, target, *, lies=0, forget=(), known=True, sure=1):
     concepts, _, _, _ = ot._normalize_corpus(corpus)
     if concepts.get(target) is None:
         raise ValueError(f"unknown or unobserved concept: {target!r}")
-    maybe = ot._beside(corpus, concepts, "maybe")
-    truth = set(concepts[target]) - set(forget)
-    book = {name: (set(found), set(maybe.get(name, ()))) for name, found in concepts.items()
+    maybe, broader = ot._beside(corpus, concepts, "maybe"), ot._broader(corpus)
+    up = lambda elements: set(elements) | ot._above(broader, elements)  # 🪜 what is above them is theirs too
+    truth = up(concepts[target]) - set(forget)  # one forgotten element is one wrong answer, not its upper layer too
+    book = {name: (up(found), up(maybe.get(name, ())) - up(found)) for name, found in concepts.items()
             if found is not None and (known or name != target)}
     strikes, asked, log, missed = dict.fromkeys(book, 0), set(), [], {name: [] for name in book}
     by_attribute = lambda elements: {a: _attribute(elements, a) for a in {e.split(":", 1)[0] for e in elements if ":" in e}}
