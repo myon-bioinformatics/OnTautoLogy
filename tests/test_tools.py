@@ -495,10 +495,13 @@ class GuessTests(unittest.TestCase):
     def test_an_unseen_target_should_end_in_no_guess(self):
         corpus = concepts()
         unseen = tautology.guess(corpus, "鮭", known=False)
-        # 産卵: 一生に一度 leaves サクラマス alone; asking for what only it has (料理: ます寿司) tells it is not サクラマス
+        # the upper layer leaves the other two fish; 料理 is no dish either has, so no one is left to name
         self.assertEqual((unseen["guess"], unseen["reached"]), (None, True))
+        self.assertEqual([(q["ask"], q["answer"]) for q in unseen["questions"]], [("区分:?", ["生き物"]), ("料理:?", ["ちゃんちゃん焼き", "ルイベ", "塩焼き"])])
+        # without iPhone, iPad is left; asking what only iPad has (アクセサリ: Apple Pencil) tells it is not iPad
+        unseen = tautology.guess(corpus, "iPhone", known=False)
         confirm = [q for q in unseen["questions"] if q.get("confirm")]
-        self.assertEqual([(q["ask"], q["answer"]) for q in confirm], [("料理:?", ["ちゃんちゃん焼き", "ルイベ", "塩焼き"])])
+        self.assertEqual((unseen["guess"], [(q["ask"], q["answer"]) for q in confirm]), (None, [("アクセサリ:?", ["MagSafe"])]))
         self.assertTrue(tautology.guess(corpus, "ピアノ", known=True)["reached"])
 
     def test_confirming_stops_at_the_confidence_asked_for_and_misses_a_hidden_twin(self):
@@ -508,11 +511,11 @@ class GuessTests(unittest.TestCase):
                 game = tautology.guess(corpus, "ルイージ", sure=sure)
                 self.assertEqual((game["guess"], game["confidence"], [q["ask"] for q in game["questions"] if q.get("confirm")]),
                                  ("ルイージ", sure, confirms))
-        self.assertEqual(tautology.guess(corpus, "鮭", known=False, sure=0)["guess"], "サクラマス")  # no confirming: the old trap
-        # ピカチュウ unseen: ライチュウ survives one failed answer (lies 1), and that failure counts against it, so a
-        # hidden-twin answer (初登場世代: 第1世代) is not enough; the next one fails too
-        failed = tautology.guess(corpus, "ピカチュウ", known=False, lies=1)
-        self.assertEqual((failed["guess"], failed["confidence"]), (None, -1.0))
+        self.assertEqual(tautology.guess(corpus, "iPhone", known=False, sure=0)["guess"], "iPad")  # no confirming: the old trap
+        # ミミッキュ unseen: ピカチュウ survives the failed タイプ answer (lies 1) and is the one left after 種族値とくこう;
+        # that failure counts against it, and the confirming answer (種族値HP) fails too
+        failed = tautology.guess(corpus, "ミミッキュ", known=False, lies=1)
+        self.assertEqual((failed["guess"], failed["confidence"], failed["questions"][-1]["ask"]), (None, -1.52, "種族値HP:?"))
         # カフェイン含有 is shared only with the unseen エナジードリンク, so it looks like コーヒー's own: confirmed wrongly
         twin = tautology.guess(corpus, "エナジードリンク", known=False)
         self.assertEqual((twin["guess"], [q["ask"] for q in twin["questions"] if q.get("confirm")]), ("コーヒー", ["カフェイン含有"]))
@@ -553,6 +556,17 @@ class GuessTests(unittest.TestCase):
         sure = json.loads(run_cli(script, "guess", corpus_path, "ルイージ", "--sure", "2").stdout)
         self.assertEqual((sure["sure"], len([q for q in sure["honest"]["ルイージ"]["questions"] if q.get("confirm")])), (2.0, 2))
         self.assertEqual(run_cli(script, "guess", corpus_path, "存在しない").returncode, 1)
+
+    def test_the_upper_layer_splits_the_groups_in_one_question(self):
+        corpus = concepts()
+        flat = {k: v for k, v in corpus.items() if k != "broader"}
+        upper, plain = tautology.guess_report(corpus)["summary"]["honest"], tautology.guess_report(flat)["summary"]["honest"]
+        self.assertEqual((upper["reached"], plain["reached"]), (upper["games"], plain["games"]))
+        self.assertLess(upper["mean_questions"], plain["mean_questions"])  # 11 groups that shared nothing above their genus
+        game = tautology.guess(corpus, "ギター")
+        self.assertEqual((game["questions"][0]["ask"], game["questions"][0]["answer"]), ("区分:?", ["道具"]))
+        # forgetting 楽器 is one wrong answer: what is above it is still known
+        self.assertEqual(tautology.guess(corpus, "ギター", forget=["楽器"])["questions"][0]["answer"], ["道具"])
 
 
 def _redis_or_skip(case):
@@ -667,6 +681,50 @@ class WobbleTests(unittest.TestCase):
             with self.subTest(seed=seed):
                 self.assertEqual(tautology.rules(corpus, seed), tautology.rules(without, seed))
                 self.assertEqual(tautology.guess(corpus, seed), tautology.guess(without, seed))
+
+
+class CasesTests(unittest.TestCase):
+    """📋 Observed cases (who said what, in which role) and the judgments people made, kept apart (#19)."""
+
+    def test_the_example_cases_and_their_status(self):
+        found = tautology.cases(concepts())
+        rows = found["cases"]
+        self.assertEqual({cid: row["status"] for cid, row in rows.items()},
+                         {"K001-night-db": "confirmed", "K002-share-only": "disputed", "K003-shift-change": "pending", "K004-first-word": "judged"})
+        self.assertEqual({k: rows["K001-night-db"]["candidate"][k] for k in ("concept", "id", "basis")},
+                         {"concept": "エスカレーション", "id": "C011-escalation", "basis": "hypothesis"})
+        # the manager called a share-only message an escalation; the concepts say status report: worth a look
+        self.assertEqual((rows["K002-share-only"]["candidate"]["concept"], rows["K002-share-only"]["judgments"][0]["agrees"]), ("状況報告", False))
+        self.assertEqual((rows["K003-shift-change"]["to_model"], rows["K003-shift-change"]["missing"]), (["引き継ぎメモを書く"], ["いつまで", "どう"]))
+        # 連絡 alone fits all three: no candidate, and the person in charge decided
+        self.assertEqual((rows["K004-first-word"]["candidate"], rows["K004-first-word"]["fits"]), (None, ["エスカレーション", "担当引き継ぎ", "状況報告"]))
+        self.assertEqual(found["summary"]["roles"], {"cases": {"一次対応": 3, "夜勤": 1}, "judgments": {"課長": 1, "障害対応の責任者": 2}})
+        self.assertNotIn("担当A", json.dumps(found["summary"], ensure_ascii=False))  # people are a record, not a count
+
+    def test_judgments_change_no_definition_and_no_candidate(self):
+        corpus = concepts()
+        unjudged = {**corpus, "judgments": []}
+        candidate = lambda c: {cid: row["candidate"] for cid, row in tautology.cases(c)["cases"].items()}
+        self.assertEqual(candidate(corpus), candidate(unjudged))
+        self.assertEqual(set(tautology.cases(unjudged)["summary"]) - {"roles"}, set(tautology.cases(corpus)["summary"]) - {"roles"})
+        bare = {k: v for k, v in corpus.items() if k not in ("cases", "judgments")}
+        self.assertEqual(ot.define_concepts(corpus), ot.define_concepts(bare))
+        self.assertEqual(tautology.rules(corpus, "エスカレーション")["definition"], tautology.rules(bare, "エスカレーション")["definition"])
+        for bad in ({"cases": [{"id": "x"}, {"id": "x"}]}, {"judgments": [{"case": "幽霊", "concept": "不安", "holds": True}]},
+                    {"judgments": [{"case": "K001-night-db", "concept": "不安", "holds": "yes"}]},
+                    {"judgments": [{"case": "K001-night-db", "concept": "未知", "holds": True}]}, {"cases": {}}):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                tautology.cases({**corpus, **bad})
+
+    def test_command_line_cases(self):
+        from test_ontautology import run_cli
+        script = ROOT / "tools/tautology.py"
+        done = run_cli(script, "cases", str(ROOT / "examples/concepts-20261115.json"))
+        self.assertEqual(done.returncode, 2, done.stderr)  # one case is disputed
+        corpus = concepts()
+        corpus["judgments"] = [j for j in corpus["judgments"] if j["case"] != "K002-share-only"]
+        done = run_cli(script, "cases", "-", data=json.dumps(corpus, ensure_ascii=False))
+        self.assertEqual((done.returncode, json.loads(done.stdout)["summary"]["pending"]), (0, 2), done.stderr)
 
 
 class RedisCrossCheck(unittest.TestCase):
