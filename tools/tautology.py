@@ -22,6 +22,7 @@ commands and exit codes come along).
 Dependency goes one way: tools/ import the core, the core never imports tools/.
 Every function is callable by name from Python, and from Node through vendor/py_launch.cjs (--call).
 """
+import collections
 import itertools
 import json
 import math
@@ -32,7 +33,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import ontautology as ot  # noqa: E402
 
-__all__ = ["standing", "gaps", "entailed", "holds", "atoms", "judge", "rules", "holdout", "guess", "guess_report", "wobble", "equivalent", "main"]
+__all__ = ["standing", "gaps", "entailed", "holds", "atoms", "judge", "rules", "holdout", "guess", "guess_report", "wobble", "cases", "equivalent", "main"]
 OPS = {"AND": all, "OR": any, "NAND": lambda v: not all(v), "NOR": lambda v: not any(v), "NOT": lambda v: not v[0]}
 
 
@@ -188,7 +189,8 @@ def guess(corpus, target, *, lies=0, forget=(), known=True, sure=1):
     """🎯 A guessing game over the corpus: ask until one candidate is left, like twenty questions or Numeron.
 
     Two kinds of question: "does it have e?" (yes / no) and, for ``属性:値`` elements, "what is its 属性?" (the
-    values, as Numeron answers more than yes or no). Each turn takes the question whose worst answer leaves the
+    values, as Numeron answers more than yes or no). The upper layer (``broader``: 楽器 → 区分:道具 → 上位:もの) is asked about
+    too, so one question can split groups that share nothing else. Each turn takes the question whose worst answer leaves the
     fewest candidates. A candidate dies after more than ``lies`` answers against it; its ``maybe`` elements
     (links allowed to be wrong) never count against it. The answerer answers from the target's elements but
     says no to the ones in ``forget`` (a person who forgot). With ``known=False`` the target is not among the
@@ -205,9 +207,10 @@ def guess(corpus, target, *, lies=0, forget=(), known=True, sure=1):
     concepts, _, _, _ = ot._normalize_corpus(corpus)
     if concepts.get(target) is None:
         raise ValueError(f"unknown or unobserved concept: {target!r}")
-    maybe = ot._beside(corpus, concepts, "maybe")
-    truth = set(concepts[target]) - set(forget)
-    book = {name: (set(found), set(maybe.get(name, ()))) for name, found in concepts.items()
+    maybe, broader = ot._beside(corpus, concepts, "maybe"), ot._broader(corpus)
+    up = lambda elements: set(elements) | ot._above(broader, elements)  # 🪜 what is above them is theirs too
+    truth = up(concepts[target]) - set(forget)  # one forgotten element is one wrong answer, not its upper layer too
+    book = {name: (up(found), up(maybe.get(name, ())) - up(found)) for name, found in concepts.items()
             if found is not None and (known or name != target)}
     strikes, asked, log, missed = dict.fromkeys(book, 0), set(), [], {name: [] for name in book}
     by_attribute = lambda elements: {a: _attribute(elements, a) for a in {e.split(":", 1)[0] for e in elements if ":" in e}}
@@ -433,6 +436,69 @@ def wobble(corpus, words=()):
                         "false_merges": shaken["notation"]["false_merges"] + shaken["typo"]["false_merges"]}}
 
 
+def cases(corpus, *, sure=1):
+    """📋 Observed cases (who said what, in which role) read against the concepts, apart from what people judged.
+
+    A case is an observation: what was said (``statement``), where (``context``), on what (``evidence``), by whom
+    (``actor``: kept as the record, never reasoned on) in which position (``role``), its ``6W1H`` (誰が・誰へ・何を・
+    どうやって・いつまで・どう) and the thing-side ``elements`` seen in it.
+    candidate  the only concept that has every known element of the case (with what is above its elements), once
+               those elements weigh ``sure`` identifications, weighed as ``guess`` weighs answers. A hypothesis.
+    to_model   elements no concept has: reading them is the middle layer's (a judgment model's) work
+    missing    6W1H slots left empty
+    judgments  what someone in a role decided (``holds``: it is / is not that concept), kept apart from the case.
+               They change no definition and no candidate: one decision is not a rule.
+    status     confirmed (the judgments agree with the candidate) · disputed (one does not: worth a look) ·
+               judged (people decided what the concepts could not) · pending (no judgment yet)
+    """
+    concepts, meta, _, _ = ot._normalize_corpus(corpus)
+    maybe, broader = ot._beside(corpus, concepts, "maybe"), ot._broader(corpus)
+    up = lambda elements: set(elements) | ot._above(broader, elements)
+    held = {name: up(found) | up(maybe.get(name, ())) for name, found in concepts.items() if found is not None}
+    holders = {}
+    for name, elements in held.items():
+        for element in elements:
+            holders.setdefault(element, set()).add(name)
+    weight = lambda element: math.log2(len(held) / len(holders[element])) / math.log2(len(held)) if len(held) > 1 else 1.0
+    raw_cases, raw_judgments = corpus.get("cases", []), corpus.get("judgments", [])
+    if not isinstance(raw_cases, list) or not isinstance(raw_judgments, list):
+        raise ValueError("cases and judgments must be lists")
+    found, slots = {}, ("誰が", "誰へ", "何を", "どうやって", "いつまで", "どう")
+    for case in raw_cases:
+        if not isinstance(case, dict) or not isinstance(case.get("elements", []), list) or not isinstance(case.get("6W1H", {}), dict):
+            raise ValueError("a case is an object with an id, a list of elements and a 6W1H object")
+        cid = ot._nonempty_str(case.get("id"), "case id")
+        if cid in found:
+            raise ValueError(f"duplicate case id: {cid!r}")
+        seen = {ot._nonempty_str(el, f"{cid} element") for el in case.get("elements", [])}
+        known = sorted(seen & set(holders))
+        fits = sorted(name for name in held if set(known) <= held[name]) if known else []
+        confidence = round(sum(map(weight, known)), 2)
+        one = fits[0] if len(fits) == 1 and confidence >= sure else None
+        found[cid] = {**{k: case[k] for k in ("statement", "context", "evidence", "actor", "role") if k in case},
+                      "candidate": one and {"concept": one, "id": meta[one].get("id", one), "basis": "hypothesis", "confidence": confidence},
+                      "fits": fits, "to_model": sorted(seen - set(holders)),
+                      "missing": [slot for slot in slots if not case.get("6W1H", {}).get(slot)], "judgments": []}
+    for judgment in raw_judgments:
+        cid = judgment.get("case") if isinstance(judgment, dict) else None
+        if cid not in found or judgment.get("concept") not in held or not isinstance(judgment.get("holds"), bool):
+            raise ValueError("a judgment names a known case, an observed concept and holds (true / false)")
+        candidate = found[cid]["candidate"]
+        found[cid]["judgments"].append({**{k: judgment[k] for k in ("concept", "holds", "actor", "role", "note") if k in judgment},
+                                        "basis": "observed", "agrees": None if candidate is None else (judgment["concept"] == candidate["concept"]) == judgment["holds"]})
+    for row in found.values():
+        agrees = [j["agrees"] for j in row["judgments"]]
+        row["status"] = ("pending" if not agrees else "judged" if row["candidate"] is None else
+                         "disputed" if False in agrees else "confirmed")
+    count = lambda key, value: sum(row[key] == value for row in found.values())
+    roles = lambda rows: dict(sorted(collections.Counter(row["role"] for row in rows if "role" in row).items()))
+    return {"cases": found, "summary": {
+        "cases": len(found), "candidate": sum(row["candidate"] is not None for row in found.values()),
+        "to_model": sum(bool(row["to_model"]) for row in found.values()),
+        **{status: count("status", status) for status in ("confirmed", "disputed", "judged", "pending")},
+        "roles": {"cases": roles(found.values()), "judgments": roles(j for row in found.values() for j in row["judgments"])}}}
+
+
 def equivalent(left, right, *, limit=16):
     """Do two rules agree on every truth assignment of their features (at most ``limit`` of them).
 
@@ -524,6 +590,16 @@ def _wobble(args):
     return found, bool(found["rephrase"])
 
 
+def _cases_arguments(parser):
+    _corpus(parser)
+    parser.add_argument("--sure", type=float, default=1.0, help="weight the case's elements need before a concept is its candidate (default 1)")
+
+
+def _cases(args):
+    found = cases(ot._read_json(args.graph), sure=args.sure)
+    return found, bool(found["summary"]["disputed"])
+
+
 def main(argv=None):
     """Exit codes as the core: 0 answered, 1 input error, 2 answered and something needs a look."""
     return ot.main(argv, commands=(
@@ -532,7 +608,8 @@ def main(argv=None):
         ("equivalent", "🧩 第二弾 · ✅ two rules on every truth assignment (proof) or a counterexample", _equivalent_arguments, _equivalent),
         ("holdout", "🧩 第二弾 · 🙈 unseen concepts and 🎭 masked elements: how definitions hold on what they were not built from", _rules_arguments, _holdout),
         ("guess", "🧩 第二弾 · 🎯 guessing game: questions to reach each concept, honest / forgetting / unseen", _guess_arguments, _guess),
-        ("wobble", "🧩 第二弾 · 🔤 shake the names: near names, a name that splits, names inside the thing side, shaken names coming back", _wobble_arguments, _wobble)))
+        ("wobble", "🧩 第二弾 · 🔤 shake the names: near names, a name that splits, names inside the thing side, shaken names coming back", _wobble_arguments, _wobble),
+        ("cases", "🧩 第三弾 · 📋 observed cases read against the concepts, apart from the judgments people made", _cases_arguments, _cases)))
 
 
 if __name__ == "__main__":

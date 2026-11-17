@@ -152,10 +152,10 @@ class WatchLayerTests(unittest.TestCase):
     def test_the_snapshot_ignores_input_order_and_follows_content(self):
         corpus = _load_example()
         flip = lambda side: {k: _reversed(v) for k, v in reversed(list(corpus[side].items()))}
-        shuffled = {"similar": list(reversed(corpus["similar"])), "concepts": flip("concepts"), "names": flip("names")}
+        shuffled = {"similar": list(reversed(corpus["similar"])), "concepts": flip("concepts"), "names": flip("names"), "broader": flip("broader")}
         snapshot = lambda c: next(n["id"] for n in self.graph(c)[0]["nodes"] if n["type"] == "Snapshot")
         self.assertEqual(snapshot(corpus), snapshot(shuffled))
-        for side, name, element in (("concepts", "ギター", "12弦もある"), ("names", "ギター", "読み:ぎたあ")):
+        for side, name, element in (("concepts", "ギター", "12弦もある"), ("names", "ギター", "読み:ぎたあ"), ("broader", "楽器", "区分:人工物")):
             changed = copy.deepcopy(corpus)
             spec = changed[side][name]
             (spec["elements"] if isinstance(spec, dict) else spec).append(element)
@@ -182,6 +182,21 @@ class WatchLayerTests(unittest.TestCase):
         for bad in ({"names": []}, {"names": {"幽霊": ["英名:Ghost"]}}, {"names": {"ギター": "英名:Guitar"}}):
             with self.subTest(bad=bad), self.assertRaises(ValueError):
                 ot.concept_edges({**_load_example(), **bad})
+
+    def test_the_upper_layer_is_drawn_from_above_and_changes_no_definition(self):
+        corpus = _load_example()
+        graph, nodes = self.graph(corpus)
+        narrower = {(e["source"], e["target"]): e for e in graph["edges"] if e["kind"] == "narrower"}
+        edge = narrower[("elem:区分:道具", "elem:楽器")]
+        self.assertEqual((edge["basis"], nodes[edge["lock"]]["type"]), ("observed", "Snapshot"))
+        # from above, reach touches everything under it: every fictional one, and nothing real
+        under = {r["node"] for r in ot.reach(graph["edges"], ["elem:実在:しない"])["rows"]}
+        self.assertTrue({"concept:C003-pikachu", "concept:C002-luigi", "concept:C007-spider-man"} <= under)
+        self.assertFalse({"concept:C005-guitar", "concept:C006-salmon"} & under)
+        self.assertEqual(ot.define_concepts(corpus), ot.define_concepts({k: v for k, v in corpus.items() if k != "broader"}))
+        for bad in ({"a": ["b"], "b": ["a"]}, {"a": ["a"]}, {"a": "b"}, []):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                ot.concept_edges({**corpus, "broader": bad})
 
     def test_a_stable_id_names_the_node_and_changes_no_definition(self):
         corpus = _load_example()
