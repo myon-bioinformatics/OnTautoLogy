@@ -60,15 +60,15 @@ def judge(corpus, concept, rule):
     to_model: concepts whose elements were not observed; the rule cannot decide them, a judgment model may.
     verdict: reversible (no fn, no fp, nothing left undecided) · refuted (a counterexample) · undecided.
     """
-    defined = ot.define_concepts(corpus)["concepts"]
-    if concept not in defined:
+    observed = ot._normalize_corpus(corpus)[0]  # the elements are all a judge needs; no definitions
+    if concept not in observed:
         raise ValueError(f"unknown concept: {concept!r}")
     matched, fp, fn, to_model, tn = [], [], [], [], 0
-    for name, info in sorted(defined.items()):
-        if info["elements"] is None:
+    for name, elements in sorted(observed.items()):
+        if elements is None:
             to_model.append(name)
             continue
-        said = holds(rule, set(info["elements"]))
+        said = holds(rule, set(elements))
         matched += [name] if said else []
         fp += [name] if said and name != concept else []
         fn += [name] if not said and name == concept else []
@@ -210,6 +210,14 @@ def guess(corpus, target, *, lies=0, forget=(), known=True, sure=1):
     book = {name: (set(found), set(maybe.get(name, ()))) for name, found in concepts.items()
             if found is not None and (known or name != target)}
     strikes, asked, log, missed = dict.fromkeys(book, 0), set(), [], {name: [] for name in book}
+    by_attribute = lambda elements: {a: _attribute(elements, a) for a in {e.split(":", 1)[0] for e in elements if ":" in e}}
+    table = {name: (by_attribute(found), by_attribute(may)) for name, (found, may) in book.items()}  # read once, asked often
+    value = lambda name, side, attribute: table[name][side].get(attribute, ())
+    holders = {}  # element -> (who has it, who may have it)
+    for name, sides in book.items():
+        for side, elements in enumerate(sides):
+            for element in elements:
+                holders.setdefault(element, (set(), set()))[side].add(name)
     alive = lambda: [name for name in sorted(book) if strikes[name] <= lies]
 
     def ask(kind, question, confirm=False):
@@ -221,7 +229,7 @@ def guess(corpus, target, *, lies=0, forget=(), known=True, sure=1):
             log.append({"ask": question, "answer": answer})
         else:
             answer = _attribute(truth, question)
-            against = [n for n in book if not _attribute(book[n][1], question) and _attribute(book[n][0], question) != answer]
+            against = [n for n in book if not value(n, 1, question) and value(n, 0, question) != answer]
             log.append({"ask": question + ":?", "answer": list(answer)})
         for name in against:
             strikes[name] += 1
@@ -229,15 +237,16 @@ def guess(corpus, target, *, lies=0, forget=(), known=True, sure=1):
         log[-1].update({"left": len(alive())}, **({"confirm": True} if confirm else {}))
     while len(alive()) > 1:
         live, options = alive(), []
+        living = set(live)
         for element in sorted({e for name in live for e in book[name][0] | book[name][1]} - asked):
-            yes = sum(element in book[n][0] or element in book[n][1] for n in live)
-            no = sum(element not in book[n][0] or element in book[n][1] for n in live)
+            has, may = holders[element]
+            yes, no = len(living & (has | may)), len(live) - len(living & (has - may))  # a maybe answers either way
             if yes < len(live) and no < len(live):
                 options.append((max(yes, no), 1, element))
         for name in sorted({e.split(":", 1)[0] for n in live for e in book[n][0] if ":" in e} - asked):
             groups = {}
             for n in live:
-                groups.setdefault(_attribute(book[n][0], name), []).append(n)
+                groups.setdefault(value(n, 0, name), []).append(n)
             if len(groups) > 1:
                 options.append((max(map(len, groups.values())), 0, name))
         if not options:
@@ -250,7 +259,7 @@ def guess(corpus, target, *, lies=0, forget=(), known=True, sure=1):
     confidence = 0.0
     if picked is not None:  # ✅ confirm with the rarest answers of the one left (in the whole corpus), not asked yet
         found = book[picked][0]
-        same = lambda kind, q: sum((q in book[n][0]) == (q in found) if kind else _attribute(book[n][0], q) == _attribute(found, q) for n in book)
+        same = lambda kind, q: sum((q in book[n][0]) == (q in found) if kind else value(n, 0, q) == value(picked, 0, q) for n in book)
         weight = lambda kind, q: math.log2(len(book) / same(kind, q)) / math.log2(len(book)) if len(book) > 1 else 1.0
         confidence -= sum(weight(*miss) for miss in missed[picked])  # answers it already failed count against it
         rare = sorted((same(kind, q), kind, q) for kind, q in [*((1, e) for e in found - asked if ":" not in e),
@@ -309,12 +318,43 @@ def _notation(text):
 
 
 def _one_apart(a, b):
-    """One character inserted, deleted or replaced (and not equal)."""
+    """One character inserted, deleted or replaced, or two neighbours swapped (and not equal)."""
     if a == b or abs(len(a) - len(b)) > 1:
         return False
     a, b = sorted((a, b), key=len)
     i = next((k for k, (x, y) in enumerate(zip(a, b)) if x != y), len(a))
-    return a[i + (len(a) == len(b)):] == b[i + 1:]
+    return a[i + (len(a) == len(b)):] == b[i + 1:] or len(a) == len(b) and a[i:i + 2] == b[i + 1] + b[i] and a[i + 2:] == b[i + 2:]
+
+
+def _shake(text):
+    """Ways a person might write the same name, as (kind, variant), each different from ``text``.
+
+    notation  kana (katakana and hiragana swapped), long (ー spelled out as its vowel, or a repeated vowel
+              written ー), width (full-width letters and digits), case, space (separators dropped or spaced):
+              these fold back to the same form, so the name should come back on the notation tier
+    typo      drop (one character left out) and swap (two neighbours swapped): one slip of the hand
+    """
+    kana = lambda ch, off: chr(ord(ch) + off)
+    vowel = lambda ch: unicodedata.name(ch, " ")[-1] if "ぁ" <= _notation(ch) <= "ゖ" else ""
+    out = [("kana", "".join(kana(ch, -0x60) if "ァ" <= ch <= "ヶ" else kana(ch, 0x60) if "ぁ" <= ch <= "ゖ" else ch for ch in text))]
+    spelled, marked = [], []
+    for i, ch in enumerate(text):
+        before = vowel(text[i - 1]) if i else ""
+        spelled.append("あいうえお"["AIUEO".index(before)] if ch == "ー" and before in tuple("AIUEO") else ch)
+        marked.append("ー" if i and _notation(ch) in "あいうえお" and before and vowel(ch) == before and ch != "ー" else ch)
+    out += [("long", "".join(spelled)), ("long", "".join(marked))]
+    out += [("width", "".join(chr(ord(ch) + 0xFEE0) if "!" <= ch <= "~" else ch for ch in text)), ("case", text.swapcase())]
+    if any(ch in " -_・·" for ch in text):
+        out += [("space", "".join(ch for ch in text if ch not in " -_・·")), ("space", "".join(" " if ch in "-_・·" else ch for ch in text))]
+    if len(text) > 2:
+        out += [("drop", text[:i] + text[i + 1:]) for i in range(len(text))]
+        out += [("swap", text[:i] + text[i + 1] + text[i] + text[i + 2:]) for i in range(len(text) - 1) if text[i] != text[i + 1]]
+    seen, kept = {text}, []
+    for kind, variant in out:
+        if variant not in seen:
+            seen.add(variant)
+            kept.append((kind, variant))
+    return kept
 
 
 def wobble(corpus, words=()):
@@ -328,8 +368,13 @@ def wobble(corpus, words=()):
     same      a folded form two concepts share: that name splits
     rephrase  thing-side elements that contain the concept's own name or reading: they only restate the name
               (白鮭 has 鮭 in it, サケ属 has さけ), so they belong on the name side. Anything here is worth a look.
+    shaken    every written form shaken on purpose (``_shake``) and looked up again. The first tier with a hit is
+              the answer: ``rate`` is how often the concept is in it, ``false_merges`` how many other concepts
+              are in it too, for notation and typo kinds. A hit on another concept is only counted: no two
+              concepts are ever merged.
+    Each hit also carries ``id``, the concept's stable ID (its name when it has none).
     """
-    concepts, _, pairs, _ = ot._normalize_corpus(corpus)
+    concepts, meta, pairs, _ = ot._normalize_corpus(corpus)
     called = ot._beside(corpus, concepts, "names")
     forms = {name: [(name, name), *((el, el.split(":", 1)[-1]) for el in called.get(name, ()))] for name in sorted(concepts)}
     folded = {name: [(via, text, _notation(text)) for via, text in rows] for name, rows in forms.items()}
@@ -343,7 +388,7 @@ def wobble(corpus, words=()):
                 for via, text, f in rows:
                     if (name, via) not in seen and hit(text, f):
                         seen.add((name, via))
-                        found[tier].append({"concept": name, "via": via})
+                        found[tier].append({"concept": name, "id": meta[name].get("id", name), "via": via})
         return found
 
     similar = {frozenset((p["left"], p["right"])) for p in pairs}
@@ -363,9 +408,29 @@ def wobble(corpus, words=()):
         hits = [el for el in elements or () if any(k in _notation(el) for k in keys)]
         if hits:
             rephrase[name] = hits
-    return {"words": {word: look(word) for word in words}, "near": near, "same": same, "rephrase": rephrase,
+    tally = lambda: {"tries": 0, "returned": 0, "false_merges": 0}
+    shaken, misses, merges = {"notation": tally(), "typo": tally()}, [], []
+    kinds = {}
+    for name, rows in forms.items():
+        for via, text in rows:
+            for kind, variant in _shake(text):
+                group = "typo" if kind in ("drop", "swap") else "notation"
+                hits = {hit["concept"] for hit in next((tier for tier in look(variant).values() if tier), [])}
+                for counts in (shaken[group], kinds.setdefault(kind, tally())):
+                    counts["tries"] += 1
+                    counts["returned"] += name in hits
+                    counts["false_merges"] += len(hits - {name})
+                if name not in hits:
+                    misses.append({"concept": name, "via": via, "kind": kind, "query": variant})
+                merges += [{"concept": name, "other": other, "via": via, "kind": kind, "query": variant} for other in sorted(hits - {name})]
+    for counts in (*shaken.values(), *kinds.values()):
+        counts["rate"] = round(counts["returned"] / counts["tries"], 4) if counts["tries"] else None
+    shaken.update({"kinds": dict(sorted(kinds.items())), "misses": misses[:12], "merges": merges[:12]})
+    return {"words": {word: look(word) for word in words}, "near": near, "same": same, "rephrase": rephrase, "shaken": shaken,
             "summary": {"concepts": len(forms), "named": len(called), "near": len(near), "near_similar": sum(row["similar"] for row in near),
-                        "same": len(same), "rephrase": sum(map(len, rephrase.values()))}}
+                        "same": len(same), "rephrase": sum(map(len, rephrase.values())),
+                        "shaken": {group: shaken[group]["rate"] for group in ("notation", "typo")},
+                        "false_merges": shaken["notation"]["false_merges"] + shaken["typo"]["false_merges"]}}
 
 
 def equivalent(left, right, *, limit=16):
@@ -467,7 +532,7 @@ def main(argv=None):
         ("equivalent", "🧩 第二弾 · ✅ two rules on every truth assignment (proof) or a counterexample", _equivalent_arguments, _equivalent),
         ("holdout", "🧩 第二弾 · 🙈 unseen concepts and 🎭 masked elements: how definitions hold on what they were not built from", _rules_arguments, _holdout),
         ("guess", "🧩 第二弾 · 🎯 guessing game: questions to reach each concept, honest / forgetting / unseen", _guess_arguments, _guess),
-        ("wobble", "🧩 第二弾 · 🔤 shake the names: near names, a name that splits, names inside the thing side", _wobble_arguments, _wobble)))
+        ("wobble", "🧩 第二弾 · 🔤 shake the names: near names, a name that splits, names inside the thing side, shaken names coming back", _wobble_arguments, _wobble)))
 
 
 if __name__ == "__main__":

@@ -21,11 +21,21 @@ def _load_example():
     return json.loads(EXAMPLE_PATH.read_text(encoding="utf-8"))
 
 
+def _reversed(spec):
+    """A concept spec with its elements in reverse order (the object form keeps its id)."""
+    return {**spec, "elements": list(reversed(spec["elements"]))} if isinstance(spec, dict) else list(reversed(spec))
+
+
+def _node(name, spec):
+    """The graph node of a concept: its stable id when it has one, else its name."""
+    return f"concept:{spec['id'] if isinstance(spec, dict) and 'id' in spec else name}"
+
+
 class ConceptDefinitionTests(unittest.TestCase):
     def test_example_pairs_derive_genus_differentia_and_unique_roundtrip(self):
         corpus = _load_example()
         defined = ot.define_concepts(corpus)
-        self.assertEqual(defined["similar_pairs"], 21)
+        self.assertEqual(defined["similar_pairs"], 31)
         self.assertEqual(defined["unknown"], [])
         concepts = defined["concepts"]
         expected_genus = {
@@ -103,8 +113,8 @@ class ConceptDefinitionTests(unittest.TestCase):
         edges = projected["edges"]
         self.assertEqual(ot.check(edges, nodes), [])
         reached = ot.reach(edges, ["elem:カフェイン含有"])  # カクテル has none, but it is similar to one that has: look again
-        self.assertEqual({r["node"] for r in reached["rows"]}, {"concept:エナジードリンク", "concept:カクテル", "concept:コーヒー"})
-        why = ot.why(edges, "concept:ギター", depth=1)
+        self.assertEqual({r["node"] for r in reached["rows"]}, {"concept:C004-energy-drink", "concept:カクテル", "concept:コーヒー"})
+        why = ot.why(edges, "concept:C005-guitar", depth=1)
         self.assertTrue(any(r["edge"]["kind"] == "similarTo" and r["edge"]["source"] == "concept:ベース" for r in why["rows"]))
         counts = ot.ladder(edges)["basis"]
         self.assertGreater(counts["observed"], 0)
@@ -123,7 +133,7 @@ class WatchLayerTests(unittest.TestCase):
         snapshots = [n for n in nodes.values() if n["type"] == "Snapshot"]
         self.assertEqual(len(snapshots), 1)
         observed = {e["target"]: e["source"] for e in graph["edges"] if e["kind"] == "observes"}
-        self.assertEqual(sorted(observed), sorted(f"concept:{name}" for name in _load_example()["concepts"]))
+        self.assertEqual(sorted(observed), sorted(_node(name, spec) for name, spec in _load_example()["concepts"].items()))
         self.assertEqual({e["source"]: e["target"] for e in graph["edges"] if e["kind"] == "derived_from"},
                          {oid: snapshots[0]["id"] for oid in observed.values()})
         for edge in (e for e in graph["edges"] if e["kind"] == "hasElement"):
@@ -141,21 +151,25 @@ class WatchLayerTests(unittest.TestCase):
 
     def test_the_snapshot_ignores_input_order_and_follows_content(self):
         corpus = _load_example()
-        flip = lambda side: {k: list(reversed(v)) for k, v in reversed(list(corpus[side].items()))}
+        flip = lambda side: {k: _reversed(v) for k, v in reversed(list(corpus[side].items()))}
         shuffled = {"similar": list(reversed(corpus["similar"])), "concepts": flip("concepts"), "names": flip("names")}
         snapshot = lambda c: next(n["id"] for n in self.graph(c)[0]["nodes"] if n["type"] == "Snapshot")
         self.assertEqual(snapshot(corpus), snapshot(shuffled))
         for side, name, element in (("concepts", "ギター", "12弦もある"), ("names", "ギター", "読み:ぎたあ")):
             changed = copy.deepcopy(corpus)
-            changed[side][name].append(element)
+            spec = changed[side][name]
+            (spec["elements"] if isinstance(spec, dict) else spec).append(element)
             self.assertNotEqual(snapshot(corpus), snapshot(changed))
+        changed = copy.deepcopy(corpus)
+        changed["concepts"]["ギター"]["id"] = "C099-guitar"
+        self.assertNotEqual(snapshot(corpus), snapshot(changed))
 
     def test_names_are_the_observed_name_side_and_define_nothing(self):
         corpus = _load_example()
         graph, nodes = self.graph(corpus)
         observed = {e["target"]: e["source"] for e in graph["edges"] if e["kind"] == "observes"}
         named = [e for e in graph["edges"] if e["kind"] == "hasName"]
-        self.assertIn(("name:読み:しゃけ", "concept:鮭"), {(e["source"], e["target"]) for e in named})
+        self.assertIn(("name:読み:しゃけ", "concept:C006-salmon"), {(e["source"], e["target"]) for e in named})
         self.assertTrue(all(e["basis"] == "observed" and e["lock"] == observed[e["target"]] and nodes[e["source"]]["type"] == "Name"
                             for e in named))
         self.assertEqual(ot.define_concepts(corpus), ot.define_concepts({k: v for k, v in corpus.items() if k != "names"}))
@@ -168,6 +182,23 @@ class WatchLayerTests(unittest.TestCase):
         for bad in ({"names": []}, {"names": {"幽霊": ["英名:Ghost"]}}, {"names": {"ギター": "英名:Guitar"}}):
             with self.subTest(bad=bad), self.assertRaises(ValueError):
                 ot.concept_edges({**_load_example(), **bad})
+
+    def test_a_stable_id_names_the_node_and_changes_no_definition(self):
+        corpus = _load_example()
+        graph, nodes = self.graph(corpus)
+        # the ID does not depend on the language: the name hangs off it, and the node keeps the name to read
+        self.assertEqual(nodes["concept:C006-salmon"]["name"], "鮭")
+        self.assertNotIn("concept:鮭", nodes)
+        self.assertIn(("name:英名:Salmon", "concept:C006-salmon"), {(e["source"], e["target"]) for e in graph["edges"] if e["kind"] == "hasName"})
+        self.assertIn(("concept:C006-salmon", "concept:サクラマス"), {(e["source"], e["target"]) for e in graph["edges"] if e["kind"] == "similarTo"})
+        plain = {**corpus, "concepts": {k: v["elements"] if isinstance(v, dict) else v for k, v in corpus["concepts"].items()}}
+        self.assertEqual(ot.define_concepts(corpus), ot.define_concepts(plain))
+        # one ID per concept: two concepts cannot share one, and an ID cannot be another concept's name
+        for bad in ({"鮭": {"id": "X", "elements": ["魚"]}, "酒": {"id": "X", "elements": ["飲料"]}},
+                    {"鮭": {"id": "サクラマス", "elements": ["魚"]}, "サクラマス": ["魚"]},
+                    {"鮭": {"id": "", "elements": ["魚"]}}):
+            with self.subTest(bad=bad), self.assertRaises(ValueError):
+                ot.concept_edges({"concepts": bad})
 
     def test_captured_at_is_the_observation_time_and_must_carry_a_timezone(self):
         corpus = dict(_load_example(), captured_at="2026-11-16T18:00:00+09:00")
@@ -214,7 +245,7 @@ class ConceptCliTests(unittest.TestCase):
         reversed_corpus = {
             "schema": corpus["schema"],
             "similar": list(reversed(corpus["similar"])),
-            "concepts": {k: list(reversed(v)) for k, v in reversed(list(corpus["concepts"].items()))},
+            "concepts": {k: _reversed(v) for k, v in reversed(list(corpus["concepts"].items()))},
         }
         out_a = self.run_cli("define", "-", data=json.dumps(corpus, ensure_ascii=False), seed="1")
         out_b = self.run_cli("define", "-", data=json.dumps(reversed_corpus, ensure_ascii=False), seed="99")
@@ -227,7 +258,7 @@ class ConceptCliTests(unittest.TestCase):
         p = self.run_cli("reach", str(EXAMPLE_PATH), "elem:カフェイン含有")
         self.assertEqual(p.returncode, 0, p.stderr)
         self.assertEqual({r["node"] for r in json.loads(p.stdout)["rows"]},
-                         {"concept:エナジードリンク", "concept:カクテル", "concept:コーヒー"})
+                         {"concept:C004-energy-drink", "concept:カクテル", "concept:コーヒー"})
 
 
 if __name__ == "__main__":
