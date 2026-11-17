@@ -33,7 +33,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import ontautology as ot  # noqa: E402
 
 __all__ = ["standing", "gaps", "entailed", "holds", "atoms", "judge", "rules", "holdout", "guess", "guess_report",
-           "wobble", "name_index", "equivalent", "main"]
+           "wobble", "name_index", "overlap_report", "equivalent", "main"]
+# 名前の近さ（1文字違い以上）と、要素のジャカードがこれを超えたら「高い」。
+_NAME_HIGH = 0.5
+_ELEMENT_HIGH = 0.25
 # 属性名が言語と種別を兼ねる。SKOS の prefLabel / altLabel に相当。同音語は同じ概念にしない。
 _NAME_PREFIX = {
     "英名": ("en", "pref"),
@@ -363,8 +366,29 @@ def name_index(corpus):
     return {"labels": rows, "ids": {name: meta[name].get("concept_id") or name for name in concepts}}
 
 
-def _roundtrip_tally(trials, questions):
-    """判断評価。揺らした表記が同じ概念に戻った率と、別概念に当たった件数。ID は変えない。"""
+def _classify(tp, fp, fn, tn):
+    """混同行列から精度・再現率・正解率。分母が 0 のときは None。
+
+    正例は「同じ概念に戻る」。別概念への当たりは偽陽性。
+    TP  同じ概念に戻った
+    FN  同じ概念に戻らなかった
+    FP  別概念に当たった件数
+    TN  当たっていない別概念（試行 × 残りの概念数 − FP）
+    precision = TP / (TP + FP)、recall = TP / (TP + FN)、accuracy = (TP + TN) / 全部
+    """
+    def ratio(num, den):
+        return round(num / den, 4) if den else None
+    return {"tp": tp, "fp": fp, "fn": fn, "tn": tn,
+            "precision": ratio(tp, tp + fp), "recall": ratio(tp, tp + fn),
+            "accuracy": ratio(tp + tn, tp + fp + fn + tn)}
+
+
+def _roundtrip_tally(trials, questions, *, universe):
+    """判断評価。揺らした表記が同じ概念に戻った率と、別概念に当たった件数。ID は変えない。
+
+    ``universe`` はコーパスの概念数。各試行の負例は、元の概念以外のすべて。
+    既存の accuracy は「その概念だけに当たった割合」。classification.accuracy は混同行列の正解率。
+    """
     returned = sum(trial["concept"] in trial["hits"] for trial in trials)
     strict = sum(set(trial["hits"]) == {trial["concept"]} for trial in trials)
     false = [{"concept": trial["concept"], "other": other, "query": trial["query"], "via": trial["via"]}
@@ -372,12 +396,46 @@ def _roundtrip_tally(trials, questions):
     false.sort(key=lambda row: (row["concept"], row["other"], row["via"], row["query"]))
     counts = [questions[name] for name in sorted(questions)]
     size = len(trials)
-    return {"trials": size, "returned": returned, "false_merges": len(false),
+    fp = len(false)
+    tn = size * max(universe - 1, 0) - fp
+    return {"trials": size, "returned": returned, "false_merges": fp,
             "accuracy": round(strict / size, 4) if size else None,
             "mean_questions": round(sum(counts) / len(counts), 2) if counts else None,
             "max_questions": max(counts) if counts else None,
             "rate": round(returned / size, 4) if size else None,
+            "classification": _classify(returned, fp, size - returned, tn),
             "examples": false[:12]}
+
+
+def _ranks(values):
+    """同点は平均順位（1 始まり）。スピアマン用。"""
+    order = sorted(range(len(values)), key=lambda i: values[i])
+    ranks = [0.0] * len(values)
+    start = 0
+    while start < len(values):
+        end = start
+        while end + 1 < len(values) and values[order[end + 1]] == values[order[start]]:
+            end += 1
+        rank = (start + end) / 2 + 1
+        for index in range(start, end + 1):
+            ranks[order[index]] = rank
+        start = end + 1
+    return ranks
+
+
+def _spearman(xs, ys):
+    """順位相関（スピアマン）。同点は平均順位。ばらつきが無いときは None。標準ライブラリだけ。"""
+    if len(xs) != len(ys) or len(xs) < 2:
+        return None
+    rx, ry = _ranks(xs), _ranks(ys)
+    n = len(xs)
+    mx, my = sum(rx) / n, sum(ry) / n
+    num = sum((x - mx) * (y - my) for x, y in zip(rx, ry))
+    dx = math.sqrt(sum((x - mx) ** 2 for x in rx))
+    dy = math.sqrt(sum((y - my) ** 2 for y in ry))
+    if dx == 0 or dy == 0:
+        return None
+    return round(num / (dx * dy), 4)
 
 
 def wobble(corpus, words=()):
@@ -454,11 +512,11 @@ def wobble(corpus, words=()):
                         seen_hit.add(hit["concept"])
                         hits.append(hit["concept"])
             trials.append({"concept": name, "via": via, "query": folded_text, "hits": hits})
-    roundtrip = _roundtrip_tally(trials, questions)
+    roundtrip = _roundtrip_tally(trials, questions, universe=len(folded))
     seeds = [name for name in corpus.get("seeds") or [] if name in folded]
     if seeds:
         seed_trials = [trial for trial in trials if trial["concept"] in set(seeds)]
-        roundtrip_seeds = _roundtrip_tally(seed_trials, {name: questions[name] for name in seeds})
+        roundtrip_seeds = _roundtrip_tally(seed_trials, {name: questions[name] for name in seeds}, universe=len(folded))
     else:
         roundtrip_seeds = None
     return {"words": {word: look(word) for word in words}, "near": near, "same": same, "rephrase": rephrase,
@@ -466,6 +524,181 @@ def wobble(corpus, words=()):
             "summary": {"concepts": len(forms), "named": len(called), "near": len(near), "near_similar": sum(row["similar"] for row in near),
                         "same": len(same), "rephrase": sum(map(len, rephrase.values())),
                         "false_merges": roundtrip["false_merges"], "roundtrip_rate": roundtrip["rate"]}}
+
+
+def _name_score(left_forms, right_forms):
+    """表記の近さ。畳むと一致なら 1、1文字違いなら 0.5、それ以外は 0。ID は変えない。"""
+    score = 0.0
+    for _, _, fa in left_forms:
+        for _, _, fb in right_forms:
+            if fa == fb and fa:
+                return 1.0
+            if min(len(fa), len(fb)) > 1 and _one_apart(fa, fb):
+                score = 0.5
+    return score
+
+
+def _question_weight(ask, answer, elements):
+    """当てっこと同じ重み。log2(候補数 / 同じ答えの数) / log2(候補数)。候補数はコーパス全体。"""
+    names = list(elements)
+    count = len(names)
+    if count <= 1:
+        return None
+    if ask.endswith(":?"):
+        attr = ask[:-2]
+        target = tuple(answer)
+        sharers = sum(_attribute(elements[name], attr) == target for name in names)
+    else:
+        sharers = sum((ask in elements[name]) == answer for name in names)
+    if sharers <= 0:
+        return None
+    return round(math.log2(count / sharers) / math.log2(count), 4)
+
+
+def _separated_at(game, elements, maybe, other):
+    """正直な当てっこで other が落ちる質問番号（1 始まり）。落ちなければ None。"""
+    found, excused = elements[other], maybe.get(other, ())
+    for index, question in enumerate(game["questions"], 1):
+        ask = question["ask"]
+        if ask.endswith(":?"):
+            attr = ask[:-2]
+            if not _attribute(excused, attr) and _attribute(found, attr) != tuple(question["answer"]):
+                return index
+        elif ask not in excused and (ask in found) != question["answer"]:
+            return index
+    return None
+
+
+def overlap_report(corpus, *, lies=0, sure=1):
+    """要素の重なりで、wobble の誤ヒットと当てっこで紛れた組を説明する。
+
+    各組について、共有要素・類・種差、ジャカード、類似先の重なり、組を分ける質問数と
+    その質問の情報量を出す。共有要素数と、質問数・wobble の誤ヒットとの順位相関も出す。
+    名前が近く要素も重なる組は both、名前だけ近い組は name_only。ID はまとめない。
+
+    ペア検出の正例は、名前が揺れて別概念に当たる組（wobble の near / same）。
+    予測はジャカードが ``_ELEMENT_HIGH`` 以上。精度・再現率・正解率は混同行列から。
+    """
+    concepts, _, pairs, neighbors = ot._normalize_corpus(corpus)
+    observed = {name: set(elements) for name, elements in concepts.items() if elements is not None}
+    names = sorted(observed)
+    maybe = {name: set(found) for name, found in ot._beside(corpus, concepts, "maybe").items()}
+    defined = ot.define_concepts(corpus)["concepts"]
+    shaken = wobble(corpus)
+    games = {name: guess(corpus, name, lies=lies, sure=sure) for name in names}
+    unseen = {name: guess(corpus, name, lies=lies, sure=sure, known=False) for name in names}
+    folded = {}
+    called = ot._beside(corpus, concepts, "names")
+    for name in names:
+        rows = [(name, name), *((el, el.split(":", 1)[-1]) for el in called.get(name, ()))]
+        folded[name] = [(via, text, _notation(text)) for via, text in rows]
+    neighbor = {name: set(neighbors.get(name, ())) & set(names) for name in names}
+    wobble_pairs = {frozenset(row["pair"]) for row in shaken["near"]}
+    wobble_pairs |= {frozenset(group["concepts"]) for group in shaken["same"] if len(group["concepts"]) == 2}
+    for group in shaken["same"]:
+        for left, right in itertools.combinations(group["concepts"], 2):
+            wobble_pairs.add(frozenset((left, right)))
+    confused = set()
+    for name, game in unseen.items():
+        other = game["guess"]
+        if other and other != name and other in observed:
+            confused.add(frozenset((name, other)))
+
+    def separation(source, other):
+        game = games[source]
+        at = _separated_at(game, observed, maybe, other)
+        if at is None:
+            return None, []
+        weights = []
+        for question in game["questions"][:at]:
+            weights.append(_question_weight(question["ask"], question["answer"], observed))
+        return at, weights
+
+    def row_for(left, right):
+        a, b = observed[left], observed[right]
+        shared = a & b
+        genus = set(defined[left]["genus"]["all_common"]) & set(defined[right]["genus"]["all_common"])
+        diff = set(defined[left]["definition"]["differentia"]) & set(defined[right]["definition"]["differentia"])
+        union = a | b
+        jaccard = round(len(shared) / len(union), 4) if union else None
+        both_neighbors = neighbor[left] | neighbor[right]
+        neighbor_shared = neighbor[left] & neighbor[right]
+        similar_overlap = round(len(neighbor_shared) / len(both_neighbors), 4) if both_neighbors else None
+        questions, weights = {}, []
+        chosen = None
+        for source, other in ((left, right), (right, left)):
+            at, found = separation(source, other)
+            questions[source] = at
+            if at is not None and (chosen is None or at < chosen[0]):
+                chosen = (at, found)
+        name_score = _name_score(folded[left], folded[right])
+        element_high = jaccard is not None and jaccard >= _ELEMENT_HIGH
+        name_high = name_score >= _NAME_HIGH
+        if name_high and element_high:
+            flag = "both"
+        elif name_high:
+            flag = "name_only"
+        elif element_high:
+            flag = "elements_only"
+        else:
+            flag = "neither"
+        key = frozenset((left, right))
+        return {"pair": sorted((left, right)), "similar": key in {frozenset((p["left"], p["right"])) for p in pairs},
+                "shared": len(shared), "shared_elements": sorted(shared),
+                "genus_shared": len(genus), "differentia_shared": len(diff),
+                "jaccard": jaccard, "similar_overlap": similar_overlap, "neighbor_shared": len(neighbor_shared),
+                "name_score": name_score, "flag": flag,
+                "questions": None if chosen is None else chosen[0],
+                "questions_by_target": questions,
+                "weights": [] if chosen is None else chosen[1],
+                "weight_sum": None if chosen is None else round(sum(w for w in chosen[1] if w is not None), 4),
+                "wobble": key in wobble_pairs, "guess_confused": key in confused}
+
+    focus = set(wobble_pairs) | confused
+    # 当てっこで最後まで残る相手（分離が一番遅い組）も、紛れた組として残す。
+    for source in names:
+        rivals = []
+        for other in names:
+            if other == source:
+                continue
+            at = _separated_at(games[source], observed, maybe, other)
+            if at is not None:
+                rivals.append((at, other))
+        if rivals:
+            focus.add(frozenset((source, max(rivals)[1])))
+    detailed = [row_for(*sorted(pair)) for pair in sorted(focus, key=lambda pair: tuple(sorted(pair)))]
+    shared_counts, question_counts, wobble_bits, jaccards = [], [], [], []
+    detection_truth, detection_pred = [], []
+    for left, right in itertools.combinations(names, 2):
+        a, b = observed[left], observed[right]
+        union = a | b
+        shared = len(a & b)
+        jaccard = (shared / len(union)) if union else 0.0
+        at = [value for value in (_separated_at(games[left], observed, maybe, right),
+                                  _separated_at(games[right], observed, maybe, left)) if value is not None]
+        hit = frozenset((left, right)) in wobble_pairs
+        pred = jaccard >= _ELEMENT_HIGH
+        detection_truth.append(hit)
+        detection_pred.append(pred)
+        if not at:
+            continue
+        shared_counts.append(shared)
+        question_counts.append(min(at))
+        wobble_bits.append(int(hit))
+        jaccards.append(jaccard)
+    tp = sum(truth and pred for truth, pred in zip(detection_truth, detection_pred))
+    fp = sum((not truth) and pred for truth, pred in zip(detection_truth, detection_pred))
+    fn = sum(truth and not pred for truth, pred in zip(detection_truth, detection_pred))
+    tn = sum((not truth) and not pred for truth, pred in zip(detection_truth, detection_pred))
+    return {"schema": "ontautology-overlap/1", "lies": lies, "sure": sure,
+            "thresholds": {"name": _NAME_HIGH, "jaccard": _ELEMENT_HIGH},
+            "pairs": detailed,
+            "roundtrip": shaken["roundtrip"]["classification"],
+            "detection": _classify(tp, fp, fn, tn),
+            "correlation": {"pairs": len(shared_counts),
+                            "spearman_shared_questions": _spearman(shared_counts, question_counts),
+                            "spearman_jaccard_questions": _spearman(jaccards, question_counts),
+                            "spearman_shared_wobble": _spearman(shared_counts, wobble_bits)}}
 
 
 def equivalent(left, right, *, limit=16):
@@ -559,6 +792,12 @@ def _wobble(args):
     return found, bool(found["rephrase"])
 
 
+def _overlap(args):
+    found = overlap_report(ot._read_json(args.graph), lies=args.lies, sure=args.sure)
+    # 名前も要素も近い組は、同じ ID にまとめずに目を通す。
+    return found, any(row["flag"] == "both" for row in found["pairs"])
+
+
 def main(argv=None):
     """Exit codes as the core: 0 answered, 1 input error, 2 answered and something needs a look."""
     return ot.main(argv, commands=(
@@ -567,7 +806,8 @@ def main(argv=None):
         ("equivalent", "🧩 第二弾 · ✅ two rules on every truth assignment (proof) or a counterexample", _equivalent_arguments, _equivalent),
         ("holdout", "🧩 第二弾 · 🙈 unseen concepts and 🎭 masked elements: how definitions hold on what they were not built from", _rules_arguments, _holdout),
         ("guess", "🧩 第二弾 · 🎯 guessing game: questions to reach each concept, honest / forgetting / unseen", _guess_arguments, _guess),
-        ("wobble", "🧩 🔤 名前を揺らす。同じ概念に戻る率と、別概念への当たり件数。自動では同じ ID にしない", _wobble_arguments, _wobble)))
+        ("wobble", "🧩 🔤 名前を揺らす。同じ概念に戻る率と、別概念への当たり件数。自動では同じ ID にしない", _wobble_arguments, _wobble),
+        ("overlap", "🧩 要素の重なりで誤ヒットを説明する。ジャカード・質問数・順位相関。ID はまとめない", _guess_arguments, _overlap)))
 
 
 if __name__ == "__main__":

@@ -191,6 +191,61 @@ class RoundTripReport(unittest.TestCase):
         self.assertEqual((tolerant["forget"]["rate"], tolerant["unseen"]["rate"]), (1.0, 1.0))
 
 
+class OverlapReport(unittest.TestCase):
+    """共有要素と当てっこの質問数。名前が近くても ID はまとめない。"""
+
+    def test_spearman_and_confusion_counts(self):
+        self.assertEqual(tautology._spearman([1, 2, 3], [1, 2, 3]), 1.0)
+        self.assertEqual(tautology._spearman([1, 2, 3], [3, 2, 1]), -1.0)
+        self.assertEqual(tautology._spearman([1, 1, 2], [1, 1, 2]), 1.0)
+        self.assertIsNone(tautology._spearman([1, 1, 1], [1, 2, 3]))
+        found = tautology._classify(78, 8, 0, 2098)
+        self.assertEqual((found["precision"], found["recall"], found["accuracy"]), (0.907, 1.0, 0.9963))
+
+    def test_roundtrip_classification_counts_other_concepts_as_false_positives(self):
+        report = tautology.wobble(load(PHASE2))["roundtrip"]
+        counts = report["classification"]
+        self.assertEqual((counts["tp"], counts["fp"], counts["fn"], counts["tn"]), (78, 8, 0, 2098))
+        self.assertEqual(counts["recall"], report["rate"])
+        self.assertEqual(counts["fp"], report["false_merges"])
+        self.assertEqual((counts["precision"], counts["accuracy"]), (0.907, 0.9963))
+
+    def test_the_two_false_hits_are_explained_by_shared_genus_not_differentia(self):
+        found = tautology.overlap_report(load(PHASE2))
+        rows = {tuple(row["pair"]): row for row in found["pairs"]}
+        pika = rows[("ピカチュウ", "ピチュー")]
+        luigi = rows[("ルイージ", "ワルイージ")]
+        self.assertEqual((pika["shared"], pika["genus_shared"], pika["differentia_shared"], pika["jaccard"], pika["flag"]),
+                         (3, 1, 0, 0.1111, "name_only"))
+        self.assertEqual(pika["shared_elements"], ["タイプ:でんき", "ポケモン", "黄色"])
+        self.assertEqual((pika["questions"], pika["weight_sum"], pika["similar"]), (2, 1.2543, True))
+        self.assertEqual(pika["weights"], [0.4623, 0.792])
+        self.assertEqual((luigi["shared"], luigi["genus_shared"], luigi["differentia_shared"], luigi["jaccard"], luigi["flag"]),
+                         (5, 5, 0, 0.3333, "both"))
+        self.assertEqual(luigi["shared_elements"], ["オーバーオール", "ゲームキャラクター", "人間", "任天堂", "帽子"])
+        self.assertEqual((luigi["questions"], luigi["weight_sum"], luigi["similar"]), (3, 1.1888, True))
+        self.assertEqual(found["correlation"],
+                         {"pairs": 378, "spearman_shared_questions": 0.2103, "spearman_jaccard_questions": 0.2233,
+                          "spearman_shared_wobble": 0.2039})
+        self.assertEqual((found["detection"]["tp"], found["detection"]["fp"], found["detection"]["fn"], found["detection"]["tn"]),
+                         (2, 25, 1, 350))
+        self.assertEqual((found["detection"]["precision"], found["detection"]["recall"], found["detection"]["accuracy"]),
+                         (0.0741, 0.6667, 0.9312))
+        ids = tautology.name_index(load(PHASE2))["ids"]
+        self.assertNotEqual(ids["ピカチュウ"], ids["ピチュー"])
+        self.assertNotEqual(ids["ルイージ"], ids["ワルイージ"])
+
+    def test_name_only_and_both_are_flagged_without_merging_ids(self):
+        corpus = {"concepts": {"あい": ["共有", "甲", "乙", "丙", "丁"], "あう": ["戊"],
+                               "かか": ["共通", "左"], "かき": ["共通", "右"]},
+                  "similar": [["あい", "あう"], ["かか", "かき"]]}
+        found = tautology.overlap_report(corpus)
+        rows = {tuple(row["pair"]): row for row in found["pairs"]}
+        self.assertEqual(rows[("あい", "あう")]["flag"], "name_only")
+        self.assertEqual(rows[("かか", "かき")]["flag"], "both")
+        self.assertNotEqual(tautology.name_index(corpus)["ids"]["あい"], tautology.name_index(corpus)["ids"]["あう"])
+
+
 class MaskAndCli(unittest.TestCase):
     def test_masking_drops_phase3_side_records(self):
         corpus = {"concepts": {"a": ["x"], "b": ["y"]}, "names": {"a": ["略語:A"]},
@@ -210,7 +265,12 @@ class MaskAndCli(unittest.TestCase):
         answer = json.loads(done.stdout)
         self.assertEqual(answer["words"]["Spidey"]["exact"][0]["via"], "略語:Spidey")
         self.assertEqual(answer["roundtrip_seeds"]["rate"], 1.0)
+        self.assertEqual(answer["roundtrip_seeds"]["classification"]["recall"], 1.0)
         self.assertGreater(answer["roundtrip_seeds"]["false_merges"], 0)
+        overlap = run_cli(ROOT / "tools/tautology.py", "overlap", str(PHASE2))
+        self.assertEqual(overlap.returncode, 2, overlap.stderr.decode())
+        body = json.loads(overlap.stdout)
+        self.assertEqual(body["correlation"]["spearman_shared_questions"], 0.2103)
 
 
 if __name__ == "__main__":
