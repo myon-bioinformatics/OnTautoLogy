@@ -1,0 +1,2949 @@
+{
+  "source_sha": "79eba5343276f328d1de0854f162c42a21849e7b",
+  "corpus_blob": "c84feff6748a0708899f6bfb95091c0cea9edfb9",
+  "guess0": {
+    "lies": 0,
+    "sure": 1,
+    "estimate": 5,
+    "summary": {
+      "honest": {
+        "games": 28,
+        "reached": 28,
+        "rate": 1.0,
+        "mean_questions": 4.43,
+        "max_questions": 8,
+        "missed": []
+      },
+      "forget": {
+        "games": 287,
+        "reached": 210,
+        "rate": 0.7317,
+        "mean_questions": 4.26,
+        "max_questions": 8,
+        "missed": [
+          "Android",
+          "iPad",
+          "iPhone",
+          "ウクレレ",
+          "エナジードリンク",
+          "カクテル",
+          "ギター",
+          "コーヒー",
+          "サクラマス",
+          "スチールヘッド",
+          "デデンネ",
+          "バイオリン",
+          "パチリス",
+          "ピアノ",
+          "ピカチュウ",
+          "ピチュー",
+          "プラスル",
+          "ベース",
+          "マイナン",
+          "マリオ",
+          "ミミッキュ",
+          "モルペコ",
+          "ライチュウ",
+          "ルイージ",
+          "ワリオ",
+          "ワルイージ",
+          "三味線",
+          "鮭"
+        ]
+      },
+      "unseen": {
+        "games": 28,
+        "reached": 27,
+        "rate": 0.9643,
+        "mean_questions": 4.11,
+        "max_questions": 8,
+        "missed": [
+          "エナジードリンク"
+        ]
+      }
+    },
+    "honest": {
+      "Android": {
+        "count": 6,
+        "guess": "Android",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": false,
+            "left": 13
+          },
+          {
+            "ask": "初登場年:?",
+            "answer": [],
+            "left": 9
+          },
+          {
+            "ask": "産卵:?",
+            "answer": [],
+            "left": 6
+          },
+          {
+            "ask": "見守り:?",
+            "answer": [
+              "ファミリーリンク"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "国内OSシェア:?",
+            "answer": [
+              "54.1%"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "iPad": {
+        "count": 7,
+        "guess": "iPad",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": false,
+            "left": 13
+          },
+          {
+            "ask": "初登場年:?",
+            "answer": [],
+            "left": 9
+          },
+          {
+            "ask": "産卵:?",
+            "answer": [],
+            "left": 6
+          },
+          {
+            "ask": "見守り:?",
+            "answer": [
+              "スクリーンタイム"
+            ],
+            "left": 2
+          },
+          {
+            "ask": "アクセサリ:?",
+            "answer": [
+              "Apple Pencil"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "タブレット",
+            "answer": true,
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "iPhone": {
+        "count": 7,
+        "guess": "iPhone",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": false,
+            "left": 13
+          },
+          {
+            "ask": "初登場年:?",
+            "answer": [],
+            "left": 9
+          },
+          {
+            "ask": "産卵:?",
+            "answer": [],
+            "left": 6
+          },
+          {
+            "ask": "見守り:?",
+            "answer": [
+              "スクリーンタイム"
+            ],
+            "left": 2
+          },
+          {
+            "ask": "アクセサリ:?",
+            "answer": [
+              "MagSafe"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "国内OSシェア:?",
+            "answer": [
+              "45.6%"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "ウクレレ": {
+        "count": 4,
+        "guess": "ウクレレ",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": true,
+            "left": 6
+          },
+          {
+            "ask": "開放弦:?",
+            "answer": [
+              "GCEA"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "小型",
+            "answer": true,
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "エナジードリンク": {
+        "count": 7,
+        "guess": "エナジードリンク",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": false,
+            "left": 13
+          },
+          {
+            "ask": "初登場年:?",
+            "answer": [],
+            "left": 9
+          },
+          {
+            "ask": "産卵:?",
+            "answer": [],
+            "left": 6
+          },
+          {
+            "ask": "見守り:?",
+            "answer": [],
+            "left": 3
+          },
+          {
+            "ask": "商品:?",
+            "answer": [
+              "ZONe",
+              "モンスターエナジー",
+              "レッドブル"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "タウリン・ビタミンB群",
+            "answer": true,
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "カクテル": {
+        "count": 8,
+        "guess": "カクテル",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": false,
+            "left": 13
+          },
+          {
+            "ask": "初登場年:?",
+            "answer": [],
+            "left": 9
+          },
+          {
+            "ask": "産卵:?",
+            "answer": [],
+            "left": 6
+          },
+          {
+            "ask": "見守り:?",
+            "answer": [],
+            "left": 3
+          },
+          {
+            "ask": "商品:?",
+            "answer": [],
+            "left": 2
+          },
+          {
+            "ask": "アルコール含有",
+            "answer": true,
+            "left": 1
+          },
+          {
+            "ask": "混ぜて作る",
+            "answer": true,
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "ギター": {
+        "count": 4,
+        "guess": "ギター",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": true,
+            "left": 6
+          },
+          {
+            "ask": "開放弦:?",
+            "answer": [
+              "EADGBE"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "代表モデル:?",
+            "answer": [
+              "ストラトキャスター",
+              "レスポール"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "コーヒー": {
+        "count": 8,
+        "guess": "コーヒー",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": false,
+            "left": 13
+          },
+          {
+            "ask": "初登場年:?",
+            "answer": [],
+            "left": 9
+          },
+          {
+            "ask": "産卵:?",
+            "answer": [],
+            "left": 6
+          },
+          {
+            "ask": "見守り:?",
+            "answer": [],
+            "left": 3
+          },
+          {
+            "ask": "商品:?",
+            "answer": [],
+            "left": 2
+          },
+          {
+            "ask": "アルコール含有",
+            "answer": false,
+            "left": 1
+          },
+          {
+            "ask": "抽出液",
+            "answer": true,
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "サクラマス": {
+        "count": 6,
+        "guess": "サクラマス",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": false,
+            "left": 13
+          },
+          {
+            "ask": "初登場年:?",
+            "answer": [],
+            "left": 9
+          },
+          {
+            "ask": "産卵:?",
+            "answer": [
+              "一生に一度"
+            ],
+            "left": 2
+          },
+          {
+            "ask": "料理:?",
+            "answer": [
+              "ます寿司"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "陸封型:?",
+            "answer": [
+              "ヤマメ"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "スチールヘッド": {
+        "count": 5,
+        "guess": "スチールヘッド",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": false,
+            "left": 13
+          },
+          {
+            "ask": "初登場年:?",
+            "answer": [],
+            "left": 9
+          },
+          {
+            "ask": "産卵:?",
+            "answer": [
+              "複数回"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "陸封型:?",
+            "answer": [
+              "ニジマス"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "デデンネ": {
+        "count": 2,
+        "guess": "デデンネ",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [
+              "でんき",
+              "フェアリー"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "分類:?",
+            "answer": [
+              "アンテナポケモン"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "バイオリン": {
+        "count": 4,
+        "guess": "バイオリン",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": true,
+            "left": 6
+          },
+          {
+            "ask": "開放弦:?",
+            "answer": [
+              "GDAE"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "弓で弾く",
+            "answer": true,
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "パチリス": {
+        "count": 3,
+        "guess": "パチリス",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [
+              "でんき"
+            ],
+            "left": 6
+          },
+          {
+            "ask": "種族値とくこう:?",
+            "answer": [
+              "45"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "分類:?",
+            "answer": [
+              "でんきりすポケモン"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "ピアノ": {
+        "count": 4,
+        "guess": "ピアノ",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": true,
+            "left": 6
+          },
+          {
+            "ask": "開放弦:?",
+            "answer": [],
+            "left": 1
+          },
+          {
+            "ask": "88鍵標準",
+            "answer": true,
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "ピカチュウ": {
+        "count": 3,
+        "guess": "ピカチュウ",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [
+              "でんき"
+            ],
+            "left": 6
+          },
+          {
+            "ask": "種族値とくこう:?",
+            "answer": [
+              "50"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "種族値HP:?",
+            "answer": [
+              "35"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "ピチュー": {
+        "count": 3,
+        "guess": "ピチュー",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [
+              "でんき"
+            ],
+            "left": 6
+          },
+          {
+            "ask": "種族値とくこう:?",
+            "answer": [
+              "35"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "分類:?",
+            "answer": [
+              "こねずみポケモン"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "プラスル": {
+        "count": 3,
+        "guess": "プラスル",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [
+              "でんき"
+            ],
+            "left": 6
+          },
+          {
+            "ask": "種族値とくこう:?",
+            "answer": [
+              "85"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "種族値こうげき:?",
+            "answer": [
+              "50"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "ベース": {
+        "count": 4,
+        "guess": "ベース",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": true,
+            "left": 6
+          },
+          {
+            "ask": "開放弦:?",
+            "answer": [
+              "EADG"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "有名なリフ:?",
+            "answer": [
+              "Another One Bites the Dust"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "マイナン": {
+        "count": 3,
+        "guess": "マイナン",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [
+              "でんき"
+            ],
+            "left": 6
+          },
+          {
+            "ask": "種族値とくこう:?",
+            "answer": [
+              "75"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "種族値とくぼう:?",
+            "answer": [
+              "85"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "マリオ": {
+        "count": 4,
+        "guess": "マリオ",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": false,
+            "left": 13
+          },
+          {
+            "ask": "初登場年:?",
+            "answer": [
+              "1981"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "帽子のマーク:?",
+            "answer": [
+              "M"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "ミミッキュ": {
+        "count": 2,
+        "guess": "ミミッキュ",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [
+              "ゴースト",
+              "フェアリー"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "分類:?",
+            "answer": [
+              "ばけのかわポケモン"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "モルペコ": {
+        "count": 2,
+        "guess": "モルペコ",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [
+              "あく",
+              "でんき"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "分類:?",
+            "answer": [
+              "にめんポケモン"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "ライチュウ": {
+        "count": 3,
+        "guess": "ライチュウ",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [
+              "でんき"
+            ],
+            "left": 6
+          },
+          {
+            "ask": "種族値とくこう:?",
+            "answer": [
+              "90"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "種族値すばやさ:?",
+            "answer": [
+              "110"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "ルイージ": {
+        "count": 4,
+        "guess": "ルイージ",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": false,
+            "left": 13
+          },
+          {
+            "ask": "初登場年:?",
+            "answer": [
+              "1983"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "帽子のマーク:?",
+            "answer": [
+              "L"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "ワリオ": {
+        "count": 4,
+        "guess": "ワリオ",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": false,
+            "left": 13
+          },
+          {
+            "ask": "初登場年:?",
+            "answer": [
+              "1992"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "ライバル視:?",
+            "answer": [
+              "マリオ"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "ワルイージ": {
+        "count": 4,
+        "guess": "ワルイージ",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": false,
+            "left": 13
+          },
+          {
+            "ask": "初登場年:?",
+            "answer": [
+              "2000"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "ライバル視:?",
+            "answer": [
+              "ルイージ"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "三味線": {
+        "count": 4,
+        "guess": "三味線",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": true,
+            "left": 6
+          },
+          {
+            "ask": "開放弦:?",
+            "answer": [
+              "曲ごとに調子を変える"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "3弦標準",
+            "answer": true,
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "鮭": {
+        "count": 6,
+        "guess": "鮭",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": false,
+            "left": 13
+          },
+          {
+            "ask": "初登場年:?",
+            "answer": [],
+            "left": 9
+          },
+          {
+            "ask": "産卵:?",
+            "answer": [
+              "一生に一度"
+            ],
+            "left": 2
+          },
+          {
+            "ask": "料理:?",
+            "answer": [
+              "ちゃんちゃん焼き",
+              "ルイベ",
+              "塩焼き"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "銀白色の体側",
+            "answer": true,
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      }
+    }
+  },
+  "guess1": {
+    "lies": 1,
+    "sure": 1,
+    "estimate": 5,
+    "summary": {
+      "honest": {
+        "games": 28,
+        "reached": 28,
+        "rate": 1.0,
+        "mean_questions": 8.25,
+        "max_questions": 15,
+        "missed": []
+      },
+      "forget": {
+        "games": 287,
+        "reached": 287,
+        "rate": 1.0,
+        "mean_questions": 8.3,
+        "max_questions": 17,
+        "missed": []
+      },
+      "unseen": {
+        "games": 28,
+        "reached": 28,
+        "rate": 1.0,
+        "mean_questions": 8.14,
+        "max_questions": 15,
+        "missed": []
+      }
+    },
+    "honest": {
+      "Android": {
+        "count": 11,
+        "guess": "Android",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 28
+          },
+          {
+            "ask": "分類:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": false,
+            "left": 19
+          },
+          {
+            "ask": "弦楽器",
+            "answer": false,
+            "left": 13
+          },
+          {
+            "ask": "初登場年:?",
+            "answer": [],
+            "left": 13
+          },
+          {
+            "ask": "帽子のマーク:?",
+            "answer": [],
+            "left": 9
+          },
+          {
+            "ask": "産卵:?",
+            "answer": [],
+            "left": 9
+          },
+          {
+            "ask": "見守り:?",
+            "answer": [
+              "ファミリーリンク"
+            ],
+            "left": 6
+          },
+          {
+            "ask": "アプリ実行環境",
+            "answer": true,
+            "left": 3
+          },
+          {
+            "ask": "アクセサリ:?",
+            "answer": [],
+            "left": 1
+          },
+          {
+            "ask": "国内OSシェア:?",
+            "answer": [
+              "54.1%"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "iPad": {
+        "count": 12,
+        "guess": "iPad",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 28
+          },
+          {
+            "ask": "分類:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": false,
+            "left": 19
+          },
+          {
+            "ask": "弦楽器",
+            "answer": false,
+            "left": 13
+          },
+          {
+            "ask": "初登場年:?",
+            "answer": [],
+            "left": 13
+          },
+          {
+            "ask": "帽子のマーク:?",
+            "answer": [],
+            "left": 9
+          },
+          {
+            "ask": "産卵:?",
+            "answer": [],
+            "left": 9
+          },
+          {
+            "ask": "見守り:?",
+            "answer": [
+              "スクリーンタイム"
+            ],
+            "left": 6
+          },
+          {
+            "ask": "アプリ実行環境",
+            "answer": true,
+            "left": 3
+          },
+          {
+            "ask": "アクセサリ:?",
+            "answer": [
+              "Apple Pencil"
+            ],
+            "left": 3
+          },
+          {
+            "ask": "国内OSシェア:?",
+            "answer": [],
+            "left": 1
+          },
+          {
+            "ask": "タブレット",
+            "answer": true,
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "iPhone": {
+        "count": 12,
+        "guess": "iPhone",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 28
+          },
+          {
+            "ask": "分類:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": false,
+            "left": 19
+          },
+          {
+            "ask": "弦楽器",
+            "answer": false,
+            "left": 13
+          },
+          {
+            "ask": "初登場年:?",
+            "answer": [],
+            "left": 13
+          },
+          {
+            "ask": "帽子のマーク:?",
+            "answer": [],
+            "left": 9
+          },
+          {
+            "ask": "産卵:?",
+            "answer": [],
+            "left": 9
+          },
+          {
+            "ask": "見守り:?",
+            "answer": [
+              "スクリーンタイム"
+            ],
+            "left": 6
+          },
+          {
+            "ask": "アプリ実行環境",
+            "answer": true,
+            "left": 3
+          },
+          {
+            "ask": "アクセサリ:?",
+            "answer": [
+              "MagSafe"
+            ],
+            "left": 3
+          },
+          {
+            "ask": "国内OSシェア:?",
+            "answer": [
+              "45.6%"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "iOS",
+            "answer": true,
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "ウクレレ": {
+        "count": 10,
+        "guess": "ウクレレ",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 28
+          },
+          {
+            "ask": "分類:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": true,
+            "left": 19
+          },
+          {
+            "ask": "弦楽器",
+            "answer": true,
+            "left": 6
+          },
+          {
+            "ask": "開放弦:?",
+            "answer": [
+              "GCEA"
+            ],
+            "left": 6
+          },
+          {
+            "ask": "4弦標準",
+            "answer": true,
+            "left": 3
+          },
+          {
+            "ask": "有名なリフ:?",
+            "answer": [],
+            "left": 3
+          },
+          {
+            "ask": "フレット",
+            "answer": true,
+            "left": 2
+          },
+          {
+            "ask": "中高音主体",
+            "answer": true,
+            "left": 1
+          },
+          {
+            "ask": "小型",
+            "answer": true,
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "エナジードリンク": {
+        "count": 14,
+        "guess": "エナジードリンク",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 28
+          },
+          {
+            "ask": "分類:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": false,
+            "left": 19
+          },
+          {
+            "ask": "弦楽器",
+            "answer": false,
+            "left": 13
+          },
+          {
+            "ask": "初登場年:?",
+            "answer": [],
+            "left": 13
+          },
+          {
+            "ask": "帽子のマーク:?",
+            "answer": [],
+            "left": 9
+          },
+          {
+            "ask": "産卵:?",
+            "answer": [],
+            "left": 9
+          },
+          {
+            "ask": "見守り:?",
+            "answer": [],
+            "left": 9
+          },
+          {
+            "ask": "アプリ実行環境",
+            "answer": false,
+            "left": 6
+          },
+          {
+            "ask": "サケ属",
+            "answer": false,
+            "left": 3
+          },
+          {
+            "ask": "商品:?",
+            "answer": [
+              "ZONe",
+              "モンスターエナジー",
+              "レッドブル"
+            ],
+            "left": 3
+          },
+          {
+            "ask": "アルコール含有",
+            "answer": false,
+            "left": 2
+          },
+          {
+            "ask": "タウリン・ビタミンB群",
+            "answer": true,
+            "left": 1
+          },
+          {
+            "ask": "炭酸",
+            "answer": true,
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "カクテル": {
+        "count": 14,
+        "guess": "カクテル",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 28
+          },
+          {
+            "ask": "分類:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": false,
+            "left": 19
+          },
+          {
+            "ask": "弦楽器",
+            "answer": false,
+            "left": 13
+          },
+          {
+            "ask": "初登場年:?",
+            "answer": [],
+            "left": 13
+          },
+          {
+            "ask": "帽子のマーク:?",
+            "answer": [],
+            "left": 9
+          },
+          {
+            "ask": "産卵:?",
+            "answer": [],
+            "left": 9
+          },
+          {
+            "ask": "見守り:?",
+            "answer": [],
+            "left": 9
+          },
+          {
+            "ask": "アプリ実行環境",
+            "answer": false,
+            "left": 6
+          },
+          {
+            "ask": "サケ属",
+            "answer": false,
+            "left": 3
+          },
+          {
+            "ask": "商品:?",
+            "answer": [],
+            "left": 3
+          },
+          {
+            "ask": "アルコール含有",
+            "answer": true,
+            "left": 2
+          },
+          {
+            "ask": "カフェイン含有",
+            "answer": false,
+            "left": 1
+          },
+          {
+            "ask": "混ぜて作る",
+            "answer": true,
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "ギター": {
+        "count": 8,
+        "guess": "ギター",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 28
+          },
+          {
+            "ask": "分類:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": true,
+            "left": 19
+          },
+          {
+            "ask": "弦楽器",
+            "answer": true,
+            "left": 6
+          },
+          {
+            "ask": "開放弦:?",
+            "answer": [
+              "EADGBE"
+            ],
+            "left": 6
+          },
+          {
+            "ask": "4弦標準",
+            "answer": false,
+            "left": 3
+          },
+          {
+            "ask": "代表モデル:?",
+            "answer": [
+              "ストラトキャスター",
+              "レスポール"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "有名なリフ:?",
+            "answer": [
+              "Seven Nation Army",
+              "Smoke on the Water"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "コーヒー": {
+        "count": 15,
+        "guess": "コーヒー",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 28
+          },
+          {
+            "ask": "分類:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": false,
+            "left": 19
+          },
+          {
+            "ask": "弦楽器",
+            "answer": false,
+            "left": 13
+          },
+          {
+            "ask": "初登場年:?",
+            "answer": [],
+            "left": 13
+          },
+          {
+            "ask": "帽子のマーク:?",
+            "answer": [],
+            "left": 9
+          },
+          {
+            "ask": "産卵:?",
+            "answer": [],
+            "left": 9
+          },
+          {
+            "ask": "見守り:?",
+            "answer": [],
+            "left": 9
+          },
+          {
+            "ask": "アプリ実行環境",
+            "answer": false,
+            "left": 6
+          },
+          {
+            "ask": "サケ属",
+            "answer": false,
+            "left": 3
+          },
+          {
+            "ask": "商品:?",
+            "answer": [],
+            "left": 3
+          },
+          {
+            "ask": "アルコール含有",
+            "answer": false,
+            "left": 3
+          },
+          {
+            "ask": "カフェイン含有",
+            "answer": true,
+            "left": 2
+          },
+          {
+            "ask": "タウリン・ビタミンB群",
+            "answer": false,
+            "left": 1
+          },
+          {
+            "ask": "抽出液",
+            "answer": true,
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "サクラマス": {
+        "count": 12,
+        "guess": "サクラマス",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 28
+          },
+          {
+            "ask": "分類:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": false,
+            "left": 19
+          },
+          {
+            "ask": "弦楽器",
+            "answer": false,
+            "left": 13
+          },
+          {
+            "ask": "初登場年:?",
+            "answer": [],
+            "left": 13
+          },
+          {
+            "ask": "帽子のマーク:?",
+            "answer": [],
+            "left": 9
+          },
+          {
+            "ask": "産卵:?",
+            "answer": [
+              "一生に一度"
+            ],
+            "left": 9
+          },
+          {
+            "ask": "見守り:?",
+            "answer": [],
+            "left": 6
+          },
+          {
+            "ask": "サケ属",
+            "answer": true,
+            "left": 3
+          },
+          {
+            "ask": "料理:?",
+            "answer": [
+              "ます寿司"
+            ],
+            "left": 2
+          },
+          {
+            "ask": "陸封型:?",
+            "answer": [
+              "ヤマメ"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "桜色の婚姻色",
+            "answer": true,
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "スチールヘッド": {
+        "count": 11,
+        "guess": "スチールヘッド",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 28
+          },
+          {
+            "ask": "分類:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": false,
+            "left": 19
+          },
+          {
+            "ask": "弦楽器",
+            "answer": false,
+            "left": 13
+          },
+          {
+            "ask": "初登場年:?",
+            "answer": [],
+            "left": 13
+          },
+          {
+            "ask": "帽子のマーク:?",
+            "answer": [],
+            "left": 9
+          },
+          {
+            "ask": "産卵:?",
+            "answer": [
+              "複数回"
+            ],
+            "left": 9
+          },
+          {
+            "ask": "見守り:?",
+            "answer": [],
+            "left": 6
+          },
+          {
+            "ask": "サケ属",
+            "answer": true,
+            "left": 3
+          },
+          {
+            "ask": "料理:?",
+            "answer": [],
+            "left": 1
+          },
+          {
+            "ask": "陸封型:?",
+            "answer": [
+              "ニジマス"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "デデンネ": {
+        "count": 3,
+        "guess": "デデンネ",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [
+              "でんき",
+              "フェアリー"
+            ],
+            "left": 28
+          },
+          {
+            "ask": "分類:?",
+            "answer": [
+              "アンテナポケモン"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "初登場世代:?",
+            "answer": [
+              "第6世代"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "バイオリン": {
+        "count": 9,
+        "guess": "バイオリン",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 28
+          },
+          {
+            "ask": "分類:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": true,
+            "left": 19
+          },
+          {
+            "ask": "弦楽器",
+            "answer": true,
+            "left": 6
+          },
+          {
+            "ask": "開放弦:?",
+            "answer": [
+              "GDAE"
+            ],
+            "left": 6
+          },
+          {
+            "ask": "4弦標準",
+            "answer": true,
+            "left": 3
+          },
+          {
+            "ask": "有名なリフ:?",
+            "answer": [],
+            "left": 3
+          },
+          {
+            "ask": "フレット",
+            "answer": false,
+            "left": 1
+          },
+          {
+            "ask": "弓で弾く",
+            "answer": true,
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "パチリス": {
+        "count": 4,
+        "guess": "パチリス",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [
+              "でんき"
+            ],
+            "left": 28
+          },
+          {
+            "ask": "分類:?",
+            "answer": [
+              "でんきりすポケモン"
+            ],
+            "left": 6
+          },
+          {
+            "ask": "種族値とくこう:?",
+            "answer": [
+              "45"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "初登場世代:?",
+            "answer": [
+              "第4世代"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "ピアノ": {
+        "count": 9,
+        "guess": "ピアノ",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 28
+          },
+          {
+            "ask": "分類:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": true,
+            "left": 19
+          },
+          {
+            "ask": "弦楽器",
+            "answer": true,
+            "left": 6
+          },
+          {
+            "ask": "開放弦:?",
+            "answer": [],
+            "left": 6
+          },
+          {
+            "ask": "4弦標準",
+            "answer": false,
+            "left": 3
+          },
+          {
+            "ask": "代表モデル:?",
+            "answer": [],
+            "left": 2
+          },
+          {
+            "ask": "3弦標準",
+            "answer": false,
+            "left": 1
+          },
+          {
+            "ask": "88鍵標準",
+            "answer": true,
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "ピカチュウ": {
+        "count": 5,
+        "guess": "ピカチュウ",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [
+              "でんき"
+            ],
+            "left": 28
+          },
+          {
+            "ask": "分類:?",
+            "answer": [
+              "ねずみポケモン"
+            ],
+            "left": 6
+          },
+          {
+            "ask": "種族値とくこう:?",
+            "answer": [
+              "50"
+            ],
+            "left": 2
+          },
+          {
+            "ask": "種族値HP:?",
+            "answer": [
+              "35"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "種族値こうげき:?",
+            "answer": [
+              "55"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "ピチュー": {
+        "count": 4,
+        "guess": "ピチュー",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [
+              "でんき"
+            ],
+            "left": 28
+          },
+          {
+            "ask": "分類:?",
+            "answer": [
+              "こねずみポケモン"
+            ],
+            "left": 6
+          },
+          {
+            "ask": "種族値とくこう:?",
+            "answer": [
+              "35"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "初登場世代:?",
+            "answer": [
+              "第2世代"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "プラスル": {
+        "count": 5,
+        "guess": "プラスル",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [
+              "でんき"
+            ],
+            "left": 28
+          },
+          {
+            "ask": "分類:?",
+            "answer": [
+              "おうえんポケモン"
+            ],
+            "left": 6
+          },
+          {
+            "ask": "種族値とくこう:?",
+            "answer": [
+              "85"
+            ],
+            "left": 2
+          },
+          {
+            "ask": "種族値こうげき:?",
+            "answer": [
+              "50"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "種族値とくぼう:?",
+            "answer": [
+              "75"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "ベース": {
+        "count": 8,
+        "guess": "ベース",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 28
+          },
+          {
+            "ask": "分類:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": true,
+            "left": 19
+          },
+          {
+            "ask": "弦楽器",
+            "answer": true,
+            "left": 6
+          },
+          {
+            "ask": "開放弦:?",
+            "answer": [
+              "EADG"
+            ],
+            "left": 6
+          },
+          {
+            "ask": "4弦標準",
+            "answer": true,
+            "left": 3
+          },
+          {
+            "ask": "有名なリフ:?",
+            "answer": [
+              "Another One Bites the Dust"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "低音主体",
+            "answer": true,
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "マイナン": {
+        "count": 5,
+        "guess": "マイナン",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [
+              "でんき"
+            ],
+            "left": 28
+          },
+          {
+            "ask": "分類:?",
+            "answer": [
+              "おうえんポケモン"
+            ],
+            "left": 6
+          },
+          {
+            "ask": "種族値とくこう:?",
+            "answer": [
+              "75"
+            ],
+            "left": 2
+          },
+          {
+            "ask": "種族値こうげき:?",
+            "answer": [
+              "40"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "種族値とくぼう:?",
+            "answer": [
+              "85"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "マリオ": {
+        "count": 7,
+        "guess": "マリオ",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 28
+          },
+          {
+            "ask": "分類:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": false,
+            "left": 19
+          },
+          {
+            "ask": "弦楽器",
+            "answer": false,
+            "left": 13
+          },
+          {
+            "ask": "初登場年:?",
+            "answer": [
+              "1981"
+            ],
+            "left": 13
+          },
+          {
+            "ask": "帽子のマーク:?",
+            "answer": [
+              "M"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "兄",
+            "answer": true,
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "ミミッキュ": {
+        "count": 3,
+        "guess": "ミミッキュ",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [
+              "ゴースト",
+              "フェアリー"
+            ],
+            "left": 28
+          },
+          {
+            "ask": "分類:?",
+            "answer": [
+              "ばけのかわポケモン"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "初登場世代:?",
+            "answer": [
+              "第7世代"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "モルペコ": {
+        "count": 3,
+        "guess": "モルペコ",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [
+              "あく",
+              "でんき"
+            ],
+            "left": 28
+          },
+          {
+            "ask": "分類:?",
+            "answer": [
+              "にめんポケモン"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "初登場世代:?",
+            "answer": [
+              "第8世代"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "ライチュウ": {
+        "count": 5,
+        "guess": "ライチュウ",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [
+              "でんき"
+            ],
+            "left": 28
+          },
+          {
+            "ask": "分類:?",
+            "answer": [
+              "ねずみポケモン"
+            ],
+            "left": 6
+          },
+          {
+            "ask": "種族値とくこう:?",
+            "answer": [
+              "90"
+            ],
+            "left": 2
+          },
+          {
+            "ask": "種族値HP:?",
+            "answer": [
+              "60"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "種族値すばやさ:?",
+            "answer": [
+              "110"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "ルイージ": {
+        "count": 7,
+        "guess": "ルイージ",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 28
+          },
+          {
+            "ask": "分類:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": false,
+            "left": 19
+          },
+          {
+            "ask": "弦楽器",
+            "answer": false,
+            "left": 13
+          },
+          {
+            "ask": "初登場年:?",
+            "answer": [
+              "1983"
+            ],
+            "left": 13
+          },
+          {
+            "ask": "帽子のマーク:?",
+            "answer": [
+              "L"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "誕生:?",
+            "answer": [
+              "マリオの2Pカラー"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "ワリオ": {
+        "count": 7,
+        "guess": "ワリオ",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 28
+          },
+          {
+            "ask": "分類:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": false,
+            "left": 19
+          },
+          {
+            "ask": "弦楽器",
+            "answer": false,
+            "left": 13
+          },
+          {
+            "ask": "初登場年:?",
+            "answer": [
+              "1992"
+            ],
+            "left": 13
+          },
+          {
+            "ask": "帽子のマーク:?",
+            "answer": [
+              "W"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "ライバル視:?",
+            "answer": [
+              "マリオ"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "ワルイージ": {
+        "count": 7,
+        "guess": "ワルイージ",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 28
+          },
+          {
+            "ask": "分類:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": false,
+            "left": 19
+          },
+          {
+            "ask": "弦楽器",
+            "answer": false,
+            "left": 13
+          },
+          {
+            "ask": "初登場年:?",
+            "answer": [
+              "2000"
+            ],
+            "left": 13
+          },
+          {
+            "ask": "帽子のマーク:?",
+            "answer": [
+              "逆L"
+            ],
+            "left": 1
+          },
+          {
+            "ask": "ライバル視:?",
+            "answer": [
+              "ルイージ"
+            ],
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "三味線": {
+        "count": 9,
+        "guess": "三味線",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 28
+          },
+          {
+            "ask": "分類:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": true,
+            "left": 19
+          },
+          {
+            "ask": "弦楽器",
+            "answer": true,
+            "left": 6
+          },
+          {
+            "ask": "開放弦:?",
+            "answer": [
+              "曲ごとに調子を変える"
+            ],
+            "left": 6
+          },
+          {
+            "ask": "4弦標準",
+            "answer": false,
+            "left": 3
+          },
+          {
+            "ask": "代表モデル:?",
+            "answer": [],
+            "left": 2
+          },
+          {
+            "ask": "3弦標準",
+            "answer": true,
+            "left": 1
+          },
+          {
+            "ask": "和楽器",
+            "answer": true,
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      },
+      "鮭": {
+        "count": 12,
+        "guess": "鮭",
+        "questions": [
+          {
+            "ask": "タイプ:?",
+            "answer": [],
+            "left": 28
+          },
+          {
+            "ask": "分類:?",
+            "answer": [],
+            "left": 19
+          },
+          {
+            "ask": "ボディ",
+            "answer": false,
+            "left": 19
+          },
+          {
+            "ask": "弦楽器",
+            "answer": false,
+            "left": 13
+          },
+          {
+            "ask": "初登場年:?",
+            "answer": [],
+            "left": 13
+          },
+          {
+            "ask": "帽子のマーク:?",
+            "answer": [],
+            "left": 9
+          },
+          {
+            "ask": "産卵:?",
+            "answer": [
+              "一生に一度"
+            ],
+            "left": 9
+          },
+          {
+            "ask": "見守り:?",
+            "answer": [],
+            "left": 6
+          },
+          {
+            "ask": "サケ属",
+            "answer": true,
+            "left": 3
+          },
+          {
+            "ask": "料理:?",
+            "answer": [
+              "ちゃんちゃん焼き",
+              "ルイベ",
+              "塩焼き"
+            ],
+            "left": 2
+          },
+          {
+            "ask": "陸封型:?",
+            "answer": [],
+            "left": 1
+          },
+          {
+            "ask": "銀白色の体側",
+            "answer": true,
+            "left": 1,
+            "confirm": true
+          }
+        ]
+      }
+    }
+  },
+  "holdout": {
+    "concepts": {
+      "ギター": {
+        "concept": "ギター",
+        "definition": [
+          "AND",
+          "ボディ",
+          "弦楽器",
+          "楽器",
+          [
+            "OR",
+            [
+              "AND",
+              "6弦標準",
+              [
+                "OR",
+                "代表モデル:ストラトキャスター",
+                "代表モデル:レスポール"
+              ]
+            ],
+            [
+              "AND",
+              "6弦標準",
+              [
+                "OR",
+                "有名なリフ:Seven Nation Army",
+                "有名なリフ:Smoke on the Water"
+              ]
+            ],
+            [
+              "AND",
+              [
+                "OR",
+                "代表モデル:ストラトキャスター",
+                "代表モデル:レスポール"
+              ],
+              [
+                "OR",
+                "有名なリフ:Seven Nation Army",
+                "有名なリフ:Smoke on the Water"
+              ]
+            ]
+          ]
+        ],
+        "unseen": {
+          "tested": 27,
+          "fp": [],
+          "undefined": []
+        },
+        "masked": {
+          "tested": 12,
+          "fn": [
+            "ボディ",
+            "弦楽器",
+            "楽器"
+          ]
+        }
+      },
+      "ピカチュウ": {
+        "concept": "ピカチュウ",
+        "definition": [
+          "AND",
+          "ポケモン",
+          [
+            "OR",
+            [
+              "AND",
+              "種族値HP:35",
+              "種族値こうげき:55",
+              "種族値すばやさ:90",
+              "種族値とくぼう:50"
+            ],
+            [
+              "AND",
+              "種族値HP:35",
+              "種族値こうげき:55",
+              "種族値すばやさ:90",
+              "種族値合計:320"
+            ],
+            [
+              "AND",
+              "種族値HP:35",
+              "種族値こうげき:55",
+              "種族値とくぼう:50",
+              "種族値合計:320"
+            ],
+            [
+              "AND",
+              "種族値HP:35",
+              "種族値すばやさ:90",
+              "種族値とくぼう:50",
+              "種族値合計:320"
+            ],
+            [
+              "AND",
+              "種族値こうげき:55",
+              "種族値すばやさ:90",
+              "種族値とくぼう:50",
+              "種族値合計:320"
+            ]
+          ]
+        ],
+        "unseen": {
+          "tested": 27,
+          "fp": [],
+          "undefined": []
+        },
+        "masked": {
+          "tested": 15,
+          "fn": [
+            "ポケモン"
+          ]
+        }
+      },
+      "鮭": {
+        "concept": "鮭",
+        "definition": [
+          "AND",
+          "サケ属",
+          "サケ科",
+          "遡河回遊魚",
+          "食用",
+          "魚類",
+          [
+            "OR",
+            [
+              "AND",
+              "銀白色の体側"
+            ],
+            [
+              "AND",
+              [
+                "OR",
+                "料理:ちゃんちゃん焼き",
+                "料理:ルイベ",
+                "料理:塩焼き"
+              ]
+            ]
+          ]
+        ],
+        "unseen": {
+          "tested": 27,
+          "fp": [],
+          "undefined": []
+        },
+        "masked": {
+          "tested": 10,
+          "fn": [
+            "サケ属",
+            "サケ科",
+            "遡河回遊魚",
+            "食用",
+            "魚類"
+          ]
+        }
+      },
+      "iPhone": {
+        "concept": "iPhone",
+        "definition": [
+          "AND",
+          "アプリ実行環境",
+          "タッチパネル",
+          [
+            "OR",
+            [
+              "AND",
+              "iOS",
+              "アクセサリ:MagSafe"
+            ],
+            [
+              "AND",
+              "iOS",
+              "国内OSシェア:45.6%"
+            ],
+            [
+              "AND",
+              "アクセサリ:MagSafe",
+              "国内OSシェア:45.6%"
+            ]
+          ]
+        ],
+        "unseen": {
+          "tested": 27,
+          "fp": [],
+          "undefined": []
+        },
+        "masked": {
+          "tested": 10,
+          "fn": [
+            "アプリ実行環境",
+            "タッチパネル"
+          ]
+        }
+      },
+      "エナジードリンク": {
+        "concept": "エナジードリンク",
+        "definition": [
+          "AND",
+          "飲料",
+          [
+            "OR",
+            [
+              "AND",
+              "タウリン・ビタミンB群",
+              "炭酸"
+            ],
+            [
+              "AND",
+              "タウリン・ビタミンB群",
+              [
+                "OR",
+                "商品:ZONe",
+                "商品:モンスターエナジー",
+                "商品:レッドブル"
+              ]
+            ],
+            [
+              "AND",
+              "炭酸",
+              [
+                "OR",
+                "商品:ZONe",
+                "商品:モンスターエナジー",
+                "商品:レッドブル"
+              ]
+            ]
+          ]
+        ],
+        "unseen": {
+          "tested": 27,
+          "fp": [],
+          "undefined": []
+        },
+        "masked": {
+          "tested": 9,
+          "fn": [
+            "飲料"
+          ]
+        }
+      },
+      "ルイージ": {
+        "concept": "ルイージ",
+        "definition": [
+          "AND",
+          "オーバーオール",
+          "ゲームキャラクター",
+          "人間",
+          "任天堂",
+          "帽子",
+          [
+            "OR",
+            [
+              "AND",
+              "初登場年:1983",
+              "帽子のマーク:L",
+              "弟",
+              "緑色"
+            ],
+            [
+              "AND",
+              "初登場年:1983",
+              "帽子のマーク:L",
+              "弟",
+              "誕生:マリオの2Pカラー"
+            ],
+            [
+              "AND",
+              "初登場年:1983",
+              "帽子のマーク:L",
+              "緑色",
+              "誕生:マリオの2Pカラー"
+            ],
+            [
+              "AND",
+              "初登場年:1983",
+              "弟",
+              "緑色",
+              "誕生:マリオの2Pカラー"
+            ],
+            [
+              "AND",
+              "帽子のマーク:L",
+              "弟",
+              "緑色",
+              "誕生:マリオの2Pカラー"
+            ]
+          ]
+        ],
+        "unseen": {
+          "tested": 27,
+          "fp": [],
+          "undefined": []
+        },
+        "masked": {
+          "tested": 11,
+          "fn": [
+            "オーバーオール",
+            "ゲームキャラクター",
+            "人間",
+            "任天堂",
+            "帽子"
+          ]
+        }
+      }
+    },
+    "summary": {
+      "seeds": 6,
+      "defined": 6,
+      "unseen": {
+        "tested": 162,
+        "fp": 0,
+        "rate": 0.0
+      },
+      "masked": {
+        "tested": 67,
+        "fn": 17,
+        "rate": 0.2537
+      }
+    }
+  },
+  "wobble": {
+    "words": {
+      "鮭": {
+        "exact": [
+          {
+            "concept": "鮭",
+            "via": "鮭"
+          }
+        ],
+        "notation": [],
+        "near": []
+      },
+      "シャケ": {
+        "exact": [],
+        "notation": [
+          {
+            "concept": "鮭",
+            "via": "読み:しゃけ"
+          }
+        ],
+        "near": []
+      },
+      "Salmon": {
+        "exact": [
+          {
+            "concept": "鮭",
+            "via": "英名:Salmon"
+          }
+        ],
+        "notation": [],
+        "near": []
+      },
+      "酒": {
+        "exact": [
+          {
+            "concept": "鮭",
+            "via": "同音語:酒"
+          }
+        ],
+        "notation": [],
+        "near": []
+      }
+    },
+    "near": [
+      {
+        "pair": [
+          "ピカチュウ",
+          "ピチュー"
+        ],
+        "via": [
+          "ピカチュウ",
+          "ピチュー"
+        ],
+        "similar": true
+      },
+      {
+        "pair": [
+          "マリオ",
+          "ワリオ"
+        ],
+        "via": [
+          "マリオ",
+          "ワリオ"
+        ],
+        "similar": false
+      },
+      {
+        "pair": [
+          "ルイージ",
+          "ワルイージ"
+        ],
+        "via": [
+          "ルイージ",
+          "ワルイージ"
+        ],
+        "similar": true
+      }
+    ],
+    "same": [],
+    "rephrase": {
+      "鮭": [
+        "サケ属",
+        "サケ科"
+      ]
+    },
+    "summary": {
+      "concepts": 28,
+      "named": 28,
+      "near": 3,
+      "near_similar": 2,
+      "same": 0,
+      "rephrase": 2
+    }
+  }
+}
