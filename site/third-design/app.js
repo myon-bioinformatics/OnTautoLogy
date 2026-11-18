@@ -2,7 +2,7 @@ const $=s=>document.querySelector(s), esc=s=>String(s??'').replace(/[&<>"']/g,c=
 const repo='https://github.com/myon-bioinformatics/OnTautoLogy', discussion=repo+'/discussions/19', sha='79eba5343276f328d1de0854f162c42a21849e7b', blob='c84feff6748a0708899f6bfb95091c0cea9edfb9', source=repo+'/blob/'+sha+'/', KEY='otl-third-board-v1';
 const uid=()=>crypto.randomUUID(), now=()=>new Date().toISOString(), date=s=>new Date(s).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})+' JST';
 let evidence, data, page=location.hash.slice(1)||'overview', formHandler, sessionNotice='';
-const navs=[['overview','◫','概要'],['design','◇','設計案'],['compare','▤','評価比較'],['cases','≡','ケース・評価順序'],['discussion','☷','議論・下書き'],['decisions','↳','判断・再評価']];
+const navs=[['overview','◫','概要'],['design','◇','設計案'],['compare','▤','評価比較'],['cases','≡','ケース・評価順序'],['case-graph','◇','事例と知識グラフ'],['discussion','☷','議論・下書き'],['decisions','↳','判断・再評価']];
 function protocol(d=data){return JSON.stringify({steps:d.steps.map(x=>[x.id,x.title,x.detail]),cases:d.cases.map(x=>[x.id,x.input,x.expected,x.context,x.suite,x.stage])});}
 function fresh(){const d={schema:'otl-third-board/1',revision:1,plans:[
 {id:'baseline',title:'既存方式 / guess・wobble',type:'基準方式',status:'完了',detail:'28概念の評価結果を設定付きで固定。Name は候補提示に用い、概念の定義から分離する。',risk:'未知拒否と忘却対応は設定により変わる。誤統合は独立指標として追加測定が必要。',next:'鮭の表記ごとの正解IDと誤候補の数え方を固定する。',basis:discussion+'#discussioncomment-19675534'},
@@ -45,7 +45,7 @@ function cases(){return heading('SHARED PROTOCOL','ケース・評価順序','�
 function casesTable(query){let cases=data.cases.filter(c=>(c.title+c.input+c.context).toLowerCase().includes(query.toLowerCase()));cases.sort((a,b)=>data.steps.findIndex(s=>s.id===a.stage)-data.steps.findIndex(s=>s.id===b.stage));return panel('共有する評価ケース',`<div class="table-wrap" data-ui-scroll="table" aria-label="評価・設計の表"><table><thead><tr><th>ケース / 段階</th><th>入力・文脈</th><th>期待する結果 / 次の確認</th><th>状態</th><th></th></tr></thead><tbody>${cases.map(c=>`<tr><td><div class="rowtitle">${esc(c.title)}</div><small>${esc(data.steps.find(s=>s.id===c.stage)?.title||'未分類')}</small></td><td class="wrap"><div class="case-input">${esc(c.input)}</div><small>${esc(c.context)}</small></td><td class="wrap">${esc(c.expected)}<small>次：${esc(c.next)}</small></td><td>${statusSelect('cases',c.id,c.status)}</td><td><button class="text-link" data-edit-case="${esc(c.id)}">編集</button><button class="text-link" data-open-case="${esc(c.id)}">比較へ</button></td></tr>`).join('')||'<tr><td colspan="5" class="empty">一致するケースがありません。</td></tr>'}</tbody></table></div>`);}
 function discussionView(){const p=data.proposal;return heading('DISCUSSION NOTES','議論・下書き','既存コメントとの重複と、追加で確認する論点を整理する。','<span class="pill">GitHubへの投稿機能なし</span>')+`<div class="grid">${panel('既存コメント / #19',data.comments.map(c=>`<article class="proposal"><h3>${esc(c.title)}</h3><p>${esc(c.summary)}</p><small class="muted">既存論点：${esc(c.covered)}</small><p>${link(c.url,'コメントを確認')}</p><button class="text-link" data-edit-comment="${esc(c.id)}">記録を編集</button></article>`).join(''),'<button id="add-comment">＋ 記録</button>','2026-11-17 JSTにブラウザで本文・3コメントを確認。最新コメントとの照合は手動で行ってください。')}${panel('重複確認と追加論点',`<div class="panel-body"><p class="form-help"><b>既存コメントと重なる内容</b></p><p style="font-size:12px">${esc(p.overlap)}</p><p class="form-help"><b>追加で確認する内容 / 未合意</b></p><p style="font-size:12px">${esc(p.novel)}</p><p class="form-help"><b>追加する根拠</b></p><p style="font-size:12px">${esc(p.reason)}</p><label class="form-help">重複の確認状態 <select id="duplicate-check" class="status-select">${['未確認','要修正','重複なし（手動確認）'].map(x=>`<option ${p.check===x?'selected':''}>${x}</option>`).join('')}</select></label><p><button id="edit-proposal">論点と根拠を編集</button></p></div>`)}</div>${panel('投稿前の下書き',`<div class="panel-body"><textarea aria-label="投稿前の下書き" id="draft" class="editor" rows="12">${esc(p.draft)}</textarea><div class="toolbar" style="margin-top:12px"><button id="save-draft" class="primary">下書きを保存</button><button id="copy-draft">下書きをコピー</button><span class="form-help">下書きはこのボード内の記録です。</span></div><div class="field"><label for="posted">投稿済みコメントURL（別途投稿した場合に記録）</label><input id="posted" type="url" value="${esc(p.posted)}" placeholder="https://github.com/.../discussions/19#discussioncomment-..."><small>既存の提案コメントは上の一覧で参照できます。新規下書きの投稿URLは未登録です。</small></div><button id="save-posted">URLを保存</button>${p.posted?` <span>${link(p.posted,'記録したコメント')}</span>`:''}</div>`)} `;}
 function decisionsView(){const stale=data.runs.filter(r=>!current(r));return heading('DECISIONS & RE-EVALUATION','判断・再評価','設計を変更した理由、未確定事項、再評価の対象を残す。','<button id="add-decision" class="primary">＋ 判断項目を追加</button>')+`<div class="callout"><div><b>${stale.length}件の結果に再評価が必要です</b><p>入力・正解・文脈・評価順序を変更した結果を追跡します。固定した基準値も履歴として残ります。</p></div><span class="pill">評価順序の版 ${data.revision}</span></div>`+panel('未確定事項と設計変更の根拠',`<div class="table-wrap" data-ui-scroll="table" aria-label="評価・設計の表"><table><thead><tr><th>判断項目</th><th>根拠</th><th>影響 / 次に確認する項目</th><th>状態</th><th></th></tr></thead><tbody>${data.decisions.map(d=>`<tr><td class="wrap"><b>${esc(d.title)}</b></td><td class="wrap">${esc(d.reason)}</td><td class="wrap">${esc(d.affected)}<small>次：${esc(d.next)}</small></td><td>${statusSelect('decisions',d.id,d.status)}</td><td><button class="text-link" data-edit-decision="${d.id}">編集</button></td></tr>`).join('')}</tbody></table></div>`)+panel('再評価が必要な結果',stale.length?`<div class="table-wrap" data-ui-scroll="table" aria-label="評価・設計の表"><table><thead><tr><th>方式</th><th>入力</th><th>設定</th><th>確認する項目</th></tr></thead><tbody>${stale.map(r=>`<tr><td>${esc(data.plans.find(p=>p.id===r.plan)?.title)}</td><td>${esc(scopeLabel(r.scope))}</td><td>${esc(r.settings)}</td><td>共有条件が変更済み。新しい基準を記録して比較案も再実行。</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">保存された入力・順序との相違はありません。<br>中間層案と11語の新規評価は、引き続き未測定です。</div>')+panel('変更履歴',`<div class="panel-body">${data.history.slice(0,60).map(h=>`<div class="change"><small>${date(h.time)}</small>${esc(h.text)}</div>`).join('')}</div>`);}
-function render(){if(!navs.some(x=>x[0]===page))page='overview';$('#nav').innerHTML=navs.map(([id,icon,label])=>`<a class="${id===page?'active':''}" href="#${id}"><span>${icon}</span>${label}</a>`).join('');$('#crumb').textContent=navs.find(x=>x[0]===page)[2];$('#view').innerHTML=(sessionNotice?`<div class="callout">${esc(sessionNotice)}</div>`:'')+({overview,design,compare,cases,discussion:discussionView,decisions:decisionsView}[page])();$('#saved').textContent='保存済み '+date(data.savedAt);bind();}
+function render(){if(!navs.some(x=>x[0]===page))page='overview';$('#nav').innerHTML=navs.map(([id,icon,label])=>`<a class="${id===page?'active':''}" href="#${id}"><span>${icon}</span>${label}</a>`).join('');$('#crumb').textContent=navs.find(x=>x[0]===page)[2];$('#view').innerHTML=(sessionNotice?`<div class="callout">${esc(sessionNotice)}</div>`:'')+({overview,design,compare,cases,'case-graph':caseGraphReview,discussion:discussionView,decisions:decisionsView}[page])();$('#saved').textContent='保存済み '+date(data.savedAt);bind();}
 function field(name,label,value='',type='text',options){const val=esc(value);return `<div class="field"><label for="f-${name}">${label}</label>${type==='textarea'?`<textarea id="f-${name}" name="${name}">${val}</textarea>`:type==='select'?`<select id="f-${name}" name="${name}">${options.map(x=>{let [v,l]=Array.isArray(x)?x:[x,x];return `<option value="${esc(v)}" ${String(value)===String(v)?'selected':''}>${esc(l)}</option>`;}).join('')}</select>`:`<input id="f-${name}" name="${name}" type="${type}" value="${val}" ${type==='number'?'step="any" min="0"':''}>`}</div>`;}
 function modal(title,fields,handler){$('#dialog-title').textContent=title;$('#fields').innerHTML=fields;$('#form-error').textContent='';formHandler=handler;$('#dialog').showModal();}
 function required(v,k){if(!v[k]?.trim())throw Error('必須項目を入力してください。');return v[k].trim();}
@@ -64,3 +64,54 @@ $('#export').onclick=()=>{const a=document.createElement('a'),url=URL.createObje
 function validateImport(v){if(v?.schema!=='otl-third-board/1'||!Number.isInteger(v.revision)||v.revision<1)throw Error('このボードのJSONを選んでください。');for(const k of ['plans','cases','steps','runs','comments','decisions','history'])if(!Array.isArray(v[k]))throw Error('必要な項目がありません：'+k);if(!v.steps.length||!v.plans.some(p=>p.id==='baseline'))throw Error('基準方式または評価順序がありません。');for(const k of ['plans','cases','steps','comments','decisions','runs']){for(const x of v[k])if(!/^[a-zA-Z0-9-]+$/.test(x.id))throw Error('IDの形式が不正です。');if(new Set(v[k].map(x=>x.id)).size!==v[k].length)throw Error('IDが重複しています。');for(const x of v[k])if(typeof x.id!=='string'||(k!=='runs'&&typeof x.title!=='string'))throw Error('項目形式が不正です。');}for(const k of ['plans','cases','decisions'])for(const x of v[k])if(!statuses.includes(x.status))throw Error('状態の値が不正です。');for(const r of v.runs){if(!v.plans.some(p=>p.id===r.plan)||typeof r.signature!=='string'||typeof r.settings!=='string')throw Error('結果の形式が不正です。');for(const k of ['accuracy','unknown','forget','questions','max','merges','denominator'])if(r[k]!==null&&(typeof r[k]!=='number'||!Number.isFinite(r[k])||r[k]<0||(['accuracy','unknown','forget'].includes(k)&&r[k]>100)))throw Error('評価値が不正です。');}for(const id of ['baseline-0','baseline-1']){const imported=v.runs.find(r=>r.id===id),original=fresh().runs.find(r=>r.id===id);for(const k of ['accuracy','unknown','forget','questions','max','merges','input','settings','model','locked'])if(!imported||imported[k]!==original[k])throw Error('固定済みの既存基準値は変更できません。');}if(!v.proposal||typeof v.proposal.draft!=='string')throw Error('下書きの形式が不正です。');return v;}
 $('#import').onchange=async e=>{try{const f=e.target.files[0];if(!f)return;if(f.size>5000000)throw Error('5MB以下のJSONを選んでください。');const incoming=validateImport(JSON.parse(await f.text()));modal('JSONを読み込む',`<p>現在の記録を置き換えます。必要なら先にキャンセルしてJSON保存してください。</p><p class="form-help">${incoming.plans.length}案 / ${incoming.cases.length}ケース / ${incoming.runs.length}結果</p>`,()=>{data=incoming;save('JSONから記録を読み込み');});}catch(err){toast(err.message);}e.target.value='';};
 (async()=>{try{const res=await fetch('baseline-evidence.json');if(!res.ok)throw Error('基準値の読み込みに失敗');evidence=await res.json();let stored;try{stored=localStorage.getItem(KEY);}catch{}if(stored){try{data=validateImport(JSON.parse(stored));}catch{data=fresh();sessionNotice='保存データを読み込めないため、初期状態を表示しています。保存データはJSON読み込みで確認できます。';}}else{data=fresh();save('',false);}render();}catch(err){$('#view').innerHTML=`<div class="callout">${esc(err.message)}。ページを再読み込みしてください。</div>`;}})();
+
+// Review of the public #23 fixture. This view is independent of editable board data.
+function caseGraphReview(){
+  const revision='12d1569ac6065085c178d53d348fde5a20a3e5d6';
+  const pinned=repo+'/blob/'+revision+'/';
+  const table=(title,headers,rows)=>panel(title,`<div class="table-wrap" data-ui-scroll="table" aria-label="${esc(title)}"><table>
+    <thead><tr>${headers.map(label=>`<th scope="col">${esc(label)}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map(([label,...cells])=>`<tr><th scope="row" class="wrap">${esc(label)}</th>${cells.map(cell=>`<td class="wrap">${esc(cell)}</td>`).join('')}</tr>`).join('')}</tbody>
+  </table></div>`);
+  const checks=[
+    'K001〜K004を同じコーパスと sure=1 で再実行し、候補、判断、適合先、未登録要素、6W1Hの空欄を保存前後で照合する。',
+    '候補なしの事例に肯定・否定の判断を追加し、両方を取得する。別概念への否定だけの場合は、候補への明示的な承認と区別する。',
+    '未判断、holds=false、未登録の要素、未登録概念への判断を区別する。未登録の概念や同名の概念から自動で同一関係を作らない。',
+    '担当者名を変更して候補・比較状態が一致すること、同じ役割の複数の判断が残ることを確認する。',
+    '同一版の再取得、訂正、再推論を試し、重複登録なしで旧版を取得できることを確認する。',
+    '事例・判断の追加前後で define・rules・guess、概念スナップショット、既存監査の検査・計画結果を比較する。'
+  ];
+  return heading('設計レビュー','事例と知識グラフ','観測・候補・人の判断をつなぐ2方式を、PR #23の同じ4事例で比較します。')+
+    `<div class="callout"><div><b>推奨案は Observation・Evidence・Snapshot の再利用</b><p>事例、候補を出した実行、人の判断を別の記録にします。人の判断は対象事例の版に紐付け、候補生成と概念定義は従来の入力で評価します。</p></div><span class="pill">接続方式は検討中</span></div>`+
+    table('方式の比較',['評価軸','専用の Case・Judgment クラス','既存クラスの再利用'],[
+      ['重複実装','型は明快。既存の監視層と共通化する設計が必要','digest・証跡・語彙検査を共有。事例用の変換と検査を追加'],
+      ['履歴','Caseを軸に観測・判断の版をたどる','case_keyと変更不能な記録IDを分けてたどる'],
+      ['証跡','専用クラスと既存証跡の接続を規定する','hasEvidence と derived_from の接続規約を再利用'],
+      ['問い合わせ','クラスで対象を絞り込める','record_kind で対象を絞り、判断・候補を関係から取得する']
+    ])+
+    table('共通入力での現行結果',['事例','候補（hypothesis）','人が下した判断（observed）','比較状態','保持する区別'],[
+      ['K001 夜間のDB','エスカレーション','障害対応の責任者：エスカレーション','confirmed','同じ結論。候補の根拠区分は hypothesis のまま'],
+      ['K002 共有だけ','状況報告','課長：エスカレーション','disputed','食い違う2件をそれぞれ保持'],
+      ['K003 交代','担当引き継ぎ','未判断','pending','未登録要素「引き継ぎメモを書く」を to_model に保持。いつまで・どうが空欄'],
+      ['K004 一報','なし（適合先は3つ）','障害対応の責任者：状況報告','judged','候補なしと、人による判断ありを同時に保持']
+    ])+
+    panel('最小のデータ契約',`<div class="panel-body">
+      <p>事例キーと記録IDを分け、対象版、出典SHA・ファイル・記録位置を保存します。出典に日時がない場合は空欄とし、収集時刻は別欄に置きます。</p>
+      <p>事例には元の発言・文脈・要素・6W1Hを保持します。候補には実装とコーパスの版、sure、適合先、空欄、to_modelを添えます。判断は対象版、概念参照、真偽の holds、根拠を持ちます。</p>
+      <p>担当者と役割を別属性にし、氏名のノード化は設計対象外とします。概念は登録済みIDで参照し、IDがないときはコーパス版と既存識別子を組にします。未解決の参照は検査結果に残します。</p>
+      <p>既存監査の observes は PullRequest 向けで、監査の作業状態は5種です。事例用の変換・検査を設け、比較状態は専用の欄に置きます。</p>
+    </div>`)+
+    table('関係種別の案',['関係','接続','記録の意味'],[
+      ['about_case','推論・判断のObservation → 事例Observation','対象となった事例の版'],
+      ['proposes','推論のObservation → Concept','候補（hypothesis）'],
+      ['asserts','判断のObservation → Concept','その人が判断したという記録（observed）。holdsで肯定・否定を保持'],
+      ['hasEvidence / derived_from','Observation → Evidence / Snapshot','既存の証跡と入力版への参照'],
+      ['revises','新しいObservation → 旧Observation','訂正対象を明示し、旧記録を保持']
+    ])+
+    panel('回帰テスト案',`<div class="panel-body"><p>現行の judged は候補がない状態で複数判断が矛盾しても返ります。confirmed は他概念への否定だけでも返る場合があります。比較状態と個々の判断を合わせて確認します。</p><ol>${checks.map(check=>`<li>${esc(check)}</li>`).join('')}</ol></div>`)+
+    panel('未確定事項と出典',`<div class="panel-body">
+      <p>役割ごとの判断権限、複数判断の採用規則、訂正の識別方法、ID未付与概念の移行、未解決参照の保管方式は検討中です。</p>
+      <p>現行結果は統合コミット <code>${revision.slice(0,7)}</code> の事例データを <code>cases --sure 1</code> で評価したものです。グラフ欄は設計案です。</p>
+      <p>${link(repo+'/pull/23','PR #23')} · ${link(pinned+'examples/concepts-20261115.json','事例データ')} · ${link(pinned+'tools/tautology.py#L439','cases 実装')} · ${link(pinned+'gh_audit/gh_audit.py#L32','監査語彙')} · ${link(discussion,'Discussion #19')}</p>
+    </div>`);
+}
