@@ -12,4 +12,4 @@ jobs:
     uses: myon-bioinformatics/myon-bioinformatics/.github/workflows/reusable-pages-static.yml@81f6aea6231d4490e581443fdeb43a09e6018ff0
     with:
       artifact_path: site
-      build: node --check site/third-design/app.js && node --input-type=module --check < site/third-design/shared/scroll.js
+      build: python -S scripts/page_sizes.py && node --check site/third-design/app.js && node --input-type=module --check < site/third-design/shared/scroll.js
