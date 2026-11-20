@@ -631,7 +631,7 @@ def _load(path, load=None):
 
 def exchange(backend, scope, graph=None):
     """Import an RDFLib graph, or export a scope as an RDFLib graph (exchange extra)."""
-    from graph_exchange import transfer
+    from ontautology_shared._onto.ontology import transfer
     return transfer(backend, scope, graph)
 
 
@@ -645,11 +645,11 @@ def main(argv=None, *, commands=(), load=None):
     args_in = sys.argv[1:] if argv is None else argv
     if args_in[:1] == ["exchange"]:
         try:
-            from graph_exchange import main as exchange
+            from ontautology_shared._onto.ontology import main as exchange
+            return exchange(args_in[1:])
         except ModuleNotFoundError as error:
             print(f"Install ontautology[exchange] for graph exchange ({error})", file=sys.stderr)
             return 1
-        return exchange(args_in[1:])
     parser = argparse.ArgumentParser(description="🧪 check · 💥 reach · 🔎 why · 🔁 cycles · 🪜 order / ladder · 🔑 keys · 🧩 define / roundtrip"
                                      + "".join(f" · {name}" for name, *_ in commands))
     sub = parser.add_subparsers(dest="command", required=True)

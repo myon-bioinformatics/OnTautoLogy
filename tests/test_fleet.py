@@ -34,7 +34,6 @@ class FleetContracts(unittest.TestCase):
         onto_sources = {(onto_dir / name).as_posix(): ("myon-bioinformatics/ONTO", upstream) for name, upstream in (
             ("ontology.py", "ontology.py"),
             ("knowledgegraph.py", "knowledgegraph.py"), ("LICENSE", "LICENSE"))}
-        onto_sources["graph_exchange/__init__.py"] = ("myon-bioinformatics/ONTO", "onto_exchange.py")
         rows = fleet.check_lock(ROOT, sources={
             **onto_sources,
             "vendor/py_launch.cjs": (fleet.PARENT, "py_launch.cjs"),
