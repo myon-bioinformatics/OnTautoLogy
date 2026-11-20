@@ -32,8 +32,8 @@ class FleetContracts(unittest.TestCase):
     def test_vendor_lock_matches_checked_in_bytes(self):
         onto_dir = Path("ontautology_shared/_onto")
         onto_sources = {(onto_dir / name).as_posix(): ("myon-bioinformatics/ONTO", upstream) for name, upstream in (
-            ("__init__.py", "onto_shared/__init__.py"), ("ontology.py", "onto_shared/ontology.py"),
-            ("knowledgegraph.py", "onto_shared/knowledgegraph.py"), ("LICENSE", "LICENSE"))}
+            ("ontology.py", "ontology.py"),
+            ("knowledgegraph.py", "knowledgegraph.py"), ("LICENSE", "LICENSE"))}
         rows = fleet.check_lock(ROOT, sources={
             **onto_sources,
             "vendor/py_launch.cjs": (fleet.PARENT, "py_launch.cjs"),

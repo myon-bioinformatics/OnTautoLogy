@@ -1,1 +1,1 @@
-"""Shared ontology and knowledge-graph operations."""
+"""Pinned copies of the top-level modules from ONTO."""
