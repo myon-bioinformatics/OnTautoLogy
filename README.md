@@ -668,3 +668,21 @@ ontautology exchange query restored.ttl 'SELECT ?s ?p ?o WHERE { ?s ?p ?o }'
 olnm の委譲コマンドを使う場合は各行の先頭を `olnm ontautology` とする。
 CI の graph-exchange ジョブは実際の両 DB を起動し、既存の夜間対応事例から選んだ
 判断・出典に反例を加え、両方向の RDF グラフ同型・問い合わせ結果・再投入を検査する。
+
+#### 保存したグラフを見る
+
+基準事例の [K001-night-db.ttl](examples/K001-night-db.ttl) を Git で保持する。
+元の K001 から作った検証用の投影で、反例と確信度 0 を含む。
+CI は両方向の往復後に実 DB から復元した RDF を経路別の Turtle ファイルとして
+Actions の `graph-exports` Artifact に保存する。保持期間はリポジトリ設定に従う。
+単発の実験を長期保存する場合は Artifact から Turtle をダウンロードできる。
+
+ジョブの Summary には片方の往復結果を表示する。手元では checkout から次を実行し、
+出力した Markdown を Mermaid 対応ビューアで開く。
+
+```sh
+uv run --extra exchange python tools/knowledgegraph.py examples/K001-night-db.ttl > graph.md
+```
+
+`knowledgegraph.py` は RDF の主語・目的語をノード、述語を矢印に写す。
+図表をまとめた HTML レポートや SVG 出力は DRAgoWing の担当とする。

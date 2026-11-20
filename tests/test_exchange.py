@@ -58,6 +58,12 @@ class Exchange(unittest.TestCase):
                            else row.confidence.toPython()) for row in copy.query(QUERY)},
                          {(True, 0), (False, None)})
         self.assertEqual(statements(original), statements(copy))
+        snapshot = ROOT / "examples/K001-night-db.ttl"
+        self.assertTrue(isomorphic(original, Graph().parse(snapshot, format="turtle")))
+        from tools.knowledgegraph import turtle_mermaid
+        diagram = turtle_mermaid(snapshot)
+        self.assertEqual(diagram.count(" -->|"), len(original))
+        self.assertIn("K001-night-db", diagram)
         copy.add((BNode(), RDF.type, OTL.Case))
         with self.assertRaisesRegex(ValueError, "stable IRIs"):
             statements(copy)
@@ -79,3 +85,8 @@ class Exchange(unittest.TestCase):
                 self.assertTrue(isomorphic(original, current))
                 self.assertEqual(expected, set(current.query(QUERY)))
                 current = Graph().parse(data=current.serialize(format="turtle"), format="turtle")
+            if directory := os.getenv("OTL_EXPORT_DIR"):
+                target = Path(directory) / ("-".join(route) + ".ttl")
+                target.parent.mkdir(parents=True, exist_ok=True)
+                current.serialize(destination=target, format="turtle")
+                self.assertTrue(isomorphic(original, Graph().parse(target, format="turtle")))
