@@ -284,6 +284,22 @@ python -I -S tools/tautology.py narrate examples/pokedex-editions.json C003-pika
 python -I -S tools/tautology.py narrate examples/pokedex-editions.json C012-porygon2 --sources
 ```
 
+[既存語の命題ケース](examples/detail-propositions.json)では、同じ問いを複数の資料・条件で判定します。
+木の実の調理、惑星開発、ベースの調弦、iPhoneの転送仕様、botの応答方式の5題材です。
+
+```sh
+python -I -S examples/detail_propositions.py
+```
+
+ケースを増やすときは既存の概念を選び、比べる条件を一つ変えます。例えば4弦ベースの弦と調弦を変え、
+ギターの低音側4本と「音名が同じか」「実際の音の高さも同じか」をそれぞれ問います。
+`observations` は出典ごとの観測です。既存の図鑑では版名、概念コーパスでは概念名を指定します。
+外部資料の追加調査ではURLと確認できた真偽だけを記入します。
+`questions` には問い・論理式・各観測の期待値を記入します。
+判定は成立（`holds`）、否定が成立（`violated`）、未確定（`unknown`）の3通りです。
+出力には根拠の属性と出典、欠けた属性、論理式そのものの分類が付きます。
+期待値との差があれば終了コード2で該当ケースを返します。
+
 [文法性の比較教材](examples/lexical-gender.json) ではドイツ語・スペイン語・フランス語・ヒンディー語・ポルトガル語の5言語の語例を人間の共通概念に結びます。`python -I -S ontautology.py reach examples/lexical-gender.json lex:fr:personne` で、語から文法性と参照先を確認できます。人物の性別は推論しません。 日英の変換は別のテストで、11概念すべてについて日本語名と英語名の両方向から同じIDと対応語に戻ることを確認します。対象は登録した語義のラベルです。
 
 第二弾の未知語の検証例。登録された語を一つ隠し、後続の引数を順番に観測として与えます。

@@ -1,0 +1,59 @@
+{
+  "木の実を焼く理由": {
+    "observations": {
+      "金": {"concept": "ピカチュウ", "edition": "金"},
+      "ヒスイ": {"concept": "ピカチュウ", "edition": "LEGENDS アルセウス"}
+    },
+    "questions": [
+      {"id":"berry-action","text":"硬い木の実を電撃で焼いて食べるか。","rule":"berries","expect":{"金":"holds","ヒスイ":"holds"}},
+      {"id":"berry-purpose","text":"硬い木の実を焼いて食べ、焼くと柔らかくなることも知っているか。","rule":["AND","berries","soften"],"expect":{"金":"holds","ヒスイ":"unknown"}},
+      {"id":"berry-denial","text":"柔らかくなることを知らないと言えるか。","rule":["NOT","soften"],"expect":{"金":"violated","ヒスイ":"unknown"}},
+      {"id":"berry-projection","text":"焼くことと軟化を知ることが両方成り立てば、焼くことは成り立つか。","rule":["OR",["NOT",["AND","berries","soften"]],"berries"],"expect":{"金":"holds","ヒスイ":"holds"}}
+    ]
+  },
+  "惑星開発の目的と能力": {
+    "observations": {
+      "金": {"concept":"ポリゴン2","edition":"金"},
+      "ダイヤモンド": {"concept":"ポリゴン2","edition":"ダイヤモンド"},
+      "ウルトラムーン": {"concept":"ポリゴン2","edition":"ウルトラムーン"}
+    },
+    "questions": [
+      {"id":"space-purpose","text":"ポリゴンを改良した目的は惑星開発だったか。","rule":"upgrade-for-planets","expect":{"金":"holds","ダイヤモンド":"unknown","ウルトラムーン":"unknown"}},
+      {"id":"space-flight","text":"すでに空を飛べると言えるか。","rule":["NOT","cannot-fly-yet"],"expect":{"金":"violated","ダイヤモンド":"unknown","ウルトラムーン":"unknown"}},
+      {"id":"space-vacuum","text":"真空で活動できると分かるか。","rule":"vacuum","expect":{"金":"unknown","ダイヤモンド":"holds","ウルトラムーン":"unknown"}},
+      {"id":"space-motion","text":"無重力で身動きしづらいと分かるか。","rule":"zero-gravity","expect":{"金":"unknown","ダイヤモンド":"unknown","ウルトラムーン":"holds"}}
+    ]
+  },
+  "開放弦の音名と実音": {
+    "observations": {
+      "標準の4弦": {"concept":"ベース","source":"https://hub.yamaha.com/guitars/g-how-to/a-guitarists-guide-to-playing-bass/","facts":{"音名列が一致":true,"実音の高さが一致":false}},
+      "オクターブ上に調弦したピッコロ弦": {"concept":"ベース","source":"https://hub.yamaha.com/guitars/bass/alternate-bass-tunings/","facts":{"音名列が一致":true,"実音の高さが一致":true}}
+    },
+    "questions": [
+      {"id":"bass-note-names","text":"標準調弦の6弦ギターの低音側4本と、開放弦の音名の並びが一致するか。","rule":"音名列が一致","expect":{"標準の4弦":"holds","オクターブ上に調弦したピッコロ弦":"holds"}},
+      {"id":"bass-same-pitch","text":"同じギターの低音側4本と、音名に加えて実際の音の高さまで一致するか。","rule":["AND","音名列が一致","実音の高さが一致"],"expect":{"標準の4弦":"violated","オクターブ上に調弦したピッコロ弦":"holds"}}
+    ]
+  },
+  "端子・転送規格・実測値": {
+    "observations": {
+      "iPhone 15": {"concept":"iPhone","source":"https://support.apple.com/ja-jp/111831","facts":{"端子はUSB-C":true,"本体の公称上限は10Gb/s":false}},
+      "iPhone 15 Pro": {"concept":"iPhone","source":"https://support.apple.com/ja-jp/111829","facts":{"端子はUSB-C":true,"本体の公称上限は10Gb/s":true}}
+    },
+    "questions": [
+      {"id":"usb-connector","text":"USB-C端子を備えるか。","rule":"端子はUSB-C","expect":{"iPhone 15":"holds","iPhone 15 Pro":"holds"}},
+      {"id":"usb-ceiling","text":"USB-Cで、かつ本体の仕様上の転送上限が10Gb/sか。","rule":["AND","端子はUSB-C","本体の公称上限は10Gb/s"],"expect":{"iPhone 15":"violated","iPhone 15 Pro":"holds"}},
+      {"id":"usb-measurement","text":"この資料から、実際の転送で400Mb/sに達したと言えるか。","rule":"実測で400Mb/sに達した","expect":{"iPhone 15":"unknown","iPhone 15 Pro":"unknown"}}
+    ]
+  },
+  "botの用途と応答方式": {
+    "observations": {
+      "定型応答": {"concept":"定型応答bot"},
+      "AI搭載": {"concept":"AI搭載bot"}
+    },
+    "questions": [
+      {"id":"bot-purpose","text":"自動応答が用途か。","rule":"用途:自動応答","expect":{"定型応答":"holds","AI搭載":"holds"}},
+      {"id":"bot-inference","text":"このbotは入力から出力を推論するか。","rule":"入力から出力を推論","expect":{"定型応答":"unknown","AI搭載":"holds"}},
+      {"id":"bot-implementation","text":"固定文の照合を使わないことまで分かるか。","rule":["NOT","応答方式:固定文の照合"],"expect":{"定型応答":"violated","AI搭載":"unknown"}}
+    ]
+  }
+}

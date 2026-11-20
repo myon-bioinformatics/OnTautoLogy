@@ -20,7 +20,7 @@ from ontautology_shared._onto.knowledgegraph import graph_mermaid
 from ontautology_shared.truth import judgment_graph
 from tools import tautology
 from examples.relation_holdout import replay
-from examples import reversi
+from examples import detail_propositions, reversi
 
 OT = Namespace("urn:otl:")
 TITLES = ("第一弾　GitHub監査と移管", "第二弾　概念・語彙と論理検証", "第三弾　事例・判断と比較評価")
@@ -128,6 +128,8 @@ def datasets():
     source = "examples/concepts-20261120.json"
     yield 2, "bot-replay", "未登録語と手掛かりごとの判定", source, replay(
         read(source), "AI搭載bot", ["用途:自動応答", "入力から出力を推論"])
+    source = "examples/detail-propositions.json"
+    yield 2, "detail-propositions", "同じ命題を異なる条件で検証", source, detail_propositions.run(ROOT / source)
     source = "examples/lexical-gender.json"
     data = read(source)
     graph = domain_graph(data)
