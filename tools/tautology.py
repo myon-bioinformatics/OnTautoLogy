@@ -496,8 +496,19 @@ def cases(corpus, *, sure=1):
                                         "basis": "observed", "agrees": None if candidate is None else (judgment["concept"] == candidate["concept"]) == judgment["holds"]})
     for row in found.values():
         agrees = [j["agrees"] for j in row["judgments"]]
-        row["status"] = ("pending" if not agrees else "judged" if row["candidate"] is None else
-                         "disputed" if False in agrees else "confirmed")
+        decisions = collections.defaultdict(set)
+        for judgment in row["judgments"]:
+            decisions[judgment["concept"]].add(judgment["holds"])
+        conflicts = sorted(concept for concept, values in decisions.items() if len(values) == 2)
+        row["conflicting_judgments"] = conflicts
+        if conflicts or False in agrees:
+            row["status"] = "disputed"
+        elif not agrees:
+            row["status"] = "pending"
+        elif row["candidate"] is None:
+            row["status"] = "judged"
+        else:
+            row["status"] = "confirmed"
     count = lambda key, value: sum(row[key] == value for row in found.values())
     roles = lambda rows: dict(sorted(collections.Counter(row["role"] for row in rows if "role" in row).items()))
     return {"cases": found, "summary": {
@@ -600,7 +611,7 @@ def _classify(args):
     return classify(_input_rule(args)), False
 
 
-def evaluate_nodes(graph, rule, *, node_type=None):
+def evaluate_nodes(graph, rule, *, node_type=None, partial=False):
     """Check boolean properties for each selected node. Missing evidence stays unknown."""
     names = atoms(rule)
     if not isinstance(graph, dict) or not isinstance(graph.get("nodes"), list):
@@ -613,10 +624,18 @@ def evaluate_nodes(graph, rule, *, node_type=None):
         if node_type is not None and node.get("type") != node_type:
             continue
         missing = [name for name in names if not isinstance(node.get(name), bool)]
+        present = {name for name in names if node.get(name) is True}
         if missing:
             verdict = "unknown"
+            if partial:
+                outcomes = set()
+                for completion in _assignments(missing, 16):
+                    outcomes.add(holds(rule, present | completion))
+                    if len(outcomes) == 2:
+                        break
+                if len(outcomes) == 1:
+                    verdict = "holds" if True in outcomes else "violated"
         else:
-            present = {name for name in names if node[name]}
             verdict = "holds" if holds(rule, present) else "violated"
         rows.append({"id": node["id"], "verdict": verdict, "missing": missing})
         counts[verdict] += 1
@@ -626,11 +645,12 @@ def evaluate_nodes(graph, rule, *, node_type=None):
 def _evaluate_arguments(parser):
     parser.add_argument("graph", type=Path, help="graph JSON file, or - for stdin")
     parser.add_argument("--type", dest="node_type", help="only evaluate nodes of this type")
+    parser.add_argument("--partial", action="store_true", help="check both values of missing facts (up to 16 per node)")
     _classify_arguments(parser)
 
 
 def _evaluate(args):
-    result = evaluate_nodes(ot._read_json(args.graph), _input_rule(args), node_type=args.node_type)
+    result = evaluate_nodes(ot._read_json(args.graph), _input_rule(args), node_type=args.node_type, partial=args.partial)
     counts = result["counts"]
     return result, bool(not result["nodes"] or counts["unknown"] or counts["violated"])
 

@@ -514,6 +514,21 @@ class JudgeTests(unittest.TestCase):
                 self.assertEqual(result["counts"], {"holds": 1, "violated": 1, "unknown": 1})
                 self.assertEqual(result["nodes"][-1], {"id": "c", "verdict": "unknown", "missing": ["draft"]})
 
+    def test_partial_facts_preserve_correlations_and_report_missing(self):
+        from test_ontautology import run_cli
+        graph = {"nodes": [{"id": "a", "merged": False}, {"id": "b", "merged": True}]}
+        args = ["evaluate", "-", "--rule", "OR", "NOT", "merged", "NOT", "draft"]
+        for extra, expected in [([], ["unknown", "unknown"]), (["--partial"], ["holds", "unknown"])]:
+            run = run_cli(ROOT / "tools/tautology.py", *args, *extra, data=json.dumps(graph))
+            rows = json.loads(run.stdout)["nodes"]
+            self.assertEqual([row["verdict"] for row in rows], expected)
+            self.assertTrue(all(row["missing"] == ["draft"] for row in rows))
+        for op, verdict in [("AND", "violated"), ("OR", "holds")]:
+            found = tautology.evaluate_nodes(graph, [op, "p", ["NOT", "p"]], partial=True)
+            self.assertEqual(found["counts"][verdict], 2)
+        with self.assertRaisesRegex(ValueError, "truth-table limit"):
+            tautology.evaluate_nodes(graph, ["AND", *map(str, range(17))], partial=True)
+
     def test_random_rules_rewritten_by_de_morgan_stay_equivalent(self):
         for seed in range(40):
             rng = random.Random(seed)
@@ -764,6 +779,16 @@ class CasesTests(unittest.TestCase):
         self.assertEqual((rows["K004-first-word"]["candidate"], rows["K004-first-word"]["fits"]), (None, ["エスカレーション", "担当引き継ぎ", "状況報告"]))
         self.assertEqual(found["summary"]["roles"], {"cases": {"一次対応": 3, "夜勤": 1}, "judgments": {"課長": 1, "障害対応の責任者": 2}})
         self.assertNotIn("担当A", json.dumps(found["summary"], ensure_ascii=False))  # people are a record, not a count
+
+    def test_opposing_judgments_without_a_candidate_are_disputed(self):
+        corpus = concepts()
+        original = next(j for j in corpus["judgments"] if j["case"] == "K004-first-word")
+        for value, status in [(original["holds"], "judged"), (not original["holds"], "disputed")]:
+            judgments = [*corpus["judgments"], {**original, "holds": value}]
+            row = tautology.cases({**corpus, "judgments": judgments})["cases"][original["case"]]
+            self.assertIsNone(row["candidate"])
+            self.assertEqual(row["status"], status)
+            self.assertEqual(row["conflicting_judgments"], [original["concept"]] if status == "disputed" else [])
 
     def test_judgments_change_no_definition_and_no_candidate(self):
         corpus = concepts()
