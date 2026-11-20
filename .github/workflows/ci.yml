@@ -46,3 +46,38 @@ jobs:
           version: latest
           python-version: '3.15'
       - run: uv run --no-project --with redis python -m unittest discover -s tests -p test_tools.py -k RedisCrossCheck -v
+
+  graph-exchange:
+    runs-on: ubuntu-24.04
+    services:
+      neo4j:
+        image: neo4j:5-community
+        ports: ['7687:7687']
+        env:
+          NEO4J_AUTH: neo4j/otl-ci-local
+      arcade:
+        image: arcadedata/arcadedb:26.11.1
+        ports: ['2480:2480']
+        env:
+          ARCADEDB_SETTINGS: -Darcadedb.server.rootPassword=otl-ci-local -Darcadedb.server.defaultDatabases=otl[]
+    env:
+      NEO4J_URI: bolt://localhost:7687
+      NEO4J_PASSWORD: otl-ci-local
+      ARCADE_COMMAND_URL: http://localhost:2480/api/v1/command/otl
+      ARCADE_CREDENTIALS: root:otl-ci-local
+      OTL_LIVE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: latest
+          python-version: '3.11'
+      - run: uv sync --extra exchange
+      - name: Wait for both query engines
+        run: |
+          for attempt in {1..40}; do
+            if uv run python -c 'from graph_exchange import transfer, arcade; transfer("neo4j", "ready"); arcade("sql", "select 1", {})'; then exit 0; fi
+            sleep 3
+          done
+          exit 1
+      - run: uv run python -m unittest discover -s tests -p test_exchange.py -v

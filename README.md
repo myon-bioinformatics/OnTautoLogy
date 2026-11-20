@@ -638,3 +638,33 @@ uv run --no-project --with redis python -m unittest discover -s tests -p test_to
 ## 📝 方針メモ（たたき台）
 
 リポジトリのあり方をルールとしてグラフに載せる案は、[docs/policy-rules.md](docs/policy-rules.md) にあります。実装ではなく、見直し前提の設計メモです。
+
+### Python で Neo4j・ArcadeDB と Turtle を往復する
+
+OTL の checkout で `uv tool install '.[exchange]'` を実行する。Python からは
+`from ontautology import exchange` を使い、`exchange(backend, scope, graph)` で
+RDFLib Graph を追加し、`exchange(backend, scope)` で読み戻す。各 IRI とリテラルを
+OtlTerm、述語を OtlStatement の属性に写す。scope は実験を区別する名前で、
+同じ scope への import は追加・重複排除。空白ノードは安定した IRI へ変換してから渡す。
+
+Neo4j は NEO4J_URI、NEO4J_PASSWORD（必要なら NEO4J_USER、NEO4J_DATABASE）を指定する。
+ArcadeDB は ARCADE_COMMAND_URL（例 http://localhost:2480/api/v1/command/otl）と
+ARCADE_CREDENTIALS（ユーザー名とパスワードをコロンで連結）を指定する。
+用意した ArcadeDB データベースで次の SQL を一度実行する。
+
+```sql
+CREATE VERTEX TYPE OtlTerm IF NOT EXISTS;
+CREATE EDGE TYPE OtlStatement IF NOT EXISTS;
+```
+
+```sh
+ontautology exchange import neo4j trial input.ttl
+ontautology exchange export neo4j trial out.ttl
+ontautology exchange import arcade trial out.ttl
+ontautology exchange export arcade trial restored.ttl
+ontautology exchange query restored.ttl 'SELECT ?s ?p ?o WHERE { ?s ?p ?o }'
+```
+
+olnm の委譲コマンドを使う場合は各行の先頭を `olnm ontautology` とする。
+CI の graph-exchange ジョブは実際の両 DB を起動し、既存の夜間対応事例から選んだ
+判断・出典に反例を加え、両方向の RDF グラフ同型・問い合わせ結果・再投入を検査する。

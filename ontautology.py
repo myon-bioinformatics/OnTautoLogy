@@ -37,7 +37,7 @@ from pathlib import Path
 
 BASIS = ("hypothesis", "derived", "observed", "proof")
 __all__ = ["BASIS", "check", "reach", "why", "cycles", "order", "ladder", "key_report",
-           "digest", "timestamp", "define_concepts", "roundtrip_elements", "concept_edges", "main"]
+           "digest", "timestamp", "define_concepts", "roundtrip_elements", "concept_edges", "exchange", "main"]
 
 
 def digest(value):
@@ -627,6 +627,12 @@ def _load(path, load=None):
     return data, data["edges"], data.get("nodes")
 
 
+def exchange(backend, scope, graph=None):
+    """Import an RDFLib graph, or export a scope as an RDFLib graph (exchange extra)."""
+    from graph_exchange import transfer
+    return transfer(backend, scope, graph)
+
+
 def main(argv=None, *, commands=(), load=None):
     """0 = answered, 1 = input error, 2 = answered and something needs a look (findings, a cycle, blocked or unknown).
 
@@ -634,6 +640,14 @@ def main(argv=None, *, commands=(), load=None):
     (answer, needs_a_look)) — and ``load(data)`` → (data, edges, node ids) or None for its own files, so the
     core commands read those files too and there is one command line, one stdin rule and one set of exit codes.
     """
+    args_in = sys.argv[1:] if argv is None else argv
+    if args_in[:1] == ["exchange"]:
+        try:
+            from graph_exchange import main as exchange
+        except ModuleNotFoundError as error:
+            print(f"Install ontautology[exchange] for graph exchange ({error})", file=sys.stderr)
+            return 1
+        return exchange(args_in[1:])
     parser = argparse.ArgumentParser(description="🧪 check · 💥 reach · 🔎 why · 🔁 cycles · 🪜 order / ladder · 🔑 keys · 🧩 define / roundtrip"
                                      + "".join(f" · {name}" for name, *_ in commands))
     sub = parser.add_subparsers(dest="command", required=True)
@@ -648,6 +662,7 @@ def main(argv=None, *, commands=(), load=None):
         add = sub.add_parser(name, help=text)
         add.add_argument("graph", type=Path)
         add.add_argument("terms", nargs="*" if name in ("order", "cycles", "define") else "+", help=terms)
+    sub.add_parser("exchange", help="import/export named RDF statements and query Turtle (optional exchange extra)")
     extra = {}
     for name, text, arguments, run in commands:
         arguments(sub.add_parser(name, help=text))
