@@ -695,3 +695,26 @@ JSON の `nodes` は RDF の語、`rels` は有向の文を表す。各関係の
 `start.id` と `end.id` は同じファイルのノード ID を参照する。
 ID と述語は RDF の N3 表記を使い、リテラルの型と言語を保持する。
 拡張子を省いた既存の呼び出しは Turtle として扱う。
+
+#### 第一弾〜第三弾を同じ表示器で見る
+
+`tools/knowledgegraph.py` は保存したグラフを Mermaid Markdown に写す。
+JSON の表示は Python 標準ライブラリだけで動く。`--focus` にノード ID を渡すと、
+そのノードと直接つながる辺だけが図に入る。以下は checkout のルートで実行する。
+
+```sh
+# 第一弾：既存の監査から Aoi に直接つながる関係を表示
+python -S gh_audit/gh_audit.py audit examples/audit-20261114.json -o audit.json
+python -S tools/knowledgegraph.py audit.json --focus repo:myon-bioinformatics/Aoi > audit.md
+
+# 第二弾：コーパスに登録された「連絡」と概念の関係を表示
+python -S tools/knowledgegraph.py examples/concepts-20261115.json --focus elem:連絡 > concepts.md
+
+# 第三弾：K001〜K004 の候補・人の判断・未登録要素と状態を表示
+python -S tools/tautology.py cases examples/concepts-20261115.json --graph -o cases.json
+python -S tools/knowledgegraph.py cases.json > cases.md
+```
+
+第三弾の `cases --graph` は既存の評価結果から表示用のノード・辺を作る。
+判断が食い違う事例を含む場合は JSON を保存して終了コード 2 を返す。
+`exchange export` のグラフ JSON も同じ表示器で開ける。

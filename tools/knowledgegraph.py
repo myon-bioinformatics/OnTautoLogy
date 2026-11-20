@@ -14,7 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import ontautology as ot  # noqa: E402
 
-__all__ = ["relation_cycles", "topological_order", "rdf_mermaid", "turtle_mermaid"]
+__all__ = ["relation_cycles", "topological_order", "rdf_mermaid", "turtle_mermaid", "graph_mermaid"]
 
 
 def relation_cycles(edges, *, limit=5):
@@ -39,13 +39,44 @@ def topological_order(edges):
     return {"order": [node for batch in found["batches"] for node in batch], "cycle": None}
 
 
-def rdf_mermaid(path):
+def rdf_mermaid(path, *, focus=None):
     """Return a Markdown diagram of a saved RDF graph (requires the exchange extra)."""
     from graph_exchange import read_graph
 
     graph = read_graph(path)
-    triples = sorted(tuple(term.n3(graph.namespace_manager) for term in triple) for triple in graph)
-    terms = sorted({term for subject, _, obj in triples for term in (subject, obj)})
+    triples = [tuple(term.n3(graph.namespace_manager) for term in triple) for triple in graph]
+    return _diagram({}, triples, focus)
+
+
+def graph_mermaid(data, *, focus=None):
+    """Draw the topology of an OTL graph, optionally just one node and its neighbours."""
+    if data.get("schema") == ot.CONCEPT_SCHEMA:
+        data = ot.concept_edges(data)
+    labels = {n["id"]: n.get("name", n["id"]) for n in data["nodes"]}
+    if "edges" in data:
+        triples = []
+        for edge in data["edges"]:
+            kind = edge["kind"] if "kind" in edge else edge["relation"]
+            if edge.get("basis"):
+                kind += " (" + edge["basis"] + ")"
+            triples.append((edge["source"], kind, edge["target"]))
+    else:
+        # OTL graph JSON stores each RDF predicate on the directed statement.
+        triples = [(r["start"]["id"], r["properties"]["predicate"], r["end"]["id"])
+                   for r in data["rels"]]
+    return _diagram(labels, triples, focus)
+
+
+def _diagram(labels, triples, focus):
+    terms = set(labels)
+    for source, _, target in triples:
+        terms.update((source, target))
+    if focus is not None:
+        if focus not in terms:
+            raise ValueError(f"Unknown focus node: {focus}")
+        triples = [t for t in triples if focus in (t[0], t[2])]
+        terms = {focus} | {term for source, _, target in triples for term in (source, target)}
+    terms = sorted(terms)
     ids = {term: f"n{i}" for i, term in enumerate(terms)}
 
     def label(value):
@@ -54,8 +85,8 @@ def rdf_mermaid(path):
 
     lines = ["```mermaid", "flowchart TD"]
     for term in terms:
-        lines.append(f'  {ids[term]}["{label(term)}"]')
-    for subject, predicate, obj in triples:
+        lines.append(f'  {ids[term]}["{label(labels.get(term, term))}"]')
+    for subject, predicate, obj in sorted(triples):
         lines.append(f'  {ids[subject]} -->|"{label(predicate)}"| {ids[obj]}')
     return "\n".join([*lines, "```", ""])
 
@@ -64,9 +95,15 @@ turtle_mermaid = rdf_mermaid
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Render a saved RDF graph as Mermaid Markdown.")
-    parser.add_argument("file", type=Path, help=".ttl, .nt, .rdf")
+    parser = argparse.ArgumentParser(description="Render an OTL or RDF graph as Mermaid Markdown.")
+    parser.add_argument("file", type=Path, help=".json, .ttl, .nt, .rdf")
+    parser.add_argument("--focus", help="show only this node ID and its immediate neighbours")
+    args = parser.parse_args()
     try:
-        print(rdf_mermaid(parser.parse_args().file), end="")
-    except ValueError as exc:
+        if args.file.suffix.lower() == ".json" or str(args.file) == "-":
+            diagram = graph_mermaid(ot._read_json(args.file), focus=args.focus)
+        else:
+            diagram = rdf_mermaid(args.file, focus=args.focus)
+        print(diagram, end="")
+    except (KeyError, OSError, TypeError, ValueError) as exc:
         parser.error(str(exc))

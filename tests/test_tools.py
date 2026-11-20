@@ -716,6 +716,24 @@ class CasesTests(unittest.TestCase):
             with self.subTest(bad=bad), self.assertRaises(ValueError):
                 tautology.cases({**corpus, **bad})
 
+    def test_stage_views(self):
+        from test_ontautology import run_cli
+        diagram = ROOT / "tools/knowledgegraph.py"
+        corpus = ROOT / "examples/concepts-20261115.json"
+        audit = run_cli(ROOT / "gh_audit/gh_audit.py", "audit", str(ROOT / "examples/audit-20261114.json"))
+        self.assertEqual(audit.returncode, 0, audit.stderr)
+        first = run_cli(diagram, "-", "--focus", "repo:myon-bioinformatics/Aoi", data=audit.stdout.decode())
+        second = run_cli(diagram, str(corpus), "--focus", "elem:連絡")
+        for result, relation in ((first, "belongsTo"), (second, "hasElement")):
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn(relation, result.stdout.decode())
+        cases = run_cli(ROOT / "tools/tautology.py", "cases", str(corpus), "--graph")
+        self.assertEqual(cases.returncode, 2, cases.stderr)
+        third = run_cli(diagram, "-", data=cases.stdout.decode())
+        self.assertEqual(third.returncode, 0, third.stderr)
+        for label in ("confirmed", "disputed", "pending", "judged", "hypothesis", "holds true", "to_model"):
+            self.assertIn(label, third.stdout.decode())
+
     def test_command_line_cases(self):
         from test_ontautology import run_cli
         script = ROOT / "tools/tautology.py"

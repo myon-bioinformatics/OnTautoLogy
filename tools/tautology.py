@@ -592,12 +592,39 @@ def _wobble(args):
 
 def _cases_arguments(parser):
     _corpus(parser)
+    parser.add_argument("--graph", dest="as_graph", action="store_true", help="emit case statuses, candidates and judgments as nodes and edges")
     parser.add_argument("--sure", type=float, default=1.0, help="weight the case's elements need before a concept is its candidate (default 1)")
 
 
 def _cases(args):
-    found = cases(ot._read_json(args.graph), sure=args.sure)
-    return found, bool(found["summary"]["disputed"])
+    corpus = ot._read_json(args.graph)
+    found = cases(corpus, sure=args.sure)
+    disputed = bool(found["summary"]["disputed"])
+    if not args.as_graph:
+        return found, disputed
+
+    _, meta, _, _ = ot._normalize_corpus(corpus)
+    nodes, edges = {}, []
+    for case_id, row in found["cases"].items():
+        cid = "case:" + case_id
+        nodes[cid] = f"{case_id} ({row['status']})"
+        if candidate := row["candidate"]:
+            target = "concept:" + candidate["id"]
+            nodes[target] = candidate["concept"]
+            edges.append(dict(source=cid, kind="candidate", basis=candidate["basis"], target=target))
+        for element in row["to_model"]:
+            target = "elem:" + element
+            nodes[target] = element
+            edges.append(dict(source=cid, kind="to_model", target=target))
+        for i, judgment in enumerate(row["judgments"]):
+            jid = f"judgment:{case_id}:{i}"
+            nodes[jid] = judgment.get("actor") or jid
+            target = "concept:" + meta[judgment["concept"]].get("id", judgment["concept"])
+            nodes[target] = judgment["concept"]
+            edges.append(dict(source=cid, kind="judgment", target=jid))
+            edges.append(dict(source=jid, kind="holds " + str(judgment["holds"]).lower(), target=target))
+    return {"nodes": [{"id": key, "name": name} for key, name in nodes.items()],
+            "edges": edges}, disputed
 
 
 def main(argv=None):
