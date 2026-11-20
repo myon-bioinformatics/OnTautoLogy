@@ -114,3 +114,12 @@ class Exchange(unittest.TestCase):
                            terms[r["end"]["id"]]) for r in data["rels"]]
                 self.assertEqual(actual, [(r["subject"], r["predicate"], r["object"])
                                           for r in statements(original)])
+
+
+class PagesGraph(unittest.TestCase):
+    def test_published_mermaid_matches_turtle(self):
+        from ontautology_shared.knowledgegraph import rdf_mermaid
+
+        root = ROOT / "site" / "concepts"
+        diagram = (root / "bot.mmd").read_text(encoding="utf-8")
+        self.assertEqual(rdf_mermaid(root / "bot.ttl"), f"```mermaid\n{diagram}```\n")

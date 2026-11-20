@@ -1,0 +1,17 @@
+@prefix c: <urn:otl:concept:> .
+@prefix otl: <urn:otl:> .
+@prefix case: <urn:otl:case:bot-holdout:> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+
+# 候補を文として記録する。候補の三つ組自体は断定しない。
+case:purpose a otl:Hypothesis ;
+    rdf:subject c:C022-ai-bot ;
+    rdf:predicate otl:sharesPurposeWith ;
+    rdf:object c:C021-scripted-bot ;
+    otl:evidence "用途:自動応答"@ja .
+
+case:application a otl:Hypothesis ;
+    rdf:subject c:C022-ai-bot ;
+    rdf:predicate otl:applicationOf ;
+    rdf:object c:C014-ai-system ;
+    otl:evidence "用途:自動応答"@ja, "入力から出力を推論"@ja .

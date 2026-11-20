@@ -1,0 +1,22 @@
+flowchart TD
+  n0["#34;入力から出力を推論#34;#64;ja"]
+  n1["#34;用途:自動応答#34;#64;ja"]
+  n2["c:C014-ai-system"]
+  n3["c:C021-scripted-bot"]
+  n4["c:C022-ai-bot"]
+  n5["case:application"]
+  n6["case:purpose"]
+  n7["otl:Hypothesis"]
+  n8["otl:applicationOf"]
+  n9["otl:sharesPurposeWith"]
+  n5 -->|"otl:evidence"| n0
+  n5 -->|"otl:evidence"| n1
+  n5 -->|"rdf:object"| n2
+  n5 -->|"rdf:predicate"| n8
+  n5 -->|"rdf:subject"| n4
+  n5 -->|"rdf:type"| n7
+  n6 -->|"otl:evidence"| n1
+  n6 -->|"rdf:object"| n3
+  n6 -->|"rdf:predicate"| n9
+  n6 -->|"rdf:subject"| n4
+  n6 -->|"rdf:type"| n7
