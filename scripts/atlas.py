@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from gh_audit.gh_audit import audit, plan, transfer_report, turtle
 from ontautology import concept_edges, define_concepts
-from ontautology_shared._onto.knowledgegraph import graph_mermaid
+from ontautology_shared._onto.knowledgegraph import graph_mermaid, mermaid_renderer_js
 from ontautology_shared.truth import judgment_graph
 from tools import tautology
 from examples.relation_holdout import replay
@@ -244,4 +244,9 @@ def build(out):
 if __name__ == "__main__":
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("output",type=Path)
-    build(parser.parse_args().output)
+    parser.add_argument("--renderer-output", type=Path, help="also write the shared ES module for the atlas and concepts pages")
+    args = parser.parse_args()
+    build(args.output)
+    if args.renderer_output:
+        args.renderer_output.parent.mkdir(parents=True, exist_ok=True)
+        args.renderer_output.write_text(mermaid_renderer_js(), encoding="utf-8")
