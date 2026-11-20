@@ -34,6 +34,30 @@ def random_graph(seed, nodes=12, edges=24):
     return [edge(rng.choice(names), rng.choice(names), rng.choice(ot.BASIS), rng.choice(("a", "b"))) for _ in range(edges)]
 
 
+class EditionNarrative(unittest.TestCase):
+    def setUp(self):
+        self.subjects = json.loads((ROOT / "examples/pokedex-editions.json").read_text(encoding="utf-8"))
+
+    def test_partial_overlap_keeps_the_two_different_conditions(self):
+        subject = self.subjects["C003-pikachu"]
+        result = tautology.edition_narrative(subject)
+        self.assertEqual(result["narrative"].count(subject["claims"]["survey-with-tail"]), 1)
+        self.assertEqual([list(row["sources"]) for row in result["claims"]],
+                         [["ピカチュウ", "銀", "ソウルシルバー"], ["ピカチュウ"], ["銀", "ソウルシルバー"]])
+
+    def test_purpose_and_inability_remain_separate(self):
+        rows = tautology.edition_narrative(self.subjects["C012-porygon2"])["claims"]
+        self.assertEqual([row["id"] for row in rows[:2]], ["upgrade-for-planets", "cannot-fly-yet"])
+        self.assertEqual(list(rows[1]["sources"]), ["金", "バイオレット"])
+        self.assertEqual(list(rows[-1]["sources"]), ["銀"])
+
+    def test_a_claim_from_another_subject_is_unknown(self):
+        subject = self.subjects["C003-pikachu"]
+        subject["editions"]["銀"]["claims"].append("cannot-fly-yet")
+        with self.assertRaisesRegex(ValueError, "unknown claim"):
+            tautology.edition_narrative(subject)
+
+
 class OneWayDependency(unittest.TestCase):
     def test_generic_code_never_reads_the_github_audit(self):
         for path in [ROOT / "ontautology.py", *(ROOT / "tools").glob("*.py"),

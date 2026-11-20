@@ -36,7 +36,7 @@ from ontautology import OPS, _assignments, atoms, classify, holds  # noqa: E402
 from ontautology_shared.markers import MARKERS, marker_slots
 from vendor.pythdragoras import classification_metrics  # noqa: E402
 
-__all__ = ["standing", "gaps", "entailed", "holds", "atoms", "judge", "rules", "holdout", "guess", "guess_report", "wobble", "cases", "equivalent", "classify", "evaluate_nodes", "main"]
+__all__ = ["standing", "gaps", "entailed", "holds", "atoms", "judge", "rules", "holdout", "guess", "guess_report", "wobble", "cases", "edition_narrative", "equivalent", "classify", "evaluate_nodes", "main"]
 
 
 def judge(corpus, concept, rule):
@@ -744,9 +744,43 @@ def _cases(args):
     return {"nodes": result_nodes, "edges": edges}, disputed
 
 
+def edition_narrative(subject):
+    """Group reviewed edition attestations by subject-local claim ID, in editorial order."""
+    claims = subject["claims"]
+    evidence = {key: {} for key in claims}
+    for edition, entry in subject["editions"].items():
+        source = entry["source"]
+        if not isinstance(source, str) or not source.strip():
+            raise ValueError(f"{edition}: missing source")
+        for key in entry["claims"]:
+            if key not in claims:
+                raise ValueError(f"{edition}: unknown claim {key!r}")
+            evidence[key][edition] = source
+    rows = []
+    for key, sentence in claims.items():
+        if not evidence[key]:
+            raise ValueError(f"{key}: claim has no edition")
+        if not isinstance(sentence, str) or not sentence.strip():
+            raise ValueError(f"{key}: missing sentence")
+        rows.append({"id": key, "text": sentence, "sources": evidence[key]})
+    return {"name": subject["name"], "narrative": "".join(row["text"] for row in rows), "claims": rows}
+
+
+def _narrate_arguments(parser):
+    parser.add_argument("graph", type=Path, help="edition annotations by subject ID, or - for stdin")
+    parser.add_argument("subject", help="subject ID")
+    parser.add_argument("--sources", action="store_true", help="include each claim and its edition sources as JSON")
+
+
+def _narrate(args):
+    result = edition_narrative(ot._read_json(args.graph)[args.subject])
+    return (result if args.sources else result["narrative"] + "\n"), False
+
+
 def main(argv=None):
     """Exit codes as the core: 0 answered, 1 input error, 2 answered and something needs a look."""
     return ot.main(argv, commands=(
+        ("narrate", "tell each attested claim once across editions", _narrate_arguments, _narrate),
         ("marker-template", "emit all standard marker slots for annotating a case", lambda parser: None,
          lambda args: (marker_slots({}), False)),
         ("rules", "🧩 第二弾 · ⚖️ candidate rules per concept, judged; the first reversible one is the definition", _rules_arguments, _rules),

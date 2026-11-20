@@ -272,6 +272,15 @@ python -I -S ontautology.py roundtrip examples/concepts-20261120.json 用途:自
 図鑑名の完全一致と進化関係、人型と人数・展示物・機器の助数詞、AIの手法と実行基盤を個別に検査します。定型応答botとAI搭載botはどちらも自動応答し、上の2条件ではAI搭載botに絞れます。助数詞は教材で指定した場面の属性照合です。
 
 
+[作品別の図鑑教材](examples/pokedex-editions.json)はピカチュウとポリゴン２を各3作品で比較します。
+作品ごとの記述を手作業で命題IDに対応付け、同じ種の同じ命題を一度ずつ読める文章にします。
+条件や頻度まで一致する部分だけに共通IDを使います。各命題を載せた作品と参照URLは `--sources` で確認できます。
+
+```sh
+python -I -S tools/tautology.py narrate examples/pokedex-editions.json C003-pikachu
+python -I -S tools/tautology.py narrate examples/pokedex-editions.json C012-porygon2 --sources
+```
+
 [文法性の比較教材](examples/lexical-gender.json) ではドイツ語・スペイン語・フランス語・ヒンディー語・ポルトガル語の5言語の語例を人間の共通概念に結びます。`python -I -S ontautology.py reach examples/lexical-gender.json lex:fr:personne` で、語から文法性と参照先を確認できます。人物の性別は推論しません。 日英の変換は別のテストで、11概念すべてについて日本語名と英語名の両方向から同じIDと対応語に戻ることを確認します。対象は登録した語義のラベルです。
 
 第二弾の未知語の検証例。登録された語を一つ隠し、後続の引数を順番に観測として与えます。

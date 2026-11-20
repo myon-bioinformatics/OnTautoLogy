@@ -1,0 +1,29 @@
+{
+  "C003-pikachu": {
+    "name": "ピカチュウ",
+    "claims": {
+      "survey-with-tail": "しっぽを立てて辺りの気配を探る。",
+      "bite-if-pulled": "そのしっぽをむやみに引くと、かみつく。",
+      "lightning-while-surveying": "辺りを探っているとき、しっぽに雷が落ちることもある。"
+    },
+    "editions": {
+      "ピカチュウ": {"source": "https://pokedex-online.jp/pokedex/kanto/0025/", "claims": ["survey-with-tail", "bite-if-pulled"]},
+      "銀": {"source": "https://pokedex-online.jp/pokedex/johto/0022/", "claims": ["survey-with-tail", "lightning-while-surveying"]},
+      "ソウルシルバー": {"source": "https://pokedex-online.jp/pokedex/johto_hgss/0022/", "claims": ["survey-with-tail", "lightning-while-surveying"]}
+    }
+  },
+  "C012-porygon2": {
+    "name": "ポリゴン２",
+    "claims": {
+      "upgrade-for-planets": "惑星開発に役立てるため、ポリゴンを改良して生まれた。",
+      "cannot-fly-yet": "空を飛ぶことはまだできない。",
+      "improved-through-research": "研究が進むにつれて能力が向上した。",
+      "occasional-unprogrammed-gesture": "ときには、組み込まれたプログラムにない仕草もする。"
+    },
+    "editions": {
+      "金": {"source": "https://pokedex-online.jp/pokedex/global/0233/", "claims": ["upgrade-for-planets", "cannot-fly-yet"]},
+      "銀": {"source": "https://pokedex-online.jp/pokedex/global/0233/", "claims": ["improved-through-research", "occasional-unprogrammed-gesture"]},
+      "バイオレット": {"source": "https://pokedex-online.jp/pokedex/global/0233/", "claims": ["upgrade-for-planets", "cannot-fly-yet"]}
+    }
+  }
+}
