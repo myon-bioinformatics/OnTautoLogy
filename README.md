@@ -272,6 +272,34 @@ python -I -S ontautology.py roundtrip examples/concepts-20261120.json 用途:自
 図鑑名の完全一致と進化関係、人型と人数・展示物・機器の助数詞、AIの手法と実行基盤を個別に検査します。定型応答botとAI搭載botはどちらも自動応答し、上の2条件ではAI搭載botに絞れます。助数詞は教材で指定した場面の属性照合です。
 
 
+[作品別の図鑑教材](examples/pokedex-editions.json)は、国内本編の『赤・緑』から『LEGENDS Z-A』まで全39版の通常の姿を比較します。
+ピカチュウは39版、ポリゴン２は33版に説明があります。残る6版は初登場前と未収録に分け、
+`--sources` の `no_entry` に掲載しています。リメイクと対になる作品は別々に数え、
+移植・再配信・機種別エディションは同名作品にまとめています。DLCの図鑑は本編に含めます。
+作品ごとの記述を手作業で命題IDに対応付け、同じ種の同じ命題を一度ずつ読める文章にします。
+条件や頻度まで一致する部分だけに共通IDを使います。各命題を載せた作品と参照URLは `--sources` で確認できます。
+
+```sh
+python -I -S tools/tautology.py narrate examples/pokedex-editions.json C003-pikachu
+python -I -S tools/tautology.py narrate examples/pokedex-editions.json C012-porygon2 --sources
+```
+
+[既存語の命題ケース](examples/detail-propositions.json)では、同じ問いを複数の資料・条件で判定します。
+木の実の調理、惑星開発、ベースの調弦、iPhoneの転送仕様、botの応答方式の5題材です。
+
+```sh
+python -I -S examples/detail_propositions.py
+```
+
+ケースを増やすときは既存の概念を選び、比べる条件を一つ変えます。例えば4弦ベースの弦と調弦を変え、
+ギターの低音側4本と「音名が同じか」「実際の音の高さも同じか」をそれぞれ問います。
+`observations` は出典ごとの観測です。既存の図鑑では版名、概念コーパスでは概念名を指定します。
+外部資料の追加調査ではURLと確認できた真偽だけを記入します。
+`questions` には問い・論理式・各観測の期待値を記入します。
+判定は成立（`holds`）、否定が成立（`violated`）、未確定（`unknown`）の3通りです。
+出力には根拠の属性と出典、欠けた属性、論理式そのものの分類が付きます。
+期待値との差があれば終了コード2で該当ケースを返します。
+
 [文法性の比較教材](examples/lexical-gender.json) ではドイツ語・スペイン語・フランス語・ヒンディー語・ポルトガル語の5言語の語例を人間の共通概念に結びます。`python -I -S ontautology.py reach examples/lexical-gender.json lex:fr:personne` で、語から文法性と参照先を確認できます。人物の性別は推論しません。 日英の変換は別のテストで、11概念すべてについて日本語名と英語名の両方向から同じIDと対応語に戻ることを確認します。対象は登録した語義のラベルです。
 
 第二弾の未知語の検証例。登録された語を一つ隠し、後続の引数を順番に観測として与えます。
@@ -713,6 +741,119 @@ ontautology exchange query restored.ttl 'SELECT ?s ?p ?o WHERE { ?s ?p ?o }'
 olnm の委譲コマンドを使う場合は各行の先頭を `olnm ontautology` とする。
 CI の graph-exchange ジョブは実際の両 DB を起動し、既存の夜間対応事例から選んだ
 判断・出典に反例を加え、両方向の RDF グラフ同型・問い合わせ結果・再投入を検査する。
+
+#### 命題の真偽と事例ごとの判断をTTLにする
+
+チェックアウトで `exchange` extra を有効にして実行します。
+
+```sh
+uv run --extra exchange python tools/tautology.py classify --ttl --rule OR p NOT p
+uv run --extra exchange python tools/tautology.py cases examples/concepts-20261115.json --ttl -o cases.ttl
+```
+
+`isTrue` は真理値表の全割当てで真なら `true`、すべて偽なら `false` です。
+割当てで値が変わる式には `classification` が `contingent` と付きます。
+
+事例では「K001はエスカレーションに該当する」を一つの命題にし、判断記録から
+`regardsAsTrue` または `regardsAsFalse` で結びます。判断者・役割・メモ・根拠は
+その判断記録に付き、別の担当者が反対の判断をしても両方を辿れます。判断のない
+事例には判断リンクがありません。語彙の名前空間は `urn:otl:` です。
+既存の `cases` と同じく、見直し対象があるとTTLを書き出した上で終了コード2を返します。
+
+規則の適合率・再現率・正解率には、Aoiでも使用するPythDRagorasの
+`classification_metrics` を使います。取得元とファイルのハッシュは `vendor.lock.json` に記録しています。
+
+#### 通知と判断依頼を出来事IDで参照する
+
+一つの発言を記録した事例に `event.type` を明記すると、`cases --ttl` は
+`urn:otl:event:<事例ID>` を生成します。発信者と内容には既存の `actor` と6W1Hの
+「何を」を使います。「誰へ」は `Notification` なら通知先、`DecisionRequest`
+なら判断を求めた相手です。依頼では `requestedDecision` に具体的な問いを記録できます。
+命題は `aboutEvent` で出来事を参照し、別の人の判断も同じIDに結び付きます。
+
+たとえば生成した `cases.ttl` に次のSPARQLを実行すると、K002の通知先は「関係者」、
+判断者は「担当E」、その役割は「課長」と取得できます。判断依頼先は未束縛です。
+
+```sparql
+PREFIX ot: <urn:otl:>
+SELECT ?recipient ?judge ?role ?asked WHERE {
+  VALUES ?event { <urn:otl:event:K002-share-only> }
+  ?event ot:notifiedParty ?recipient .
+  ?proposition ot:aboutEvent ?event .
+  ?judgment ot:regardsAsTrue ?proposition ; ot:actor ?judge ; ot:role ?role .
+  OPTIONAL { ?event ot:decisionRequestedFrom ?asked }
+}
+```
+
+#### 前置詞・複合表現を全欄出力する
+
+`python -S tools/tautology.py marker-template` で全120欄のJSONを取得できます。
+事例の `markers` にこのひな型を置き、読めた役割と値を記入します。
+`cases` とリバーシの着手候補JSON・TTLには毎回全欄が含まれます。
+新規データで記入漏れを検査するには `cases 入力.json --require-markers` を使います。明示した `null` は受理し、省略したキーは事例IDとともに報告します。
+独自の表現もそのままキーにでき、同じ事例コーパス内の全件に欄が増えます。
+`hereafter in` のような連続した語も入力者が選んだ表現として保持します。
+
+| JSON の表現 | 読み方 |
+|---|---|
+| `"@none": [{"role":"content","value":"障害の状況"}]` | 前置詞を伴わない対象 |
+| `"to": [{"role":"recipient","value":"A"},{"role":"recipient","value":"B"}]` | 同じ役割の二つの対象 |
+| `"by": [{"role":"deadline","value":null}]` | 期限という役割は確認済みで、期限の値は不明 |
+| `"via": null` | 経路について未記載 |
+| `"via": []` | 確認した結果、対象は0件 |
+
+英語の欄は意味を整理するための注釈です。原文の語句だけを自動抽出したものではありません。
+TTLでは `ot:marker:to` のような述語から引数の `ot:role` と `rdf:value` をたどります。
+未記載は `ot:Unspecified`、確認済みの0件は `rdf:nil`、値が不明な引数は `ot:Unknown` で表します。
+
+同じ意味を複数の表現で記録する場合は、各引数に元の表現 `expression` と、
+その事例内で共通の `meaning` ID を付けます。K002の英語注釈はこの形です。
+
+```json
+{
+  "via": [{"expression":"via chat","meaning":"channel-chat","role":"channel","value":"チャット"}],
+  "through": [{"expression":"through chat","meaning":"channel-chat","role":"channel","value":"チャット"}]
+}
+```
+
+TTLでは二つの引数が `ot:expresses` で同じリソースを指します。表現数は2件、意味は1件として
+数えられます。同じ前置詞の中でも複数の表現を列挙できます。IDの有効範囲はその出来事
+（出来事の指定がないときは事例）です。同じIDに異なる役割・値を指定すると入力エラーになります。
+
+#### リバーシで一手と評価を照合する
+
+初期配置から黒白が各1回打つまでに到達する17盤面で、各64マスを候補として検査します。
+座標は上段左から a1〜h1、黒を B、白を W とします。各候補に盤面・手番・着手点・返る石を記録します。
+合法手には「今すぐ最も多く返す」「相手の次の合法手数を最小にする」の二つの基準を適用します。
+最多・最少で同点の手はすべてその基準で推奨します。評価者はこの二つの仮想方針です。
+
+たとえば黒 d3 の後、白 c3 と白 e3 はともに1石を返します。次の黒の選択肢は c3 なら4手、
+e3 なら5手です。白 e3 を第一の方針は推奨し、第二の方針は推奨しません。
+二つの判断が同じ着手候補を参照するので、どの条件で意見が割れたかを辿れます。
+
+```sh
+python -S examples/reversi.py
+python -S examples/reversi.py --format json > reversi.json
+uv run --extra exchange python examples/reversi.py --format ttl > reversi.ttl
+```
+
+全1,088候補をオンデマンドで生成します。第三弾のPagesには初期盤面と黒 d3 後の6候補を掲載します。
+[オセロの公式ルール](https://www.worldothello.org/about/about-othello/othello-rules/official-rules/english)
+
+#### 分類規則からの論理的帰結を確かめる
+
+「猫なら哺乳類」と「これは猫」を前提にして「これは哺乳類」を検査します。
+前提を空配列にすると、結論そのものが恒真かを検査できます。
+
+```sh
+echo '{"premises":[["OR",["NOT","猫"],"哺乳類"],"猫"],"conclusion":"哺乳類"}' | ontautology entails -
+```
+
+`entailment(premises, conclusion)` をPythonからも呼べます。入力は命題論理の式で、
+既定の上限は異なる原子命題16個です。`entailed` は充足できる前提から結論が従う場合です。
+`counterexample` は前提がすべて真で結論が偽になる割当てで、列挙した原子だけが真です。
+前提を同時に満たせない場合は `inconsistent-premises` になります。後の2結果は終了コード2です。
+`exchange` extra を入れると `--ttl` で前提・結論・検査結果・反例を保存できます。
 
 #### 保存したグラフを見る
 

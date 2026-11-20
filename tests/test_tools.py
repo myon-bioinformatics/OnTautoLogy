@@ -34,6 +34,43 @@ def random_graph(seed, nodes=12, edges=24):
     return [edge(rng.choice(names), rng.choice(names), rng.choice(ot.BASIS), rng.choice(("a", "b"))) for _ in range(edges)]
 
 
+class EditionNarrative(unittest.TestCase):
+    def setUp(self):
+        self.subjects = json.loads((ROOT / "examples/pokedex-editions.json").read_text(encoding="utf-8"))
+
+    def test_partial_overlap_keeps_the_two_different_conditions(self):
+        subject = self.subjects["C003-pikachu"]
+        result = tautology.edition_narrative(subject)
+        self.assertEqual(result["narrative"].count(subject["claims"]["survey-with-tail"]), 1)
+        sources = {row["id"]: set(row["sources"]) for row in result["claims"]}
+        self.assertEqual(sources["bite-if-pulled"], {"ピカチュウ"})
+        self.assertEqual(sources["lightning-while-surveying"], {"銀", "ソウルシルバー", "X"})
+        self.assertEqual(sources["survey-with-tail"], sources["bite-if-pulled"] | sources["lightning-while-surveying"])
+
+    def test_purpose_and_inability_remain_separate(self):
+        rows = tautology.edition_narrative(self.subjects["C012-porygon2"])["claims"]
+        sources = {row["id"]: set(row["sources"]) for row in rows}
+        self.assertIn("LEGENDS Z-A", sources["upgrade-for-planets"])
+        self.assertNotIn("LEGENDS Z-A", sources["cannot-fly-yet"])
+        self.assertEqual(sources["cannot-fly-yet"], {"金", "リーフグリーン", "ハートゴールド", "バイオレット"})
+        self.assertEqual(sources["zero-gravity"], {"ウルトラムーン"})
+
+    def test_full_edition_inventory(self):
+        pikachu, porygon = self.subjects["C003-pikachu"], self.subjects["C012-porygon2"]
+        report = tautology.edition_narrative(porygon)
+        absent = set(report["no_entry"])
+        self.assertEqual(absent, {"赤", "緑", "青", "ピカチュウ", "Let’s Go! ピカチュウ", "Let’s Go! イーブイ"})
+        self.assertEqual(len(pikachu["editions"]), 39)
+        self.assertEqual(set(pikachu["editions"]) - absent, set(porygon["editions"]))
+        self.assertTrue(all(entry["claims"] for subject in (pikachu, porygon) for entry in subject["editions"].values()))
+
+    def test_a_claim_from_another_subject_is_unknown(self):
+        subject = self.subjects["C003-pikachu"]
+        subject["editions"]["銀"]["claims"].append("cannot-fly-yet")
+        with self.assertRaisesRegex(ValueError, "unknown claim"):
+            tautology.edition_narrative(subject)
+
+
 class OneWayDependency(unittest.TestCase):
     def test_generic_code_never_reads_the_github_audit(self):
         for path in [ROOT / "ontautology.py", *(ROOT / "tools").glob("*.py"),
@@ -764,6 +801,34 @@ class WobbleTests(unittest.TestCase):
 
 class CasesTests(unittest.TestCase):
     """📋 Observed cases (who said what, in which role) and the judgments people made, kept apart (#19)."""
+
+    def test_marker_template_and_custom_slots_are_explicit_in_every_case(self):
+        from test_ontautology import run_cli
+        from ontautology_shared.markers import MARKERS
+        corpus = concepts()
+        corpus["cases"][0]["markers"] = {"by way of": [{"role": "channel", "value": None}]}
+        rows = tautology.cases(corpus)["cases"]
+        self.assertTrue(all(set(row["markers"]) == {*MARKERS, "by way of"} for row in rows.values()))
+        self.assertIsNone(rows["K002-share-only"]["markers"]["by way of"])
+        self.assertIsNone(rows["K002-share-only"]["markers"]["hereafter in"])
+        command = run_cli(ROOT / "tools/tautology.py", "marker-template")
+        self.assertEqual(json.loads(command.stdout), dict.fromkeys(MARKERS))
+        for case in corpus["cases"]:
+            case["markers"] = rows[case["id"]]["markers"]
+        self.assertEqual(tautology.cases(corpus, require_markers=True)["cases"], rows)
+        del corpus["cases"][0]["markers"]["hereafter in"]
+        with self.assertRaisesRegex(ValueError, "K001-night-db: missing marker slots: hereafter in"):
+            tautology.cases(corpus, require_markers=True)
+
+    def test_meaning_requires_consistent_interpretation_in_one_case(self):
+        from ontautology_shared.markers import marker_slots
+        arg = {"meaning": "route", "expression": "via chat", "role": "channel", "value": "chat"}
+        for change in ({"role": "place"}, {"value": "mail"}, {"value": None}):
+            with self.subTest(change=change), self.assertRaisesRegex(ValueError, "conflicting"):
+                marker_slots({"via": [arg], "through": [{**arg, **change}]})
+        for change in ({"meaning": ""}, {"expression": None}):
+            with self.assertRaises(ValueError):
+                marker_slots({"via": [{**arg, **change}]})
 
     def test_the_example_cases_and_their_status(self):
         found = tautology.cases(concepts())

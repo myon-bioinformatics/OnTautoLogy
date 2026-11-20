@@ -30,8 +30,8 @@
     },
     {
       "repository": "myon-bioinformatics/ONTO",
-      "ref": "a4a35befcaab129748f544a2bb1eb346cd4dba33",
-      "commit": "a4a35befcaab129748f544a2bb1eb346cd4dba33",
+      "ref": "783143a33b651e8179b1ef30355c8d871d6acdf2",
+      "commit": "783143a33b651e8179b1ef30355c8d871d6acdf2",
       "source": "ontology.py",
       "destination": "ontautology_shared/_onto/ontology.py",
       "blob_sha": "e6ceccd8a6852cb9f97ef80a50884c053ecbeae8",
@@ -39,8 +39,8 @@
     },
     {
       "repository": "myon-bioinformatics/ONTO",
-      "ref": "dd0f7a50d6c92766748cd91453a56ca1500699ed",
-      "commit": "dd0f7a50d6c92766748cd91453a56ca1500699ed",
+      "ref": "783143a33b651e8179b1ef30355c8d871d6acdf2",
+      "commit": "783143a33b651e8179b1ef30355c8d871d6acdf2",
       "source": "knowledgegraph.py",
       "destination": "ontautology_shared/_onto/knowledgegraph.py",
       "blob_sha": "51bad6b53fa1aef82b7cb0fe3d376834eedd7f55",
@@ -48,10 +48,28 @@
     },
     {
       "repository": "myon-bioinformatics/ONTO",
-      "ref": "a4a35befcaab129748f544a2bb1eb346cd4dba33",
-      "commit": "a4a35befcaab129748f544a2bb1eb346cd4dba33",
+      "ref": "783143a33b651e8179b1ef30355c8d871d6acdf2",
+      "commit": "783143a33b651e8179b1ef30355c8d871d6acdf2",
       "source": "LICENSE",
       "destination": "ontautology_shared/_onto/LICENSE",
+      "blob_sha": "4ec4989b801bf1a3df6184d21f79e6e7ed5931f6",
+      "sha256": "15f66204c4a6a1ce0c94f0ed4319ff9400f872e85fd32c95f21695c2f231af59"
+    },
+    {
+      "repository": "myon-bioinformatics/PythDRagoras",
+      "ref": "0effb65a3c132b876336cc249bca5cb42d99159d",
+      "commit": "0effb65a3c132b876336cc249bca5cb42d99159d",
+      "source": "pythdragoras.py",
+      "destination": "vendor/pythdragoras.py",
+      "blob_sha": "2ea02982e606212eda027c91cbf24c3e4ea0f0fa",
+      "sha256": "e9070752956a1902ae95595cdbc5cfd4652c8e43c3ac302060b2e33a8cda324c"
+    },
+    {
+      "repository": "myon-bioinformatics/PythDRagoras",
+      "ref": "0effb65a3c132b876336cc249bca5cb42d99159d",
+      "commit": "0effb65a3c132b876336cc249bca5cb42d99159d",
+      "source": "LICENSE",
+      "destination": "vendor/PythDRagoras-LICENSE",
       "blob_sha": "4ec4989b801bf1a3df6184d21f79e6e7ed5931f6",
       "sha256": "15f66204c4a6a1ce0c94f0ed4319ff9400f872e85fd32c95f21695c2f231af59"
     }
