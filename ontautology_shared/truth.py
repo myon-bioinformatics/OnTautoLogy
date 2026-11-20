@@ -3,7 +3,7 @@ import json
 from urllib.parse import quote
 
 try:
-    from rdflib import Graph, Literal, Namespace, RDF, RDFS
+    from rdflib import Graph, Literal, Namespace, RDF, RDFS, URIRef
 except ModuleNotFoundError as exc:
     if exc.name != "rdflib":
         raise
@@ -48,6 +48,22 @@ def entailment_graph(premises, conclusion, result):
     return graph
 
 
+def add_markers(graph, subject, slots):
+    """One explicit predicate per slot. Separate argument nodes preserve repeated roles."""
+    for marker, arguments in slots.items():
+        key = quote(marker, safe="")
+        predicate = OT["marker:" + key]
+        if not arguments:
+            graph.add((subject, predicate, OT.Unspecified if arguments is None else RDF.nil))
+            continue
+        for index, argument in enumerate(arguments):
+            node = URIRef(f"{subject}/marker/{key}/{index}")
+            graph.add((subject, predicate, node))
+            graph.add((node, OT.role, Literal(argument["role"])))
+            value = argument["value"]
+            graph.add((node, RDF.value, OT.Unknown if value is None else Literal(value)))
+
+
 def judgment_graph(corpus, cases):
     """Project the validated rows from cases(). Each judgment speaks for its own record."""
     graph = Graph()
@@ -65,6 +81,7 @@ def judgment_graph(corpus, cases):
             for field in ("sender", "notifiedParty", "decisionRequestedFrom", "content", "requestedDecision"):
                 if field in event:
                     graph.add((occurrence, OT[field], Literal(event[field])))
+        add_markers(graph, occurrence if event else case, row["markers"])
         for field in ("statement", "context", "evidence", "actor", "role"):
             if field in row:
                 graph.add((case, OT[field], Literal(row[field])))

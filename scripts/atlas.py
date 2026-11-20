@@ -114,11 +114,16 @@ def datasets():
                                     cwd=ROOT, capture_output=True, text=True)
             if output.returncode != (2 if rows["summary"]["disputed"] else 0):
                 raise RuntimeError(output.stderr or "case graph failed")
-            graph = domain_graph(json.loads(output.stdout))
+            projection = json.loads(output.stdout)
+            for node in projection["nodes"]:
+                node.pop("markers", None)  # judgment_graph emits the queryable slots once.
+            graph = domain_graph(projection)
             graph += judgment_graph(data, rows["cases"])
             for case in data["cases"]:
                 term = resource("case:"+case["id"])
-                record(graph, term, {"input": case, **rows["cases"][case["id"]]})
+                details = dict(rows["cases"][case["id"]])
+                details.pop("markers")
+                record(graph, term, {"input": case, **details})
             yield 3, "cases-"+path.stem, "事例・候補・人の判断", source, graph
     source = "examples/concepts-20261120.json"
     yield 2, "bot-replay", "未登録語と手掛かりごとの判定", source, replay(

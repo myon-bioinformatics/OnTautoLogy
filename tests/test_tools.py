@@ -765,6 +765,24 @@ class WobbleTests(unittest.TestCase):
 class CasesTests(unittest.TestCase):
     """📋 Observed cases (who said what, in which role) and the judgments people made, kept apart (#19)."""
 
+    def test_marker_template_and_custom_slots_are_explicit_in_every_case(self):
+        from test_ontautology import run_cli
+        from ontautology_shared.markers import MARKERS
+        corpus = concepts()
+        corpus["cases"][0]["markers"] = {"by way of": [{"role": "channel", "value": None}]}
+        rows = tautology.cases(corpus)["cases"]
+        self.assertTrue(all(set(row["markers"]) == {*MARKERS, "by way of"} for row in rows.values()))
+        self.assertIsNone(rows["K002-share-only"]["markers"]["by way of"])
+        self.assertIsNone(rows["K002-share-only"]["markers"]["hereafter in"])
+        command = run_cli(ROOT / "tools/tautology.py", "marker-template")
+        self.assertEqual(json.loads(command.stdout), dict.fromkeys(MARKERS))
+        for case in corpus["cases"]:
+            case["markers"] = rows[case["id"]]["markers"]
+        self.assertEqual(tautology.cases(corpus, require_markers=True)["cases"], rows)
+        del corpus["cases"][0]["markers"]["hereafter in"]
+        with self.assertRaisesRegex(ValueError, "K001-night-db: missing marker slots: hereafter in"):
+            tautology.cases(corpus, require_markers=True)
+
     def test_the_example_cases_and_their_status(self):
         found = tautology.cases(concepts())
         rows = found["cases"]

@@ -33,6 +33,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import ontautology as ot  # noqa: E402
 from ontautology import OPS, _assignments, atoms, classify, holds  # noqa: E402
+from ontautology_shared.markers import MARKERS, marker_slots
 from vendor.pythdragoras import classification_metrics  # noqa: E402
 
 __all__ = ["standing", "gaps", "entailed", "holds", "atoms", "judge", "rules", "holdout", "guess", "guess_report", "wobble", "cases", "equivalent", "classify", "evaluate_nodes", "main"]
@@ -423,7 +424,7 @@ def wobble(corpus, words=()):
                         "false_merges": shaken["notation"]["false_merges"] + shaken["typo"]["false_merges"]}}
 
 
-def cases(corpus, *, sure=1):
+def cases(corpus, *, sure=1, require_markers=False):
     """📋 Observed cases (who said what, in which role) read against the concepts, apart from what people judged.
 
     A case is an observation: what was said (``statement``), where (``context``), on what (``evidence``), by whom
@@ -479,6 +480,20 @@ def cases(corpus, *, sure=1):
                 roles["requestedDecision"] = ot._nonempty_str(event["requestedDecision"], "requestedDecision")
             found[cid]["event"] = {"id": "event:" + cid, "type": event["type"],
                                    **{k: ot._nonempty_str(v, k) for k, v in roles.items() if v is not None and v != ""}}
+    # Every record includes even the custom markers used only by another record in this corpus.
+    profile = dict.fromkeys(MARKERS)
+    for case in raw_cases:
+        entries = case.get("markers", {})
+        if not isinstance(entries, dict):
+            raise ValueError("markers must be an object")
+        profile.update(dict.fromkeys(entries))
+    for case in raw_cases:
+        entries = case.get("markers", {})
+        if require_markers:
+            missing = [marker for marker in profile if marker not in entries]
+            if missing:
+                raise ValueError(f"{case['id']}: missing marker slots: {', '.join(missing)}")
+        found[case["id"]]["markers"] = marker_slots(entries, profile)
     for judgment in raw_judgments:
         cid = judgment.get("case") if isinstance(judgment, dict) else None
         if cid not in found or judgment.get("concept") not in held or not isinstance(judgment.get("holds"), bool):
@@ -682,6 +697,7 @@ def _wobble(args):
 
 
 def _cases_arguments(parser):
+    parser.add_argument("--require-markers", action="store_true", help="require every marker key in the input, including null slots")
     _corpus(parser)
     output = parser.add_mutually_exclusive_group()
     output.add_argument("--ttl", action="store_true", help="emit attributed case judgments as Turtle")
@@ -691,7 +707,7 @@ def _cases_arguments(parser):
 
 def _cases(args):
     corpus = ot._read_json(args.graph)
-    found = cases(corpus, sure=args.sure)
+    found = cases(corpus, sure=args.sure, require_markers=args.require_markers)
     disputed = bool(found["summary"]["disputed"])
     if args.ttl:
         from ontautology_shared.truth import judgment_graph
@@ -719,13 +735,20 @@ def _cases(args):
             nodes[target] = judgment["concept"]
             edges.append(dict(source=cid, kind="judgment", target=jid))
             edges.append(dict(source=jid, kind="holds " + str(judgment["holds"]).lower(), target=target))
-    return {"nodes": [{"id": key, "name": name} for key, name in nodes.items()],
-            "edges": edges}, disputed
+    result_nodes = []
+    for key, name in nodes.items():
+        node = {"id": key, "name": name}
+        if key.startswith("case:"):
+            node["markers"] = found["cases"][key[5:]]["markers"]
+        result_nodes.append(node)
+    return {"nodes": result_nodes, "edges": edges}, disputed
 
 
 def main(argv=None):
     """Exit codes as the core: 0 answered, 1 input error, 2 answered and something needs a look."""
     return ot.main(argv, commands=(
+        ("marker-template", "emit all standard marker slots for annotating a case", lambda parser: None,
+         lambda args: (marker_slots({}), False)),
         ("rules", "🧩 第二弾 · ⚖️ candidate rules per concept, judged; the first reversible one is the definition", _rules_arguments, _rules),
         ("judge", "🧩 第二弾 · 🧮 one rule as the judge of a concept: FN / FP / accuracy / propositions", _judge_arguments, _judge),
         ("evaluate", "check a rule against saved node properties", _evaluate_arguments, _evaluate),

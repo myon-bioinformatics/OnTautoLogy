@@ -137,6 +137,26 @@ class Exchange(unittest.TestCase):
         self.assertEqual(graph.value(request, OTL.requestedDecision), Literal("再起動してよいか"))
         self.assertFalse(list(graph.objects(OTL["case:K003-shift-change"], OTL.event)))
 
+    def test_markers_keep_repeated_roles_missing_values_and_empty_slots(self):
+        from ontautology_shared.markers import MARKERS, marker_slots
+        from ontautology_shared.truth import add_markers
+        from urllib.parse import quote
+        slots = marker_slots({"to": [{"role": "recipient", "value": v} for v in ("A", "B")],
+                              "@none": [{"role": "content", "value": "report"}], "for": [],
+                              "hereafter in": [{"role": "scope", "value": None}]})
+        graph = Graph()
+        event = OTL["event:one"]
+        add_markers(graph, event, slots)
+        graph = Graph().parse(data=graph.serialize(format="turtle"), format="turtle")
+        predicate = lambda key: OTL["marker:" + quote(key, safe="")]
+        self.assertEqual(set(graph.predicates(event)), {predicate(m) for m in MARKERS})
+        self.assertEqual({graph.value(n, RDF.value) for n in graph.objects(event, predicate("to"))},
+                         {Literal("A"), Literal("B")})
+        self.assertEqual(graph.value(event, predicate("by")), OTL.Unspecified)
+        self.assertEqual(graph.value(event, predicate("for")), RDF.nil)
+        self.assertEqual(graph.value(graph.value(event, predicate("hereafter in")), RDF.value), OTL.Unknown)
+        self.assertEqual(graph.value(graph.value(event, predicate("@none")), RDF.value), Literal("report"))
+
     def test_reversi_preview_shares_move_and_preserves_opposing_judgments(self):
         from examples import reversi
         graph = reversi.graph(reversi.opening_cases(), preview=True)

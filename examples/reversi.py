@@ -7,6 +7,8 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from ontautology_shared.markers import marker_slots
+
 OPENING = "........" * 3 + "...WB..." + "...BW..." + "........" * 3
 SQUARES = [f"{file}{rank}" for rank in range(1, 9) for file in "abcdefgh"]
 DIRECTIONS = [(x, y) for x in (-1, 0, 1) for y in (-1, 0, 1) if x or y]
@@ -48,6 +50,10 @@ def opening_cases():
                 captured = flips(board, side, square)
                 row = {"square": name, "flipped": [SQUARES[i] for i in captured],
                        "verdict": "legal" if captured else "occupied" if board[square] != "." else "no-capture"}
+                row["markers"] = marker_slots({
+                    "at": [{"role": "candidateSquare", "value": name}],
+                    "@none": [{"role": "flippedSquare", "value": cell} for cell in row["flipped"]],
+                })
                 rows.append(row)
                 if captured:
                     after = list(board)
@@ -70,7 +76,7 @@ def opening_cases():
 
 def graph(positions, *, preview=False):
     from rdflib import Graph, Literal, RDF, RDFS
-    from ontautology_shared.truth import OT
+    from ontautology_shared.truth import OT, add_markers
 
     result = Graph()
     result.bind("ot", OT)
@@ -90,6 +96,7 @@ def graph(positions, *, preview=False):
                 continue
             move = OT[key + "/" + row["square"]]
             result.add((move, RDF.type, OT.CandidateMove))
+            add_markers(result, move, row["markers"])
             result.add((move, RDFS.label, Literal(f"{key} / {row['square']}")))
             result.add((move, OT.position, board))
             result.add((move, OT.square, Literal(row["square"])))

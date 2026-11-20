@@ -757,6 +757,27 @@ SELECT ?recipient ?judge ?role ?asked WHERE {
 }
 ```
 
+#### 前置詞・複合表現を全欄出力する
+
+`python -S tools/tautology.py marker-template` で全120欄のJSONを取得できます。
+事例の `markers` にこのひな型を置き、読めた役割と値を記入します。
+`cases` とリバーシの着手候補JSON・TTLには毎回全欄が含まれます。
+新規データで記入漏れを検査するには `cases 入力.json --require-markers` を使います。明示した `null` は受理し、省略したキーは事例IDとともに報告します。
+独自の表現もそのままキーにでき、同じ事例コーパス内の全件に欄が増えます。
+`hereafter in` のような連続した語も入力者が選んだ表現として保持します。
+
+| JSON の表現 | 読み方 |
+|---|---|
+| `"@none": [{"role":"content","value":"障害の状況"}]` | 前置詞を伴わない対象 |
+| `"to": [{"role":"recipient","value":"A"},{"role":"recipient","value":"B"}]` | 同じ役割の二つの対象 |
+| `"by": [{"role":"deadline","value":null}]` | 期限という役割は確認済みで、期限の値は不明 |
+| `"via": null` | 経路について未記載 |
+| `"via": []` | 確認した結果、対象は0件 |
+
+英語の欄は意味を整理するための注釈です。原文の語句だけを自動抽出したものではありません。
+TTLでは `ot:marker:to` のような述語から引数の `ot:role` と `rdf:value` をたどります。
+未記載は `ot:Unspecified`、確認済みの0件は `rdf:nil`、値が不明な引数は `ot:Unknown` で表します。
+
 #### リバーシで一手と評価を照合する
 
 初期配置から黒白が各1回打つまでに到達する17盤面で、各64マスを候補として検査します。
