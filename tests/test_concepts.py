@@ -69,12 +69,33 @@ class ConceptDefinitionTests(unittest.TestCase):
         self.assertEqual(ot.check(graph["edges"], graph["nodes"]), [])
         for word, gender in (("de:Mädchen", "neuter"), ("es:persona", "feminine"),
                              ("fr:personne", "feminine"), ("hi:व्यक्ति", "masculine"),
-                             ("en:person", "unmarked")):
+                             ("pt:pessoa", "feminine")):
             language = word.split(":")[0]
             rows = ot.reach(graph["edges"], ["lex:" + word])["rows"]
             self.assertEqual({(row["edge"]["kind"], row["node"]) for row in rows},
                              {("canReferTo", human), ("grammaticalGender", f"grammar:{language}:{gender}")})
         self.assertEqual(ot.reach(graph["edges"], [human])["rows"], [])
+
+    def test_japanese_english_labels_roundtrip_in_both_directions(self):
+        from tools.tautology import wobble
+        corpus = json.loads(EXAMPLE_PATH.with_name("concepts-20261120.json").read_text(encoding="utf-8"))
+        translations = {
+            "ポリゴン": "Porygon", "ポリゴン2": "Porygon2", "ポリゴンZ": "Porygon-Z",
+            "人間": "human", "人型模型": "human figure model", "ヒューマノイド": "humanoid robot",
+            "AI": "artificial intelligence", "機械学習": "machine learning", "コンピュータ": "computer",
+            "定型応答bot": "scripted bot", "AI搭載bot": "AI-powered bot",
+        }
+        self.assertEqual(set(translations), set(corpus["concepts"]))
+        words = wobble(corpus, [*translations, *translations.values()])["words"]
+        for ja, en in translations.items():
+            with self.subTest(ja=ja, en=en):
+                expected = {(ja, corpus["concepts"][ja]["id"])}
+                for label in (ja, en):
+                    self.assertEqual({(hit["concept"], hit["id"]) for hit in words[label]["exact"]}, expected)
+                concept = words[en]["exact"][0]["concept"]
+                self.assertEqual(concept, ja)
+                concept = words[ja]["exact"][0]["concept"]
+                self.assertEqual([s[3:] for s in corpus["names"][concept] if s.startswith("英名:")], [en])
 
     def test_example_pairs_derive_genus_differentia_and_unique_roundtrip(self):
         corpus = _load_example()

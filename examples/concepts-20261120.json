@@ -141,7 +141,8 @@
     ],
     "人間": [
       "別名:ヒト",
-      "学名:Homo sapiens"
+      "学名:Homo sapiens",
+      "英名:human"
     ],
     "AI": [
       "別名:人工知能",
@@ -150,6 +151,27 @@
     "ポリゴンZ": [
       "別名:ポリゴンＺ",
       "英名:Porygon-Z"
+    ],
+    "ポリゴン": [
+      "英名:Porygon"
+    ],
+    "人型模型": [
+      "英名:human figure model"
+    ],
+    "ヒューマノイド": [
+      "英名:humanoid robot"
+    ],
+    "機械学習": [
+      "英名:machine learning"
+    ],
+    "コンピュータ": [
+      "英名:computer"
+    ],
+    "定型応答bot": [
+      "英名:scripted bot"
+    ],
+    "AI搭載bot": [
+      "英名:AI-powered bot"
     ]
   },
   "similar": [
