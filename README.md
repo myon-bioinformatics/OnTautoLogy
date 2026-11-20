@@ -262,6 +262,16 @@ flowchart TD
 
 ## 🧩 第二弾: 類似から定義を作る（本体・`tools/tautology.py`）
 
+追加教材 [ポリゴン2・人間・AI](examples/concepts-20261120.json) では、架空の存在・生物種・機械システムを比較します。3概念の比較を単独で再現できます。
+
+```sh
+python -I -S ontautology.py define examples/concepts-20261120.json
+python -I -S ontautology.py roundtrip examples/concepts-20261120.json 由来:人工 現実の対象
+```
+
+「由来:人工」だけではポリゴン2とAIが候補に残り、「現実の対象」を足すとこの教材ではAIに絞れます。
+
+
 ### 📥 集めるもの
 
 ```json

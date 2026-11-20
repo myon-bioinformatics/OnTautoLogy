@@ -32,6 +32,14 @@ def _node(name, spec):
 
 
 class ConceptDefinitionTests(unittest.TestCase):
+    def test_porygon_human_ai_comparison(self):
+        corpus = json.loads(EXAMPLE_PATH.with_name("concepts-20261120.json").read_text(encoding="utf-8"))
+        defined = ot.define_concepts(corpus)["concepts"]
+        for name in ("ポリゴン2", "人間", "AI"):
+            self.assertEqual(defined[name]["definition"]["roundtrip"], {"verdict": "unique", "matched": [name]})
+        self.assertEqual(ot.roundtrip_elements(corpus, ["由来:人工"])["matched"], ["AI", "ポリゴン2"])
+        self.assertEqual(ot.roundtrip_elements(corpus, ["由来:人工", "現実の対象"])["matched"], ["AI"])
+
     def test_example_pairs_derive_genus_differentia_and_unique_roundtrip(self):
         corpus = _load_example()
         defined = ot.define_concepts(corpus)

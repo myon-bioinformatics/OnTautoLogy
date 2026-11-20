@@ -1,0 +1,25 @@
+{
+  "schema": "ontautology-concepts/1",
+  "note": "第二弾の比較教材。人間は現生人類、AIはAIシステムを指す。「入力に応じた反応」は比較のために抽象化した観点。作品内の設定と現実の対象を区別する。",
+  "seeds": ["ポリゴン2", "人間", "AI"],
+  "concepts": {
+    "ポリゴン2": {"id": "C012-porygon2", "elements": ["入力に応じた反応", "由来:人工", "作品内の存在", "ポケモン", "タイプ:ノーマル", "特性候補:トレース"]},
+    "人間": {"id": "C013-human", "elements": ["入力に応じた反応", "現実の対象", "生物種", "分類:霊長類", "由来:生物進化"]},
+    "AI": {"id": "C014-ai-system", "elements": ["入力に応じた反応", "現実の対象", "由来:人工", "機械ベースのシステム", "入力から出力を推論"]}
+  },
+  "names": {
+    "ポリゴン2": ["別名:ポリゴン２", "英名:Porygon2"],
+    "人間": ["別名:ヒト", "学名:Homo sapiens"],
+    "AI": ["別名:人工知能", "英名:artificial intelligence"]
+  },
+  "similar": [
+    {"left": "ポリゴン2", "right": "AI", "basis": "derived", "note": "人工という由来を比較する。ポリゴン2の能力は作品内の設定。"},
+    {"left": "人間", "right": "AI", "basis": "derived", "note": "入力に応じた反応を比較する。生物種と機械システムは区別する。"},
+    {"left": "ポリゴン2", "right": "人間", "basis": "derived", "note": "周囲に応じた振る舞いという観点で比較する。"}
+  ],
+  "sources": {
+    "ポリゴン2": "https://zukan.pokemon.co.jp/detail/0233",
+    "人間": "https://humanorigins.si.edu/evidence/human-fossils/species/homo-sapiens",
+    "AI": "https://www.oecd.org/content/dam/oecd/en/publications/reports/2024/03/explanatory-memorandum-on-the-updated-oecd-definition-of-an-ai-system_3c815e51/623da898-en.pdf"
+  }
+}
