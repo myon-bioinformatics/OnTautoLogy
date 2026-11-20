@@ -116,6 +116,7 @@ docs/                   🖼️ アイコン（icon.png）・ファビコン（f
 # 🧩 第二弾
 python -S tools/tautology.py rules examples/concepts-20261115.json             # ⚖️ seeds の〇〇ごとに規則を判定し、可逆な定義を出す
 python -S tools/tautology.py judge examples/concepts-20261115.json ギター '["AND", "弦楽器", "撥弦", "フレット"]'   # 🧮 1本の規則の FN・FP
+python -S tools/tautology.py classify '["OR", ["NOT", "レビュー済み"], "統合可"]'  # 含意。レビュー済みだけが真なら偽
 python -S tools/tautology.py equivalent '["NOR", "a", "b"]' '["AND", ["NOT", "a"], ["NOT", "b"]]'          # ✅ 書き換えが全通りで同じか
 python -S tools/tautology.py holdout examples/concepts-20261115.json           # 🙈 初見・🎭 マスクで定義を測る
 python -S tools/tautology.py guess examples/concepts-20261115.json --lies 1 --sure 1  # 🎯 当てっこ（食い違いを1回まで許し、確信度1まで確かめる）
@@ -580,6 +581,7 @@ PR ごとに最新の観測を選び、`contained_in_main=true` の依存先を�
 | 🎯 `guess CORPUS [CONCEPT...] [--lies N] [--sure S]` | 類似コーパス | 当てっこ: 何問で当たるか（正直・1つ忘れる・知らない相手）。1人に絞れたら確信度 S（既定 1）まで確かめる。正直に答えて当たらない〇〇があれば終了コード 2 |
 | 🔤 `wobble CORPUS [WORD...]` | 類似コーパス | 名前を揺らす: 1文字違いの組・割れる名前・もの側に紛れた名前、語を引く（厳密・表記ゆれ・1文字違い、当たりに ID）、わざと揺らして戻るか（表記ゆれ・打ち間違いごとの戻った率と、別の概念に当たった数）。もの側に名前が紛れていれば終了コード 2 |
 | 📋 `cases CORPUS [--sure S]` | 類似コーパス | 観測した事例を概念に当てた候補（hypothesis）・読めない要素（`to_model`）・6W1H の空き・人の判断との照合（確定・食い違い・人が決めた・未判断）。食い違いがあれば終了コード 2 |
+| `classify RULE` | 命題式1本（最大16変数） | 恒真・矛盾・条件次第を判定し、真・偽になる割当例を返す |
 | ✅ `equivalent RULE RULE` | 規則2本 | 全通りで同じか（`proof`）、違う場合の反例 |
 | 🧩 `define CORPUS [CONCEPT...]` | 類似コーパス | 類・種差・往復判定 |
 | 🔁 `roundtrip CORPUS ELEM...` | 類似コーパス | 要素をすべて満たす概念（一意・衝突・空） |
@@ -597,6 +599,8 @@ PR ごとに最新の観測を選び、`contained_in_main=true` の依存先を�
 `tools/tautology.py` と `gh_audit/gh_audit.py` は本体の口 `main(commands=..., load=...)` に自分のコマンドを足すので、🧠 のコマンドもそのまま使え、CLI・標準入力の決まり・終了コードは1つです。「どれでも」は類似コーパス・素の `{"edges": [...], "nodes": [...]}`・（🔭 第一弾の CLI なら）監査グラフです。全コマンドに `-o FILE` があり、ファイル名を `-` にすると標準入力の UTF-8 JSON を読みます（1コマンドにつき1回）。
 
 終了コード: `0` 答えた / `1` 入力エラー / `2` 答えたが要確認（所見・循環・ブロック・未知のノード・鍵にならない・差分あり・定義の衝突や未観測・可逆でない・同値でない）。`2` は道具の失敗ではなく、入力についての答えです。
+
+`classify` の割当例は真になる変数名の一覧です。残りの変数は偽です。`[]` は全変数が偽の割当、`null` はその真理値を取る割当が存在しないことを表します。分類できれば終了コードは0です。入力エラー・変数上限超過は1です。
 
 ### 🐍 Python・Node から呼ぶ
 

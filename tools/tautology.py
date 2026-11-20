@@ -33,22 +33,30 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import ontautology as ot  # noqa: E402
 
-__all__ = ["standing", "gaps", "entailed", "holds", "atoms", "judge", "rules", "holdout", "guess", "guess_report", "wobble", "cases", "equivalent", "main"]
+__all__ = ["standing", "gaps", "entailed", "holds", "atoms", "judge", "rules", "holdout", "guess", "guess_report", "wobble", "cases", "equivalent", "classify", "main"]
 OPS = {"AND": all, "OR": any, "NAND": lambda v: not all(v), "NOR": lambda v: not any(v), "NOT": lambda v: not v[0]}
 
 
+def _operator(rule):
+    if (not isinstance(rule, (list, tuple)) or not rule or not isinstance(rule[0], str)
+            or rule[0] not in OPS or (rule[0] == "NOT" and len(rule) != 2)):
+        raise ValueError(f"a rule is a feature name or [AND|OR|NOT|NAND|NOR, rule, ...]: {rule!r}")
+    return rule[0]
+
+
 def holds(rule, elements):
-    """Does ``rule`` hold for a set of elements. An empty AND is true, an empty OR is false; NOT takes one rule."""
+    """Does rule hold for a set of elements? Empty AND is true and empty OR is false."""
     if isinstance(rule, str):
         return rule in elements
-    if not isinstance(rule, (list, tuple)) or not rule or rule[0] not in OPS or (rule[0] == "NOT" and len(rule) != 2):
-        raise ValueError(f"a rule is a feature name or [AND|OR|NOT|NAND|NOR, rule, ...]: {rule!r}")
-    return OPS[rule[0]]([holds(part, elements) for part in rule[1:]])
+    return OPS[_operator(rule)]([holds(part, elements) for part in rule[1:]])
 
 
 def atoms(rule):
-    """The feature names a rule mentions, sorted."""
-    return sorted({rule} if isinstance(rule, str) else {name for part in rule[1:] for name in atoms(part)})
+    """The feature names a valid rule mentions, sorted."""
+    if isinstance(rule, str):
+        return [rule]
+    _operator(rule)
+    return sorted({name for part in rule[1:] for name in atoms(part)})
 
 
 def judge(corpus, concept, rule):
@@ -499,6 +507,32 @@ def cases(corpus, *, sure=1):
         "roles": {"cases": roles(found.values()), "judgments": roles(j for row in found.values() for j in row["judgments"])}}}
 
 
+def _assignments(names, limit):
+    if len(names) > limit:
+        raise ValueError(f"{len(names)} features exceed the truth-table limit {limit}")
+    for bits in itertools.product((False, True), repeat=len(names)):
+        yield {name for name, bit in zip(names, bits) if bit}
+
+
+def classify(rule, *, limit=16):
+    """Classify a propositional rule and return the first witness of each attainable truth value."""
+    names = atoms(rule)
+    witnesses = {True: None, False: None}
+    for present in _assignments(names, limit):
+        value = holds(rule, present)
+        if witnesses[value] is None:
+            witnesses[value] = sorted(present)
+        if witnesses[True] is not None and witnesses[False] is not None:
+            break
+    if witnesses[False] is None:
+        verdict = "tautology"
+    elif witnesses[True] is None:
+        verdict = "contradiction"
+    else:
+        verdict = "contingent"
+    return {"verdict": verdict, "atoms": names, "true_witness": witnesses[True], "false_witness": witnesses[False]}
+
+
 def equivalent(left, right, *, limit=16):
     """Do two rules agree on every truth assignment of their features (at most ``limit`` of them).
 
@@ -506,10 +540,7 @@ def equivalent(left, right, *, limit=16):
     (always true) means the rule is a tautology.
     """
     names = sorted(set(atoms(left)) | set(atoms(right)))
-    if len(names) > limit:
-        raise ValueError(f"{len(names)} features exceed the truth-table limit {limit}")
-    for bits in itertools.product((False, True), repeat=len(names)):
-        present = {name for name, bit in zip(names, bits) if bit}
+    for present in _assignments(names, limit):
         if holds(left, present) != holds(right, present):
             return {"equivalent": False, "counterexample": sorted(present), "atoms": names, "basis": "hypothesis"}
     return {"equivalent": True, "counterexample": None, "atoms": names, "basis": "proof"}
@@ -538,6 +569,14 @@ def _judge_arguments(parser):
     _corpus(parser)
     parser.add_argument("concept")
     parser.add_argument("rule", type=_rule, help='JSON such as \'["AND", "弦楽器", ["NOR", "4弦標準"]]\'')
+
+
+def _classify_arguments(parser):
+    parser.add_argument("rule", type=_rule)
+
+
+def _classify(args):
+    return classify(args.rule), False
 
 
 def _equivalent_arguments(parser):
@@ -632,6 +671,7 @@ def main(argv=None):
     return ot.main(argv, commands=(
         ("rules", "🧩 第二弾 · ⚖️ candidate rules per concept, judged; the first reversible one is the definition", _rules_arguments, _rules),
         ("judge", "🧩 第二弾 · 🧮 one rule as the judge of a concept: FN / FP / accuracy / propositions", _judge_arguments, _judge),
+        ("classify", "classify one propositional rule by its truth table", _classify_arguments, _classify),
         ("equivalent", "🧩 第二弾 · ✅ two rules on every truth assignment (proof) or a counterexample", _equivalent_arguments, _equivalent),
         ("holdout", "🧩 第二弾 · 🙈 unseen concepts and 🎭 masked elements: how definitions hold on what they were not built from", _rules_arguments, _holdout),
         ("guess", "🧩 第二弾 · 🎯 guessing game: questions to reach each concept, honest / forgetting / unseen", _guess_arguments, _guess),

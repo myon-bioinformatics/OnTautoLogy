@@ -455,6 +455,34 @@ class JudgeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             tautology.equivalent(["AND", *(f"x{i}" for i in range(17))], ["AND"])
 
+    def test_classify_rule_and_replay_witnesses(self):
+        from test_ontautology import run_cli
+
+        for rule, verdict, yes, no in [
+            (["OR", "p", ["NOT", "p"]], "tautology", [], None),
+            (["AND", "p", ["NOT", "p"]], "contradiction", None, []),
+            (["AND", "p", ["NOT", "q"]], "contingent", ["p"], []),
+            (["AND"], "tautology", [], None),
+            (["OR"], "contradiction", None, []),
+        ]:
+            with self.subTest(rule=rule):
+                result = tautology.classify(rule)
+                self.assertEqual((result["verdict"], result["true_witness"], result["false_witness"]),
+                                 (verdict, yes, no))
+                for witness, value in [(yes, True), (no, False)]:
+                    if witness is not None:
+                        self.assertEqual(tautology.holds(rule, witness), value)
+        with self.assertRaises(ValueError):
+            tautology.classify(["OR", "p", "q"], limit=1)
+        script = ROOT / "tools/tautology.py"
+        run = run_cli(script, "classify", '["OR"]')
+        self.assertEqual(run.returncode, 0)
+        self.assertEqual(json.loads(run.stdout)["verdict"], "contradiction")
+        for invalid in ('[["oops"]]', '7', '["NOT"]'):
+            result = run_cli(script, "classify", invalid)
+            self.assertEqual(result.returncode, 1)
+            self.assertNotIn(b"Traceback", result.stderr)
+
     def test_random_rules_rewritten_by_de_morgan_stay_equivalent(self):
         for seed in range(40):
             rng = random.Random(seed)
