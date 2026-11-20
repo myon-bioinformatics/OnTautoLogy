@@ -735,6 +735,21 @@ uv run --extra exchange python tools/tautology.py cases examples/concepts-202611
 規則の適合率・再現率・正解率には、Aoiでも使用するPythDRagorasの
 `classification_metrics` を使います。取得元とファイルのハッシュは `vendor.lock.json` に記録しています。
 
+#### 分類規則からの論理的帰結を確かめる
+
+「猫なら哺乳類」と「これは猫」を前提にして「これは哺乳類」を検査します。
+前提を空配列にすると、結論そのものが恒真かを検査できます。
+
+```sh
+echo '{"premises":[["OR",["NOT","猫"],"哺乳類"],"猫"],"conclusion":"哺乳類"}' | ontautology entails -
+```
+
+`entailment(premises, conclusion)` をPythonからも呼べます。入力は命題論理の式で、
+既定の上限は異なる原子命題16個です。`entailed` は充足できる前提から結論が従う場合です。
+`counterexample` は前提がすべて真で結論が偽になる割当てで、列挙した原子だけが真です。
+前提を同時に満たせない場合は `inconsistent-premises` になります。後の2結果は終了コード2です。
+`exchange` extra を入れると `--ttl` で前提・結論・検査結果・反例を保存できます。
+
 #### 保存したグラフを見る
 
 基準事例の [K001-night-db.ttl](examples/K001-night-db.ttl) を Git で保持する。

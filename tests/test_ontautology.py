@@ -27,6 +27,28 @@ class JsonTransport(unittest.TestCase):
     def run_cli(self, *args, **options):
         return run_cli(self.script, *args, **options)
 
+    def test_entailment_scopes_and_replayable_counterexamples(self):
+        rule = ["OR", ["NOT", "cat"], "mammal"]
+        for premises, conclusion, verdict, witness in (
+            ([rule, "cat"], "mammal", "entailed", None),
+            ([rule, "mammal"], "cat", "counterexample", ["mammal"]),
+            (["cat", ["NOT", "cat"]], "mammal", "inconsistent-premises", None),
+            ([], ["OR", "p", ["NOT", "p"]], "entailed", None),
+            ([], "p", "counterexample", []),
+        ):
+            with self.subTest(premises=premises, conclusion=conclusion):
+                done = self.run_cli("entails", "-", data=json.dumps({"premises": premises, "conclusion": conclusion}))
+                self.assertEqual(done.returncode, 0 if verdict == "entailed" else 2, done.stderr)
+                result = json.loads(done.stdout)
+                self.assertEqual((result["verdict"], result["counterexample"]), (verdict, witness))
+                if witness is not None:
+                    self.assertTrue(all(ot.holds(rule, witness) for rule in premises))
+                    self.assertFalse(ot.holds(conclusion, witness))
+        with self.assertRaisesRegex(ValueError, "limit"):
+            ot.entailment(["p"], "q", limit=1)
+        with self.assertRaisesRegex(ValueError, "list"):
+            ot.entailment("cat", "mammal")
+
     def test_stdin_order_is_stable_across_seeds_and_input_order(self):
         edges = [e('before', 'a', 'b'), e('before', 'b', 'a'), e('before', 'b', 'c')]
         answers = []

@@ -28,6 +28,26 @@ def formula_graph(rule, result):
     return graph
 
 
+def entailment_graph(premises, conclusion, result):
+    """Keep the outcome on the inference check, scoped to its premises."""
+    graph = Graph()
+    graph.bind("ot", OT)
+    check = OT["inference:" + ot.digest([premises, conclusion])]
+    graph.add((check, RDF.type, OT.InferenceCheck))
+    graph.add((check, OT.verdict, OT[result["verdict"]]))
+    for predicate, rules in ((OT.premise, premises), (OT.conclusion, [conclusion])):
+        for rule in rules:
+            term = OT["formula:" + ot.digest(rule)]
+            graph.add((check, predicate, term))
+            graph.add((term, RDF.type, OT.Proposition))
+            graph.add((term, OT.rule, Literal(json.dumps(rule, ensure_ascii=False), datatype=RDF.JSON)))
+    if result["counterexample"] is not None:
+        present = set(result["counterexample"])
+        assignment = {name: name in present for name in result["atoms"]}
+        graph.add((check, OT.counterexample, Literal(json.dumps(assignment, ensure_ascii=False), datatype=RDF.JSON)))
+    return graph
+
+
 def judgment_graph(corpus, cases):
     """Project the validated rows from cases(). Each judgment speaks for its own record."""
     graph = Graph()

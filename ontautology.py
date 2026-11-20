@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import itertools
 import json
 import sys
 from datetime import datetime
@@ -37,7 +38,7 @@ from pathlib import Path
 
 BASIS = ("hypothesis", "derived", "observed", "proof")
 __all__ = ["BASIS", "check", "reach", "why", "cycles", "order", "ladder", "key_report",
-           "digest", "timestamp", "define_concepts", "roundtrip_elements", "concept_edges", "exchange", "main"]
+           "entailment", "digest", "timestamp", "define_concepts", "roundtrip_elements", "concept_edges", "exchange", "main"]
 
 
 def digest(value):
@@ -629,6 +630,73 @@ def _load(path, load=None):
     return data, data["edges"], data.get("nodes")
 
 
+OPS = {"AND": all, "OR": any, "NAND": lambda v: not all(v), "NOR": lambda v: not any(v), "NOT": lambda v: not v[0]}
+
+
+def _operator(rule):
+    if (not isinstance(rule, (list, tuple)) or not rule or not isinstance(rule[0], str)
+            or rule[0] not in OPS or (rule[0] == "NOT" and len(rule) != 2)):
+        raise ValueError(f"a rule is a feature name or [AND|OR|NOT|NAND|NOR, rule, ...]: {rule!r}")
+    return rule[0]
+
+
+def holds(rule, elements):
+    """Does rule hold for a set of elements? Empty AND is true and empty OR is false."""
+    if isinstance(rule, str):
+        return rule in elements
+    return OPS[_operator(rule)]([holds(part, elements) for part in rule[1:]])
+
+
+def atoms(rule):
+    """The feature names a valid rule mentions, sorted."""
+    if isinstance(rule, str):
+        return [rule]
+    _operator(rule)
+    return sorted({name for part in rule[1:] for name in atoms(part)})
+
+
+def _assignments(names, limit):
+    if len(names) > limit:
+        raise ValueError(f"{len(names)} features exceed the truth-table limit {limit}")
+    for bits in itertools.product((False, True), repeat=len(names)):
+        yield {name for name, bit in zip(names, bits) if bit}
+
+
+def classify(rule, *, limit=16):
+    """Classify a propositional rule and return the first witness of each attainable truth value."""
+    names = atoms(rule)
+    witnesses = {True: None, False: None}
+    for present in _assignments(names, limit):
+        value = holds(rule, present)
+        if witnesses[value] is None:
+            witnesses[value] = sorted(present)
+        if witnesses[True] is not None and witnesses[False] is not None:
+            break
+    if witnesses[False] is None:
+        verdict = "tautology"
+    elif witnesses[True] is None:
+        verdict = "contradiction"
+    else:
+        verdict = "contingent"
+    return {"verdict": verdict, "atoms": names, "true_witness": witnesses[True], "false_witness": witnesses[False]}
+
+
+def entailment(premises, conclusion, *, limit=16):
+    """Check a propositional consequence, distinguishing inconsistent premises from a usable proof."""
+    if not isinstance(premises, (list, tuple)):
+        raise ValueError("premises must be a list of rules")
+    assumption = ["AND", *premises]
+    names = sorted(set(atoms(assumption)) | set(atoms(conclusion)))
+    consistent = False
+    for present in _assignments(names, limit):
+        if holds(assumption, present):
+            consistent = True
+            if not holds(conclusion, present):
+                return {"verdict": "counterexample", "atoms": names, "counterexample": sorted(present)}
+    verdict = "entailed" if consistent else "inconsistent-premises"
+    return {"verdict": verdict, "atoms": names, "counterexample": None}
+
+
 def exchange(backend, scope, graph=None):
     """Import an RDFLib graph, or export a scope as an RDFLib graph (exchange extra)."""
     from ontautology_shared._onto.ontology import transfer
@@ -665,6 +733,9 @@ def main(argv=None, *, commands=(), load=None):
         add.add_argument("graph", type=Path)
         add.add_argument("terms", nargs="*" if name in ("order", "cycles", "define") else "+", help=terms)
     sub.add_parser("exchange", help="import/export named RDF statements and query RDF files (optional exchange extra)")
+    consequence = sub.add_parser("entails", help="check whether a conclusion follows from propositional premises")
+    consequence.add_argument("input", type=Path, help="JSON with premises and conclusion, or - for stdin")
+    consequence.add_argument("--ttl", action="store_true", help="write a scoped RDF result (exchange extra)")
     extra = {}
     for name, text, arguments, run in commands:
         arguments(sub.add_parser(name, help=text))
@@ -679,6 +750,13 @@ def main(argv=None, *, commands=(), load=None):
         look = False
         if args.command in extra:
             answer, look = extra[args.command](args)
+        elif args.command == "entails":
+            data = _read_json(args.input)
+            answer = entailment(data["premises"], data["conclusion"])
+            look = answer["verdict"] != "entailed"
+            if args.ttl:
+                from ontautology_shared.truth import entailment_graph
+                answer = entailment_graph(data["premises"], data["conclusion"], answer).serialize(format="turtle")
         elif args.command == "define":
             answer = define_concepts(_read_json(args.graph), args.terms or None)
             look = bool(answer["unknown"]) or any(c["status"] != "unique" for c in answer["concepts"].values())

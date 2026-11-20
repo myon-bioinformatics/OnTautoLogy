@@ -82,6 +82,22 @@ class Exchange(unittest.TestCase):
             self.assertEqual(graph.value(prop, OTL.classification), OTL[verdict])
             self.assertEqual(graph.value(prop, OTL.isTrue), Literal(value) if value is not None else None)
 
+    def test_entailment_turtle_keeps_the_result_scoped(self):
+        for premises, conclusion, verdict in [(["p"], "p", "entailed"), ([], "p", "counterexample"),
+                                              (["p", ["NOT", "p"]], "q", "inconsistent-premises")]:
+            done = subprocess.run([sys.executable, str(ROOT / "ontautology.py"), "entails", "-", "--ttl"],
+                                  input=json.dumps(dict(premises=premises, conclusion=conclusion)),
+                                  text=True, capture_output=True)
+            self.assertEqual(done.returncode, 0 if verdict == "entailed" else 2, done.stderr)
+            graph = Graph().parse(data=done.stdout, format="turtle")
+            check, = graph.subjects(RDF.type, OTL.InferenceCheck)
+            self.assertEqual(graph.value(check, OTL.verdict), OTL[verdict])
+            self.assertEqual(len(set(graph.objects(check, OTL.premise))), len(premises))
+            self.assertIsNotNone(graph.value(check, OTL.conclusion))
+            self.assertFalse(list(graph.triples((None, OTL.isTrue, None))))
+            if verdict == "counterexample":
+                self.assertEqual(json.loads(str(graph.value(check, OTL.counterexample))), {"p": False})
+
     def test_opposing_judgments_share_one_proposition(self):
         corpus = json.loads((ROOT / "examples/concepts-20261115.json").read_text())
         first = corpus["judgments"][0]

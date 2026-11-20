@@ -32,32 +32,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import ontautology as ot  # noqa: E402
+from ontautology import OPS, _assignments, atoms, classify, holds  # noqa: E402
 from vendor.pythdragoras import classification_metrics  # noqa: E402
 
 __all__ = ["standing", "gaps", "entailed", "holds", "atoms", "judge", "rules", "holdout", "guess", "guess_report", "wobble", "cases", "equivalent", "classify", "evaluate_nodes", "main"]
-OPS = {"AND": all, "OR": any, "NAND": lambda v: not all(v), "NOR": lambda v: not any(v), "NOT": lambda v: not v[0]}
-
-
-def _operator(rule):
-    if (not isinstance(rule, (list, tuple)) or not rule or not isinstance(rule[0], str)
-            or rule[0] not in OPS or (rule[0] == "NOT" and len(rule) != 2)):
-        raise ValueError(f"a rule is a feature name or [AND|OR|NOT|NAND|NOR, rule, ...]: {rule!r}")
-    return rule[0]
-
-
-def holds(rule, elements):
-    """Does rule hold for a set of elements? Empty AND is true and empty OR is false."""
-    if isinstance(rule, str):
-        return rule in elements
-    return OPS[_operator(rule)]([holds(part, elements) for part in rule[1:]])
-
-
-def atoms(rule):
-    """The feature names a valid rule mentions, sorted."""
-    if isinstance(rule, str):
-        return [rule]
-    _operator(rule)
-    return sorted({name for part in rule[1:] for name in atoms(part)})
 
 
 def judge(corpus, concept, rule):
@@ -517,32 +495,6 @@ def cases(corpus, *, sure=1):
         "to_model": sum(bool(row["to_model"]) for row in found.values()),
         **{status: count("status", status) for status in ("confirmed", "disputed", "judged", "pending")},
         "roles": {"cases": roles(found.values()), "judgments": roles(j for row in found.values() for j in row["judgments"])}}}
-
-
-def _assignments(names, limit):
-    if len(names) > limit:
-        raise ValueError(f"{len(names)} features exceed the truth-table limit {limit}")
-    for bits in itertools.product((False, True), repeat=len(names)):
-        yield {name for name, bit in zip(names, bits) if bit}
-
-
-def classify(rule, *, limit=16):
-    """Classify a propositional rule and return the first witness of each attainable truth value."""
-    names = atoms(rule)
-    witnesses = {True: None, False: None}
-    for present in _assignments(names, limit):
-        value = holds(rule, present)
-        if witnesses[value] is None:
-            witnesses[value] = sorted(present)
-        if witnesses[True] is not None and witnesses[False] is not None:
-            break
-    if witnesses[False] is None:
-        verdict = "tautology"
-    elif witnesses[True] is None:
-        verdict = "contradiction"
-    else:
-        verdict = "contingent"
-    return {"verdict": verdict, "atoms": names, "true_witness": witnesses[True], "false_witness": witnesses[False]}
 
 
 def equivalent(left, right, *, limit=16):
