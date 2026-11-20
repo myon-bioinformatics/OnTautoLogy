@@ -272,6 +272,8 @@ python -I -S ontautology.py roundtrip examples/concepts-20261120.json 用途:自
 図鑑名の完全一致と進化関係、人型と人数・展示物・機器の助数詞、AIの手法と実行基盤を個別に検査します。定型応答botとAI搭載botはどちらも自動応答し、上の2条件ではAI搭載botに絞れます。助数詞は教材で指定した場面の属性照合です。
 
 
+[文法性の比較教材](examples/lexical-gender.json) では独・西・仏・ヒンディー・英の5語を人間の共通概念に結びます。`python -I -S ontautology.py reach examples/lexical-gender.json lex:fr:personne` で、語から文法性と参照先を確認できます。人物の性別は推論しません。
+
 ### 📥 集めるもの
 
 ```json

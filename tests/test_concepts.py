@@ -62,6 +62,20 @@ class ConceptDefinitionTests(unittest.TestCase):
             with self.subTest(query=query):
                 self.assertEqual(ot.roundtrip_elements(corpus, query)["matched"], sorted(expected))
 
+    def test_grammatical_gender_stays_on_language_specific_words(self):
+        graph = json.loads(EXAMPLE_PATH.with_name("lexical-gender.json").read_text(encoding="utf-8"))
+        corpus = json.loads(EXAMPLE_PATH.with_name("concepts-20261120.json").read_text(encoding="utf-8"))
+        human = "concept:" + corpus["concepts"]["人間"]["id"]
+        self.assertEqual(ot.check(graph["edges"], graph["nodes"]), [])
+        for word, gender in (("de:Mädchen", "neuter"), ("es:persona", "feminine"),
+                             ("fr:personne", "feminine"), ("hi:व्यक्ति", "masculine"),
+                             ("en:person", "unmarked")):
+            language = word.split(":")[0]
+            rows = ot.reach(graph["edges"], ["lex:" + word])["rows"]
+            self.assertEqual({(row["edge"]["kind"], row["node"]) for row in rows},
+                             {("canReferTo", human), ("grammaticalGender", f"grammar:{language}:{gender}")})
+        self.assertEqual(ot.reach(graph["edges"], [human])["rows"], [])
+
     def test_example_pairs_derive_genus_differentia_and_unique_roundtrip(self):
         corpus = _load_example()
         defined = ot.define_concepts(corpus)

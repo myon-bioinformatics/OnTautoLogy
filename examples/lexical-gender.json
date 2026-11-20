@@ -1,0 +1,90 @@
+{
+  "note": "名詞の人を指す語義に限定。各語から参照できる人間の概念は第二弾と同じID。unmarked は当該英語名詞に性標示がないことを表し、中性・未観測とは区別する。",
+  "selection": "母語・第二言語を合算した総話者数が1億人以上の言語から選んだ5例。",
+  "selection_source": "https://d1.awsstatic.com/onedam/marketing-channels/website/aws/en_US/events/approved/reinvent-2025/reinvent/2024/slides/dev/DEV340_Build-LLMs-for-low-resource-languages-with-SageMaker-HyperPod-clusters.pdf",
+  "nodes": [
+    "concept:C013-human",
+    "grammar:de:neuter",
+    "grammar:en:unmarked",
+    "grammar:es:feminine",
+    "grammar:fr:feminine",
+    "grammar:hi:masculine",
+    "lex:de:Mädchen",
+    "lex:en:person",
+    "lex:es:persona",
+    "lex:fr:personne",
+    "lex:hi:व्यक्ति"
+  ],
+  "edges": [
+    {
+      "source": "lex:de:Mädchen",
+      "kind": "grammaticalGender",
+      "target": "grammar:de:neuter",
+      "lock": "https://www.duden.de/rechtschreibung/Maedchen",
+      "basis": "observed"
+    },
+    {
+      "source": "lex:de:Mädchen",
+      "kind": "canReferTo",
+      "target": "concept:C013-human",
+      "lock": "https://www.duden.de/rechtschreibung/Maedchen",
+      "basis": "derived"
+    },
+    {
+      "source": "lex:es:persona",
+      "kind": "grammaticalGender",
+      "target": "grammar:es:feminine",
+      "lock": "https://revistas.rae.es/bilrae/article/download/397/879",
+      "basis": "observed"
+    },
+    {
+      "source": "lex:es:persona",
+      "kind": "canReferTo",
+      "target": "concept:C013-human",
+      "lock": "https://revistas.rae.es/bilrae/article/download/397/879",
+      "basis": "derived"
+    },
+    {
+      "source": "lex:fr:personne",
+      "kind": "grammaticalGender",
+      "target": "grammar:fr:feminine",
+      "lock": "https://www.dictionnaire-academie.fr/article/A9P1711",
+      "basis": "observed"
+    },
+    {
+      "source": "lex:fr:personne",
+      "kind": "canReferTo",
+      "target": "concept:C013-human",
+      "lock": "https://www.dictionnaire-academie.fr/article/A9P1711",
+      "basis": "derived"
+    },
+    {
+      "source": "lex:hi:व्यक्ति",
+      "kind": "grammaticalGender",
+      "target": "grammar:hi:masculine",
+      "lock": "https://www.hindwi.org/hindi-dictionary/meaning-of-vyakti",
+      "basis": "observed"
+    },
+    {
+      "source": "lex:hi:व्यक्ति",
+      "kind": "canReferTo",
+      "target": "concept:C013-human",
+      "lock": "https://www.hindwi.org/hindi-dictionary/meaning-of-vyakti",
+      "basis": "derived"
+    },
+    {
+      "source": "lex:en:person",
+      "kind": "grammaticalGender",
+      "target": "grammar:en:unmarked",
+      "lock": "https://dictionary.cambridge.org/grammar/british-grammar/nouns-and-gender",
+      "basis": "observed"
+    },
+    {
+      "source": "lex:en:person",
+      "kind": "canReferTo",
+      "target": "concept:C013-human",
+      "lock": "https://dictionary.cambridge.org/grammar/british-grammar/nouns-and-gender",
+      "basis": "derived"
+    }
+  ]
+}
