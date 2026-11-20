@@ -274,6 +274,14 @@ python -I -S ontautology.py roundtrip examples/concepts-20261120.json 用途:自
 
 [文法性の比較教材](examples/lexical-gender.json) ではドイツ語・スペイン語・フランス語・ヒンディー語・ポルトガル語の5言語の語例を人間の共通概念に結びます。`python -I -S ontautology.py reach examples/lexical-gender.json lex:fr:personne` で、語から文法性と参照先を確認できます。人物の性別は推論しません。 日英の変換は別のテストで、11概念すべてについて日本語名と英語名の両方向から同じIDと対応語に戻ることを確認します。対象は登録した語義のラベルです。
 
+第二弾の未知語の検証例。登録された語を一つ隠し、後続の引数を順番に観測として与えます。
+
+```sh
+python -I -S examples/relation_holdout.py examples/concepts-20261120.json AI搭載bot 用途:自動応答 入力から出力を推論
+```
+
+各段階で名前の照合と独立に、用途が一致する候補と、推論機能を共有する一般システムへの応用候補を記録します。この教材用の2規則が返す関係は仮説です。概念の同一性は保留します。
+
 ### 📥 集めるもの
 
 ```json
