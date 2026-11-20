@@ -638,3 +638,56 @@ uv run --no-project --with redis python -m unittest discover -s tests -p test_to
 ## 📝 方針メモ（たたき台）
 
 リポジトリのあり方をルールとしてグラフに載せる案は、[docs/policy-rules.md](docs/policy-rules.md) にあります。実装ではなく、見直し前提の設計メモです。
+
+### Python で Neo4j・ArcadeDB と Turtle を往復する
+
+OTL の checkout で `uv tool install '.[exchange]'` を実行する。Python からは
+`from ontautology import exchange` を使い、`exchange(backend, scope, graph)` で
+RDFLib Graph を追加し、`exchange(backend, scope)` で読み戻す。各 IRI とリテラルを
+OtlTerm、述語を OtlStatement の属性に写す。scope は実験を区別する名前で、
+同じ scope への import は追加・重複排除。空白ノードは安定した IRI へ変換してから渡す。
+
+Neo4j は NEO4J_URI、NEO4J_PASSWORD（必要なら NEO4J_USER、NEO4J_DATABASE）を指定する。
+ArcadeDB は ARCADE_COMMAND_URL（例 http://localhost:2480/api/v1/command/otl）と
+ARCADE_CREDENTIALS（ユーザー名とパスワードをコロンで連結）を指定する。
+用意した ArcadeDB データベースで次の SQL を一度実行する。
+
+```sql
+CREATE VERTEX TYPE OtlTerm IF NOT EXISTS;
+CREATE EDGE TYPE OtlStatement IF NOT EXISTS;
+```
+
+```sh
+ontautology exchange import neo4j trial input.ttl
+ontautology exchange export neo4j trial out.ttl
+ontautology exchange import arcade trial out.ttl
+ontautology exchange export arcade trial restored.ttl
+ontautology exchange query restored.ttl 'SELECT ?s ?p ?o WHERE { ?s ?p ?o }'
+```
+
+olnm の委譲コマンドを使う場合は各行の先頭を `olnm ontautology` とする。
+CI の graph-exchange ジョブは実際の両 DB を起動し、既存の夜間対応事例から選んだ
+判断・出典に反例を加え、両方向の RDF グラフ同型・問い合わせ結果・再投入を検査する。
+
+#### 保存したグラフを見る
+
+基準事例の [K001-night-db.ttl](examples/K001-night-db.ttl) を Git で保持する。
+元の K001 から作った検証用の投影で、反例と確信度 0 を含む。
+CI は両方向の往復後に実 DB から復元した RDF を経路別の Turtle ファイルとして
+Actions の `graph-exports` Artifact に保存する。保持期間はリポジトリ設定に従う。
+単発の実験を長期保存する場合は Artifact から Turtle をダウンロードできる。
+
+ジョブの Summary には片方の往復結果を表示する。手元では checkout から次を実行し、
+出力した Markdown を Mermaid 対応ビューアで開く。
+
+```sh
+uv run --extra exchange python tools/knowledgegraph.py examples/K001-night-db.ttl > graph.md
+```
+
+`knowledgegraph.py` は RDF の主語・目的語をノード、述語を矢印に写す。
+図表をまとめた HTML レポートや SVG 出力は DRAgoWing の担当とする。
+
+読み込み（import、SPARQL 照会、Mermaid 表示）は Turtle (`.ttl`)、N-Triples
+(`.nt`)、RDF/XML (`.rdf`) に対応する。どれも単一 RDF グラフとして扱う。
+書き出し（export）と CI の保存形式は Turtle (`.ttl`) に統一する。
+拡張子を省いた既存の呼び出しは Turtle として扱う。

@@ -1,0 +1,17 @@
+@prefix ns1: <urn:otl:> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ns1:K001-night-db a ns1:Case ;
+    ns1:evidence "当番チャット" ;
+    ns1:judgment ns1:counter,
+        ns1:judgment-0 ;
+    ns1:statement "自分では解けないので、再起動してよいか二次対応に判断を仰ぎます"@ja .
+
+ns1:counter ns1:holds false .
+
+ns1:judgment-0 ns1:actor "担当D" ;
+    ns1:concept "エスカレーション" ;
+    ns1:confidence 0 ;
+    ns1:holds true ;
+    ns1:note "質疑のあと" .
+
