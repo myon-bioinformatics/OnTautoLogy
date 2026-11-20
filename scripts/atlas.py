@@ -212,9 +212,9 @@ def build(out):
         folder.mkdir(exist_ok=True)
         for i in range(0, len(nodes), 32):
             block = [node["pages"] for node in nodes[i:i+32]]
-            (folder/f"{i//32}.json").write_text(json.dumps(block, ensure_ascii=False))
+            (folder/f"{i//32}.json").write_text(json.dumps(block, ensure_ascii=False, separators=(",", ":")))
         index = {"title": title, "start": view["start"], "nodes": [[n["label"], n["uri"]] for n in nodes]}
-        (out/(slug+".json")).write_text(json.dumps(index, ensure_ascii=False))
+        (out/(slug+".json")).write_text(json.dumps(index, ensure_ascii=False, separators=(",", ":")))
         groups[wave] += graph
         cards[wave].append(f'<li><a href="view.html?set={slug}">{escape(title)}</a>　'
                            f'<small>{len(graph):,} triples · <a href="{slug}.ttl" download>TTL</a> · '
