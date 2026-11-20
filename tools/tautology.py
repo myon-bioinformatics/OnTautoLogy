@@ -572,11 +572,28 @@ def _judge_arguments(parser):
 
 
 def _classify_arguments(parser):
-    parser.add_argument("rule", type=_rule)
+    inputs = parser.add_mutually_exclusive_group(required=True)
+    inputs.add_argument("rule", nargs="?", help="one feature name or JSON rule")
+    inputs.add_argument("--rule", dest="tokens", nargs="+", metavar="TOKEN",
+                        help="prefix notation, e.g. OR NOT reviewed mergeable")
 
 
 def _classify(args):
-    return classify(args.rule), False
+    if args.tokens is None:
+        return classify(_rule(args.rule)), False
+    # Read prefix notation backwards: operands are on the stack when their operator arrives.
+    stack = []
+    for token in reversed(args.tokens):
+        if token not in OPS:
+            stack.append(token)
+            continue
+        count = 1 if token == "NOT" else 2
+        if len(stack) < count:
+            raise ValueError(f"{token} needs {count} operands in --rule")
+        stack.append([token, *(stack.pop() for _ in range(count))])
+    if len(stack) != 1:
+        raise ValueError("--rule expects a single prefix expression")
+    return classify(stack[0]), False
 
 
 def _equivalent_arguments(parser):

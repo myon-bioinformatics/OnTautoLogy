@@ -116,7 +116,7 @@ docs/                   🖼️ アイコン（icon.png）・ファビコン（f
 # 🧩 第二弾
 python -S tools/tautology.py rules examples/concepts-20261115.json             # ⚖️ seeds の〇〇ごとに規則を判定し、可逆な定義を出す
 python -S tools/tautology.py judge examples/concepts-20261115.json ギター '["AND", "弦楽器", "撥弦", "フレット"]'   # 🧮 1本の規則の FN・FP
-python -S tools/tautology.py classify '["OR", ["NOT", "レビュー済み"], "統合可"]'  # 含意。レビュー済みだけが真なら偽
+python -S tools/tautology.py classify --rule OR NOT レビュー済み 統合可  # 含意。レビュー済みだけが真なら偽
 python -S tools/tautology.py equivalent '["NOR", "a", "b"]' '["AND", ["NOT", "a"], ["NOT", "b"]]'          # ✅ 書き換えが全通りで同じか
 python -S tools/tautology.py holdout examples/concepts-20261115.json           # 🙈 初見・🎭 マスクで定義を測る
 python -S tools/tautology.py guess examples/concepts-20261115.json --lies 1 --sure 1  # 🎯 当てっこ（食い違いを1回まで許し、確信度1まで確かめる）
@@ -599,6 +599,8 @@ PR ごとに最新の観測を選び、`contained_in_main=true` の依存先を�
 `tools/tautology.py` と `gh_audit/gh_audit.py` は本体の口 `main(commands=..., load=...)` に自分のコマンドを足すので、🧠 のコマンドもそのまま使え、CLI・標準入力の決まり・終了コードは1つです。「どれでも」は類似コーパス・素の `{"edges": [...], "nodes": [...]}`・（🔭 第一弾の CLI なら）監査グラフです。全コマンドに `-o FILE` があり、ファイル名を `-` にすると標準入力の UTF-8 JSON を読みます（1コマンドにつき1回）。
 
 終了コード: `0` 答えた / `1` 入力エラー / `2` 答えたが要確認（所見・循環・ブロック・未知のノード・鍵にならない・差分あり・定義の衝突や未観測・可逆でない・同値でない）。`2` は道具の失敗ではなく、入力についての答えです。
+
+`classify --rule` は演算子を先に書きます。`NOT` は1項、`AND OR NAND NOR` は各2項です。空白やシェルの特殊文字を含む名前、演算子と同名の変数、0項・多項の演算は従来のJSON形式で指定できます。
 
 `classify` の割当例は真になる変数名の一覧です。残りの変数は偽です。`[]` は全変数が偽の割当、`null` はその真理値を取る割当が存在しないことを表します。分類できれば終了コードは0です。入力エラー・変数上限超過は1です。
 

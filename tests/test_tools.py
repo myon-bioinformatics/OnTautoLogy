@@ -483,6 +483,17 @@ class JudgeTests(unittest.TestCase):
             self.assertEqual(result.returncode, 1)
             self.assertNotIn(b"Traceback", result.stderr)
 
+    def test_classify_unquoted_prefix_option(self):
+        from test_ontautology import run_cli
+        script = ROOT / "tools/tautology.py"
+        tokens = ["OR", "NOT", "レビュー済み", "統合可"]
+        prefix = run_cli(script, "classify", "--rule", *tokens)
+        original = run_cli(script, "classify", '["OR", ["NOT", "レビュー済み"], "統合可"]')
+        self.assertEqual(prefix.returncode, 0, prefix.stderr)
+        self.assertEqual(prefix.stdout, original.stdout)
+        for invalid in (["AND", "p"], ["p", "q"], ["NOT"]):
+            self.assertEqual(run_cli(script, "classify", "--rule", *invalid).returncode, 1)
+
     def test_random_rules_rewritten_by_de_morgan_stay_equivalent(self):
         for seed in range(40):
             rng = random.Random(seed)
