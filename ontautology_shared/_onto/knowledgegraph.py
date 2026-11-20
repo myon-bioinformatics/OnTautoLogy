@@ -1,7 +1,7 @@
 """Inspect and visualize directed graphs supplied by callers."""
 from graphlib import CycleError, TopologicalSorter
 
-__all__ = ["relation_cycles", "topological_order", "rdf_graph_mermaid", "graph_mermaid"]
+__all__ = ["relation_cycles", "topological_order", "rdf_graph_mermaid", "graph_mermaid", "mermaid_renderer_js"]
 
 
 def relation_cycles(edges, *, limit=5):
@@ -99,3 +99,18 @@ def _diagram(labels, triples, focus):
     for subject, predicate, obj in sorted(triples):
         lines.append(f'  {ids[subject]} -->|"{label(predicate)}"| {ids[obj]}')
     return "\n".join([*lines, "```", ""])
+
+
+def mermaid_renderer_js():
+    """ES module exporting renderDiagram(id, source); loads the pinned CDN on first render."""
+    return """let renderer;
+export async function renderDiagram(id, source) {
+  renderer ??= import('https://cdn.jsdelivr.net/npm/mermaid@11.12.1/dist/mermaid.esm.min.mjs')
+    .then(({default: mermaid}) => {
+      mermaid.initialize({startOnLoad: false, securityLevel: 'strict'});
+      return mermaid;
+    });
+  const mermaid = await renderer;
+  return (await mermaid.render(id, source)).svg;
+}
+"""

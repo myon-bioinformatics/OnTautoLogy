@@ -790,5 +790,5 @@ diagram = knowledgegraph.graph_mermaid(graph, focus="A")
 第一弾は監査・移管、第二弾は両日付の概念集・規則・再評価・語彙・bot、第三弾は固定事例・保存済み基準値・公開ワークボードの初期記録を扱う。
 ワークボードの各ブラウザ内の編集はローカル保存される。
 
-Pagesは公開時に `python scripts/atlas.py site/atlas` で再生成する（RDFLibとNodeを使用）。データベースは不要。
+Pagesは公開時に `python scripts/atlas.py site/atlas --renderer-output site/shared/mermaid.js` で再生成する（RDFLibとNodeを使用）。データベースは不要。
 `examples/wave-profiles.json` は `examples/wave-relations.md` の手順とCIの固定版TOO・TOLで生成した3弾の集計。

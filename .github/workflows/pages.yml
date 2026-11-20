@@ -16,7 +16,7 @@ jobs:
         set -eu
         python3 -m venv "$RUNNER_TEMP/otl-pages"
         "$RUNNER_TEMP/otl-pages/bin/pip" install rdflib==7.6.0
-        "$RUNNER_TEMP/otl-pages/bin/python" scripts/atlas.py site/atlas
+        "$RUNNER_TEMP/otl-pages/bin/python" scripts/atlas.py site/atlas --renderer-output site/shared/mermaid.js
         python -S scripts/page_sizes.py
         node --check site/third-design/app.js
         node --check site/third-design/review-records.js
