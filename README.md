@@ -686,3 +686,8 @@ uv run --extra exchange python tools/knowledgegraph.py examples/K001-night-db.tt
 
 `knowledgegraph.py` は RDF の主語・目的語をノード、述語を矢印に写す。
 図表をまとめた HTML レポートや SVG 出力は DRAgoWing の担当とする。
+
+読み込み（import、SPARQL 照会、Mermaid 表示）は Turtle (`.ttl`)、N-Triples
+(`.nt`)、RDF/XML (`.rdf`) に対応する。どれも単一 RDF グラフとして扱う。
+書き出し（export）と CI の保存形式は Turtle (`.ttl`) に統一する。
+拡張子を省いた既存の呼び出しは Turtle として扱う。

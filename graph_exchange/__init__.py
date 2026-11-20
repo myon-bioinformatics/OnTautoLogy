@@ -24,6 +24,16 @@ RETURN s.term AS subject, r.predicate AS predicate, o.term AS object
 """
 
 
+def read_graph(path):
+    """Read one local RDF graph using its filename to select the syntax."""
+    formats = {".ttl": "turtle", ".nt": "nt", ".rdf": "xml"}
+    path = Path(path)
+    suffix = path.suffix.lower() or ".ttl"
+    if suffix not in formats:
+        raise ValueError("Supported RDF input extensions: " + ", ".join(formats))
+    return Graph().parse(path, format=formats[suffix])
+
+
 def statements(graph):
     """Encode terms with their RDF datatype or language intact."""
     rows = []
@@ -79,15 +89,20 @@ def main(argv):
         sub = subs.add_parser(action)
         sub.add_argument("backend", choices=("neo4j", "arcade"))
         sub.add_argument("scope")
-        sub.add_argument("turtle", type=Path)
+        sub.add_argument("file", type=Path, help=".ttl" if action == "export" else ".ttl, .nt, .rdf")
     query = subs.add_parser("query")
-    query.add_argument("turtle", type=Path)
+    query.add_argument("file", type=Path, help=".ttl, .nt, .rdf")
     query.add_argument("select", help="SPARQL SELECT")
     args = parser.parse_args(argv)
     if args.action == "export":
-        transfer(args.backend, args.scope).serialize(destination=args.turtle, format="turtle")
+        if args.file.suffix.lower() not in ("", ".ttl"):
+            parser.error("Export uses Turtle; use a .ttl filename")
+        transfer(args.backend, args.scope).serialize(destination=args.file, format="turtle")
     else:
-        graph = Graph().parse(args.turtle, format="turtle")
+        try:
+            graph = read_graph(args.file)
+        except ValueError as exc:
+            parser.error(str(exc))
         if args.action == "import":
             transfer(args.backend, args.scope, graph)
         else:

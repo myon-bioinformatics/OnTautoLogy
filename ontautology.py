@@ -662,7 +662,7 @@ def main(argv=None, *, commands=(), load=None):
         add = sub.add_parser(name, help=text)
         add.add_argument("graph", type=Path)
         add.add_argument("terms", nargs="*" if name in ("order", "cycles", "define") else "+", help=terms)
-    sub.add_parser("exchange", help="import/export named RDF statements and query Turtle (optional exchange extra)")
+    sub.add_parser("exchange", help="import/export named RDF statements and query RDF files (optional exchange extra)")
     extra = {}
     for name, text, arguments, run in commands:
         arguments(sub.add_parser(name, help=text))

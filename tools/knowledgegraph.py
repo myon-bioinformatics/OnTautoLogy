@@ -14,7 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import ontautology as ot  # noqa: E402
 
-__all__ = ["relation_cycles", "topological_order", "turtle_mermaid"]
+__all__ = ["relation_cycles", "topological_order", "rdf_mermaid", "turtle_mermaid"]
 
 
 def relation_cycles(edges, *, limit=5):
@@ -39,11 +39,11 @@ def topological_order(edges):
     return {"order": [node for batch in found["batches"] for node in batch], "cycle": None}
 
 
-def turtle_mermaid(path):
-    """Return a Markdown diagram of a saved Turtle graph (requires the exchange extra)."""
-    from rdflib import Graph
+def rdf_mermaid(path):
+    """Return a Markdown diagram of a saved RDF graph (requires the exchange extra)."""
+    from graph_exchange import read_graph
 
-    graph = Graph().parse(path, format="turtle")
+    graph = read_graph(path)
     triples = sorted(tuple(term.n3(graph.namespace_manager) for term in triple) for triple in graph)
     terms = sorted({term for subject, _, obj in triples for term in (subject, obj)})
     ids = {term: f"n{i}" for i, term in enumerate(terms)}
@@ -60,7 +60,13 @@ def turtle_mermaid(path):
     return "\n".join([*lines, "```", ""])
 
 
+turtle_mermaid = rdf_mermaid
+
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Render a saved Turtle graph as Mermaid Markdown.")
-    parser.add_argument("turtle", type=Path)
-    print(turtle_mermaid(parser.parse_args().turtle), end="")
+    parser = argparse.ArgumentParser(description="Render a saved RDF graph as Mermaid Markdown.")
+    parser.add_argument("file", type=Path, help=".ttl, .nt, .rdf")
+    try:
+        print(rdf_mermaid(parser.parse_args().file), end="")
+    except ValueError as exc:
+        parser.error(str(exc))

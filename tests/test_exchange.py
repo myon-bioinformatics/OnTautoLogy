@@ -1,6 +1,7 @@
 import json
 import os
 from pathlib import Path
+from tempfile import TemporaryDirectory
 import unittest
 from uuid import uuid4
 
@@ -67,6 +68,21 @@ class Exchange(unittest.TestCase):
         copy.add((BNode(), RDF.type, OTL.Case))
         with self.assertRaisesRegex(ValueError, "stable IRIs"):
             statements(copy)
+
+    def test_input_formats(self):
+        from graph_exchange import read_graph
+        from tools.knowledgegraph import rdf_mermaid
+
+        graph = case_graph()
+        with TemporaryDirectory() as directory:
+            for extension, syntax in ((".ttl", "turtle"), (".nt", "nt"), (".rdf", "xml")):
+                with self.subTest(extension=extension):
+                    path = Path(directory) / ("case" + extension)
+                    graph.serialize(destination=path, format=syntax, encoding="utf-8")
+                    self.assertTrue(isomorphic(graph, read_graph(path)))
+                    self.assertEqual(rdf_mermaid(path).count(" -->|"), len(graph))
+            with self.assertRaisesRegex(ValueError, "input extensions"):
+                read_graph(Path(directory) / "case.nq")
 
     @unittest.skipUnless(os.getenv("OTL_LIVE"), "requires both databases")
     def test_both_directions(self):
