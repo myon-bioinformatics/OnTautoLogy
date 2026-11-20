@@ -8,7 +8,7 @@ from uuid import uuid4
 try:
     from rdflib import BNode, Graph, Literal, Namespace, RDF
     from rdflib.compare import isomorphic
-    from graph_exchange import arcade, main as exchange_cli, statements
+    from ontautology_shared._onto.ontology import arcade, main as exchange_cli, statements
     from ontautology import exchange
 except ModuleNotFoundError as exc:
     if exc.name != "rdflib" or os.getenv("OTL_LIVE"):
@@ -70,7 +70,7 @@ class Exchange(unittest.TestCase):
             statements(copy)
 
     def test_input_formats(self):
-        from graph_exchange import read_graph
+        from ontautology_shared._onto.ontology import read_graph
         from tools.knowledgegraph import rdf_mermaid
 
         graph = case_graph()

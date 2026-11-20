@@ -18,7 +18,7 @@ ontautology = "ontautology:main"
 
 [tool.setuptools]
 py-modules = ["ontautology"]
-packages = ["graph_exchange", "ontautology_shared", "ontautology_shared._onto"]
+packages = ["ontautology_shared", "ontautology_shared._onto"]
 
 [tool.setuptools.package-data]
 "ontautology_shared._onto" = ["LICENSE"]

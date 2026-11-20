@@ -658,7 +658,7 @@ uv run --no-project --with redis python -m unittest discover -s tests -p test_to
 語彙検査・グラフの構造解析と表示・RDF/DB 入出力の編集元は [ONTO](https://github.com/myon-bioinformatics/ONTO)。
 OTL は規則・同値性と反例・候補と人の判断の照合を担当する。
 例えば K002 の候補を RDF に保存する処理は ONTO、候補と判断を比較して `disputed` と判定する処理は OTL に置く。
-OTL の交換処理は ONTO 直下の `ontology.py` を固定して利用する。`graph_exchange` は既存の Python 呼び出し用の入口。
+OTL の交換処理は ONTO 直下の `ontology.py` を固定して利用する。
 
 ### Python で Neo4j・ArcadeDB と Turtle を往復する
 

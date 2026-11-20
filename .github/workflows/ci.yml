@@ -83,7 +83,7 @@ jobs:
       - name: Wait for both query engines
         run: |
           for attempt in {1..40}; do
-            if uv run python -c 'from graph_exchange import transfer, arcade; transfer("neo4j", "ready"); arcade("sql", "select 1", {})'; then exit 0; fi
+            if uv run python -c 'from ontautology_shared._onto.ontology import transfer, arcade; transfer("neo4j", "ready"); arcade("sql", "select 1", {})'; then exit 0; fi
             sleep 3
           done
           exit 1
