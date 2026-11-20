@@ -466,6 +466,19 @@ def cases(corpus, *, sure=1):
                       "candidate": one and {"concept": one, "id": meta[one].get("id", one), "basis": "hypothesis", "confidence": confidence},
                       "fits": fits, "to_model": sorted(seen - set(holders)),
                       "missing": [slot for slot in slots if not case.get("6W1H", {}).get(slot)], "judgments": []}
+        if "event" in case:
+            event = case["event"]
+            if not isinstance(event, dict) or event.get("type") not in ("Notification", "DecisionRequest"):
+                raise ValueError(f"{cid}: event.type must be Notification or DecisionRequest")
+            target = "notifiedParty" if event["type"] == "Notification" else "decisionRequestedFrom"
+            roles = {"sender": case.get("actor"), target: case.get("6W1H", {}).get("誰へ"),
+                     "content": case.get("6W1H", {}).get("何を")}
+            if "requestedDecision" in event:
+                if event["type"] != "DecisionRequest":
+                    raise ValueError(f"{cid}: requestedDecision requires a DecisionRequest")
+                roles["requestedDecision"] = ot._nonempty_str(event["requestedDecision"], "requestedDecision")
+            found[cid]["event"] = {"id": "event:" + cid, "type": event["type"],
+                                   **{k: ot._nonempty_str(v, k) for k, v in roles.items() if v is not None and v != ""}}
     for judgment in raw_judgments:
         cid = judgment.get("case") if isinstance(judgment, dict) else None
         if cid not in found or judgment.get("concept") not in held or not isinstance(judgment.get("holds"), bool):

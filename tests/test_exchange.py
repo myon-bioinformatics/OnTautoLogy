@@ -116,6 +116,27 @@ class Exchange(unittest.TestCase):
         self.assertFalse(list(graph.triples((None, OTL.isTrue, None))))
         self.assertFalse(list(graph.objects(OTL["case:K003-shift-change"], OTL.judgment)))
 
+    def test_event_is_the_shared_object_of_judgments_not_the_recipient(self):
+        from tools.tautology import cases
+        from ontautology_shared.truth import judgment_graph
+        corpus = json.loads((ROOT / "examples/concepts-20261115.json").read_text())
+        share = next(j for j in corpus["judgments"] if j["case"] == "K002-share-only")
+        corpus["judgments"].append({**share, "actor": "担当F", "holds": False})
+        graph = judgment_graph(corpus, cases(corpus)["cases"])
+        graph = Graph().parse(data=graph.serialize(format="turtle"), format="turtle")
+        event = OTL["event:K002-share-only"]
+        self.assertEqual(graph.value(OTL["case:K002-share-only"], OTL.event), event)
+        prop, = graph.subjects(OTL.aboutEvent, event)
+        for field, person in ((OTL.regardsAsTrue, "担当E"), (OTL.regardsAsFalse, "担当F")):
+            judgment, = graph.subjects(field, prop)
+            self.assertEqual(graph.value(judgment, OTL.actor), Literal(person))
+        self.assertEqual(graph.value(event, OTL.notifiedParty), Literal("関係者"))
+        self.assertIsNone(graph.value(event, OTL.decisionRequestedFrom))
+        request = OTL["event:K001-night-db"]
+        self.assertEqual(graph.value(request, OTL.decisionRequestedFrom), Literal("二次対応"))
+        self.assertEqual(graph.value(request, OTL.requestedDecision), Literal("再起動してよいか"))
+        self.assertFalse(list(graph.objects(OTL["case:K003-shift-change"], OTL.event)))
+
     def test_input_formats(self):
         from ontautology_shared._onto.ontology import read_graph
         from tools.knowledgegraph import rdf_mermaid

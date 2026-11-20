@@ -57,6 +57,14 @@ def judgment_graph(corpus, cases):
         case_key = quote(case_id, safe=":-")
         case = OT["case:" + case_key]
         graph.add((case, RDF.type, OT.Case))
+        event = row.get("event")
+        if event:
+            occurrence = OT[quote(event["id"], safe=":-")]
+            graph.add((case, OT.event, occurrence))
+            graph.add((occurrence, RDF.type, OT[event["type"]]))
+            for field in ("sender", "notifiedParty", "decisionRequestedFrom", "content", "requestedDecision"):
+                if field in event:
+                    graph.add((occurrence, OT[field], Literal(event[field])))
         for field in ("statement", "context", "evidence", "actor", "role"):
             if field in row:
                 graph.add((case, OT[field], Literal(row[field])))
@@ -68,6 +76,8 @@ def judgment_graph(corpus, cases):
             prop = OT[f"proposition:{case_key}/{quote(concept_id, safe='')}"]
             graph.add((prop, RDF.type, OT.Proposition))
             graph.add((prop, OT.aboutCase, case))
+            if event:
+                graph.add((prop, OT.aboutEvent, occurrence))
             graph.add((prop, OT.concept, concept_term))
             graph.add((concept_term, RDFS.label, Literal(concept)))
             graph.add((case, OT.judgment, node))

@@ -735,6 +735,28 @@ uv run --extra exchange python tools/tautology.py cases examples/concepts-202611
 規則の適合率・再現率・正解率には、Aoiでも使用するPythDRagorasの
 `classification_metrics` を使います。取得元とファイルのハッシュは `vendor.lock.json` に記録しています。
 
+#### 通知と判断依頼を出来事IDで参照する
+
+一つの発言を記録した事例に `event.type` を明記すると、`cases --ttl` は
+`urn:otl:event:<事例ID>` を生成します。発信者と内容には既存の `actor` と6W1Hの
+「何を」を使います。「誰へ」は `Notification` なら通知先、`DecisionRequest`
+なら判断を求めた相手です。依頼では `requestedDecision` に具体的な問いを記録できます。
+命題は `aboutEvent` で出来事を参照し、別の人の判断も同じIDに結び付きます。
+
+たとえば生成した `cases.ttl` に次のSPARQLを実行すると、K002の通知先は「関係者」、
+判断者は「担当E」、その役割は「課長」と取得できます。判断依頼先は未束縛です。
+
+```sparql
+PREFIX ot: <urn:otl:>
+SELECT ?recipient ?judge ?role ?asked WHERE {
+  VALUES ?event { <urn:otl:event:K002-share-only> }
+  ?event ot:notifiedParty ?recipient .
+  ?proposition ot:aboutEvent ?event .
+  ?judgment ot:regardsAsTrue ?proposition ; ot:actor ?judge ; ot:role ?role .
+  OPTIONAL { ?event ot:decisionRequestedFrom ?asked }
+}
+```
+
 #### 分類規則からの論理的帰結を確かめる
 
 「猫なら哺乳類」と「これは猫」を前提にして「これは哺乳類」を検査します。
