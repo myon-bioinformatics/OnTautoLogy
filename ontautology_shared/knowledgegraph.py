@@ -11,7 +11,7 @@ __all__ = ["relation_cycles", "topological_order", "rdf_mermaid", "turtle_mermai
 
 def rdf_mermaid(path, *, focus=None):
     """Return a Markdown diagram of a saved RDF graph (requires the exchange extra)."""
-    from graph_exchange import read_graph
+    from ._onto.ontology import read_graph
 
     graph = read_graph(path)
     return shared.rdf_graph_mermaid(graph, focus=focus)

@@ -455,6 +455,80 @@ class JudgeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             tautology.equivalent(["AND", *(f"x{i}" for i in range(17))], ["AND"])
 
+    def test_classify_rule_and_replay_witnesses(self):
+        from test_ontautology import run_cli
+
+        for rule, verdict, yes, no in [
+            (["OR", "p", ["NOT", "p"]], "tautology", [], None),
+            (["AND", "p", ["NOT", "p"]], "contradiction", None, []),
+            (["AND", "p", ["NOT", "q"]], "contingent", ["p"], []),
+            (["AND"], "tautology", [], None),
+            (["OR"], "contradiction", None, []),
+        ]:
+            with self.subTest(rule=rule):
+                result = tautology.classify(rule)
+                self.assertEqual((result["verdict"], result["true_witness"], result["false_witness"]),
+                                 (verdict, yes, no))
+                for witness, value in [(yes, True), (no, False)]:
+                    if witness is not None:
+                        self.assertEqual(tautology.holds(rule, witness), value)
+        with self.assertRaises(ValueError):
+            tautology.classify(["OR", "p", "q"], limit=1)
+        script = ROOT / "tools/tautology.py"
+        run = run_cli(script, "classify", '["OR"]')
+        self.assertEqual(run.returncode, 0)
+        self.assertEqual(json.loads(run.stdout)["verdict"], "contradiction")
+        for invalid in ('[["oops"]]', '7', '["NOT"]'):
+            result = run_cli(script, "classify", invalid)
+            self.assertEqual(result.returncode, 1)
+            self.assertNotIn(b"Traceback", result.stderr)
+
+    def test_classify_unquoted_prefix_option(self):
+        from test_ontautology import run_cli
+        script = ROOT / "tools/tautology.py"
+        tokens = ["OR", "NOT", "レビュー済み", "統合可"]
+        prefix = run_cli(script, "classify", "--rule", *tokens)
+        original = run_cli(script, "classify", '["OR", ["NOT", "レビュー済み"], "統合可"]')
+        self.assertEqual(prefix.returncode, 0, prefix.stderr)
+        self.assertEqual(prefix.stdout, original.stdout)
+        for invalid in (["AND", "p"], ["p", "q"], ["NOT"]):
+            self.assertEqual(run_cli(script, "classify", "--rule", *invalid).returncode, 1)
+
+    def test_evaluate_saved_nodes_in_isolated_python(self):
+        graph = {"nodes": [
+            {"id": "a", "type": "Observation", "draft": False},
+            {"id": "b", "type": "Observation", "draft": True},
+            {"id": "c", "type": "Observation", "draft": None},
+            {"id": "d", "type": "PullRequest"},
+        ]}
+        with tempfile.TemporaryDirectory() as cwd:
+            path = Path(cwd) / "audit.json"
+            path.write_text(json.dumps(graph), encoding="utf-8")
+            cmd = [sys.executable, "-I", "-S", str(ROOT / "tools/tautology.py"), "evaluate"]
+            options = ["--type", "Observation", "--rule", "NOT", "draft"]
+            for source in ("audit.json", "-"):
+                run = subprocess.run([*cmd, source, *options], cwd=cwd, input=json.dumps(graph),
+                                     capture_output=True, text=True)
+                self.assertEqual(run.returncode, 2, run.stderr)
+                result = json.loads(run.stdout)
+                self.assertEqual(result["counts"], {"holds": 1, "violated": 1, "unknown": 1})
+                self.assertEqual(result["nodes"][-1], {"id": "c", "verdict": "unknown", "missing": ["draft"]})
+
+    def test_partial_facts_preserve_correlations_and_report_missing(self):
+        from test_ontautology import run_cli
+        graph = {"nodes": [{"id": "a", "merged": False}, {"id": "b", "merged": True}]}
+        args = ["evaluate", "-", "--rule", "OR", "NOT", "merged", "NOT", "draft"]
+        for extra, expected in [([], ["unknown", "unknown"]), (["--partial"], ["holds", "unknown"])]:
+            run = run_cli(ROOT / "tools/tautology.py", *args, *extra, data=json.dumps(graph))
+            rows = json.loads(run.stdout)["nodes"]
+            self.assertEqual([row["verdict"] for row in rows], expected)
+            self.assertTrue(all(row["missing"] == ["draft"] for row in rows))
+        for op, verdict in [("AND", "violated"), ("OR", "holds")]:
+            found = tautology.evaluate_nodes(graph, [op, "p", ["NOT", "p"]], partial=True)
+            self.assertEqual(found["counts"][verdict], 2)
+        with self.assertRaisesRegex(ValueError, "truth-table limit"):
+            tautology.evaluate_nodes(graph, ["AND", *map(str, range(17))], partial=True)
+
     def test_random_rules_rewritten_by_de_morgan_stay_equivalent(self):
         for seed in range(40):
             rng = random.Random(seed)
@@ -705,6 +779,16 @@ class CasesTests(unittest.TestCase):
         self.assertEqual((rows["K004-first-word"]["candidate"], rows["K004-first-word"]["fits"]), (None, ["エスカレーション", "担当引き継ぎ", "状況報告"]))
         self.assertEqual(found["summary"]["roles"], {"cases": {"一次対応": 3, "夜勤": 1}, "judgments": {"課長": 1, "障害対応の責任者": 2}})
         self.assertNotIn("担当A", json.dumps(found["summary"], ensure_ascii=False))  # people are a record, not a count
+
+    def test_opposing_judgments_without_a_candidate_are_disputed(self):
+        corpus = concepts()
+        original = next(j for j in corpus["judgments"] if j["case"] == "K004-first-word")
+        for value, status in [(original["holds"], "judged"), (not original["holds"], "disputed")]:
+            judgments = [*corpus["judgments"], {**original, "holds": value}]
+            row = tautology.cases({**corpus, "judgments": judgments})["cases"][original["case"]]
+            self.assertIsNone(row["candidate"])
+            self.assertEqual(row["status"], status)
+            self.assertEqual(row["conflicting_judgments"], [original["concept"]] if status == "disputed" else [])
 
     def test_judgments_change_no_definition_and_no_candidate(self):
         corpus = concepts()

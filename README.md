@@ -116,6 +116,7 @@ docs/                   🖼️ アイコン（icon.png）・ファビコン（f
 # 🧩 第二弾
 python -S tools/tautology.py rules examples/concepts-20261115.json             # ⚖️ seeds の〇〇ごとに規則を判定し、可逆な定義を出す
 python -S tools/tautology.py judge examples/concepts-20261115.json ギター '["AND", "弦楽器", "撥弦", "フレット"]'   # 🧮 1本の規則の FN・FP
+python -S tools/tautology.py classify --rule OR NOT レビュー済み 統合可  # 含意。レビュー済みだけが真なら偽
 python -S tools/tautology.py equivalent '["NOR", "a", "b"]' '["AND", ["NOT", "a"], ["NOT", "b"]]'          # ✅ 書き換えが全通りで同じか
 python -S tools/tautology.py holdout examples/concepts-20261115.json           # 🙈 初見・🎭 マスクで定義を測る
 python -S tools/tautology.py guess examples/concepts-20261115.json --lies 1 --sure 1  # 🎯 当てっこ（食い違いを1回まで許し、確信度1まで確かめる）
@@ -260,6 +261,26 @@ flowchart TD
 🔭 の例は 2026年11月14日 23:12 JST の監査から抜き出した履歴（8 リポジトリ、観測した PR は 14 件）で、今の GitHub の状態ではありません。
 
 ## 🧩 第二弾: 類似から定義を作る（本体・`tools/tautology.py`）
+
+追加教材 [ポリゴン2・人間・AI](examples/concepts-20261120.json) では、架空の存在・生物種・機械システムを比較します。3題材と8つの近接概念を比較できます。
+
+```sh
+python -I -S ontautology.py define examples/concepts-20261120.json
+python -I -S ontautology.py roundtrip examples/concepts-20261120.json 用途:自動応答 入力から出力を推論
+```
+
+図鑑名の完全一致と進化関係、人型と人数・展示物・機器の助数詞、AIの手法と実行基盤を個別に検査します。定型応答botとAI搭載botはどちらも自動応答し、上の2条件ではAI搭載botに絞れます。助数詞は教材で指定した場面の属性照合です。
+
+
+[文法性の比較教材](examples/lexical-gender.json) ではドイツ語・スペイン語・フランス語・ヒンディー語・ポルトガル語の5言語の語例を人間の共通概念に結びます。`python -I -S ontautology.py reach examples/lexical-gender.json lex:fr:personne` で、語から文法性と参照先を確認できます。人物の性別は推論しません。 日英の変換は別のテストで、11概念すべてについて日本語名と英語名の両方向から同じIDと対応語に戻ることを確認します。対象は登録した語義のラベルです。
+
+第二弾の未知語の検証例。登録された語を一つ隠し、後続の引数を順番に観測として与えます。
+
+```sh
+python -I -S examples/relation_holdout.py examples/concepts-20261120.json AI搭載bot 用途:自動応答 入力から出力を推論
+```
+
+各段階で名前の照合と独立に、用途が一致する候補と、推論機能を共有する一般システムへの応用候補を記録します。この教材用の2規則が返す関係は仮説です。概念の同一性は保留します。
 
 ### 📥 集めるもの
 
@@ -580,6 +601,7 @@ PR ごとに最新の観測を選び、`contained_in_main=true` の依存先を�
 | 🎯 `guess CORPUS [CONCEPT...] [--lies N] [--sure S]` | 類似コーパス | 当てっこ: 何問で当たるか（正直・1つ忘れる・知らない相手）。1人に絞れたら確信度 S（既定 1）まで確かめる。正直に答えて当たらない〇〇があれば終了コード 2 |
 | 🔤 `wobble CORPUS [WORD...]` | 類似コーパス | 名前を揺らす: 1文字違いの組・割れる名前・もの側に紛れた名前、語を引く（厳密・表記ゆれ・1文字違い、当たりに ID）、わざと揺らして戻るか（表記ゆれ・打ち間違いごとの戻った率と、別の概念に当たった数）。もの側に名前が紛れていれば終了コード 2 |
 | 📋 `cases CORPUS [--sure S]` | 類似コーパス | 観測した事例を概念に当てた候補（hypothesis）・読めない要素（`to_model`）・6W1H の空き・人の判断との照合（確定・食い違い・人が決めた・未判断）。食い違いがあれば終了コード 2 |
+| `classify RULE` | 命題式1本（最大16変数） | 恒真・矛盾・条件次第を判定し、真・偽になる割当例を返す |
 | ✅ `equivalent RULE RULE` | 規則2本 | 全通りで同じか（`proof`）、違う場合の反例 |
 | 🧩 `define CORPUS [CONCEPT...]` | 類似コーパス | 類・種差・往復判定 |
 | 🔁 `roundtrip CORPUS ELEM...` | 類似コーパス | 要素をすべて満たす概念（一意・衝突・空） |
@@ -597,6 +619,22 @@ PR ごとに最新の観測を選び、`contained_in_main=true` の依存先を�
 `tools/tautology.py` と `gh_audit/gh_audit.py` は本体の口 `main(commands=..., load=...)` に自分のコマンドを足すので、🧠 のコマンドもそのまま使え、CLI・標準入力の決まり・終了コードは1つです。「どれでも」は類似コーパス・素の `{"edges": [...], "nodes": [...]}`・（🔭 第一弾の CLI なら）監査グラフです。全コマンドに `-o FILE` があり、ファイル名を `-` にすると標準入力の UTF-8 JSON を読みます（1コマンドにつき1回）。
 
 終了コード: `0` 答えた / `1` 入力エラー / `2` 答えたが要確認（所見・循環・ブロック・未知のノード・鍵にならない・差分あり・定義の衝突や未観測・可逆でない・同値でない）。`2` は道具の失敗ではなく、入力についての答えです。
+
+`classify --rule` は演算子を先に書きます。`NOT` は1項、`AND OR NAND NOR` は各2項です。空白やシェルの特殊文字を含む名前、演算子と同名の変数、0項・多項の演算は従来のJSON形式で指定できます。
+
+保存したグラフを調べるときは、Aoi と同じく Python の隔離オプションをスクリプト名の前に置き、入力パスをコマンドの後に渡します。
+
+```sh
+python -I -S gh_audit/gh_audit.py audit examples/audit-20261114.json | python -I -S tools/tautology.py evaluate - --type Observation --rule OR NOT merged NOT draft > result.json
+```
+
+この例では各観測の「マージ済みならドラフトではない」を確認します。変数はノード直下の真偽値属性名です。必要な属性が欠損・null・真偽値以外なら、その観測を unknown として属性名を返します。辺をたどる規則は対象外です。入力に `-` を渡すと標準入力を読み、`-o` で結果を保存できます。違反・未確定・対象0件は終了コード2です。
+
+`evaluate --partial` を加えると、欠損した変数（観測ごとに最大16個）の真偽を列挙します。どの割当でも結論が同じなら holds または violated、割当で変われば unknown です。欠損名はすべての結果に残ります。たとえば merged が偽なら、上の含意は draft が未観測でも成立します。
+
+第三弾の `cases` は同一事例・同一概念への肯定と否定を `conflicting_judgments` に概念名で記録し、候補がない場合も disputed と判定します。
+
+`classify` の割当例は真になる変数名の一覧です。残りの変数は偽です。`[]` は全変数が偽の割当、`null` はその真理値を取る割当が存在しないことを表します。分類できれば終了コードは0です。入力エラー・変数上限超過は1です。
 
 ### 🐍 Python・Node から呼ぶ
 
@@ -644,7 +682,7 @@ uv run --no-project --with redis python -m unittest discover -s tests -p test_to
 語彙検査・グラフの構造解析と表示・RDF/DB 入出力の編集元は [ONTO](https://github.com/myon-bioinformatics/ONTO)。
 OTL は規則・同値性と反例・候補と人の判断の照合を担当する。
 例えば K002 の候補を RDF に保存する処理は ONTO、候補と判断を比較して `disputed` と判定する処理は OTL に置く。
-`graph_exchange/` は ONTO 直下の `onto_exchange.py` を固定した同梱版で、従来の OTL CLI と Python API から利用できる。
+OTL の交換処理は ONTO 直下の `ontology.py` を固定して利用する。
 
 ### Python で Neo4j・ArcadeDB と Turtle を往復する
 

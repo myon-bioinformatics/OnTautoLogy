@@ -32,6 +32,79 @@ def _node(name, spec):
 
 
 class ConceptDefinitionTests(unittest.TestCase):
+    def test_porygon_human_ai_comparison(self):
+        corpus = json.loads(EXAMPLE_PATH.with_name("concepts-20261120.json").read_text(encoding="utf-8"))
+        defined = ot.define_concepts(corpus)["concepts"]
+        for name in ("ポリゴン2", "人間", "AI"):
+            self.assertEqual(defined[name]["definition"]["roundtrip"], {"verdict": "unique", "matched": [name]})
+        from tools.tautology import wobble
+        spellings = {"ポリゴン": "ポリゴン", "ポリゴン２": "ポリゴン2", "ポリゴンＺ": "ポリゴンZ"}
+        hits = wobble(corpus, list(spellings))["words"]
+        for word, expected in spellings.items():
+            self.assertEqual({hit["concept"] for hit in hits[word]["exact"]}, {expected})
+        for query, expected in [
+            (["タイプ:ノーマル"], ["ポリゴン", "ポリゴン2", "ポリゴンZ"]),
+            (["特性候補:トレース"], ["ポリゴン", "ポリゴン2"]),
+            (["進化元:ポリゴン"], ["ポリゴン2"]),
+            (["形態:人型"], ["人間", "人型模型", "ヒューマノイド"]),
+            (["形態:人型", "助数詞:人"], ["人間"]),
+            (["生物種", "助数詞:体"], []),
+            (["生物種", "助数詞:台"], []),
+            (["形態:人型", "助数詞:体"], ["人型模型"]),
+            (["形態:人型", "助数詞:台"], ["ヒューマノイド"]),
+            (["対象:手法"], ["機械学習"]),
+            (["対象:計算機"], ["コンピュータ"]),
+            (["手法例:機械学習", "実行基盤例:コンピュータ"], ["AI", "AI搭載bot"]),
+            (["入力から出力を推論"], ["AI", "AI搭載bot"]),
+            (["用途:自動応答"], ["定型応答bot", "AI搭載bot"]),
+            (["用途:自動応答", "入力から出力を推論"], ["AI搭載bot"]),
+        ]:
+            with self.subTest(query=query):
+                self.assertEqual(ot.roundtrip_elements(corpus, query)["matched"], sorted(expected))
+
+    def test_grammatical_gender_stays_on_language_specific_words(self):
+        graph = json.loads(EXAMPLE_PATH.with_name("lexical-gender.json").read_text(encoding="utf-8"))
+        corpus = json.loads(EXAMPLE_PATH.with_name("concepts-20261120.json").read_text(encoding="utf-8"))
+        human = "concept:" + corpus["concepts"]["人間"]["id"]
+        self.assertEqual(ot.check(graph["edges"], graph["nodes"]), [])
+        for word, gender in (("de:Mädchen", "neuter"), ("es:persona", "feminine"),
+                             ("fr:personne", "feminine"), ("hi:व्यक्ति", "masculine"),
+                             ("pt:pessoa", "feminine")):
+            language = word.split(":")[0]
+            rows = ot.reach(graph["edges"], ["lex:" + word])["rows"]
+            self.assertEqual({(row["edge"]["kind"], row["node"]) for row in rows},
+                             {("canReferTo", human), ("grammaticalGender", f"grammar:{language}:{gender}")})
+        self.assertEqual(ot.reach(graph["edges"], [human])["rows"], [])
+
+    def test_japanese_english_labels_roundtrip_in_both_directions(self):
+        from tools.tautology import wobble
+        corpus = json.loads(EXAMPLE_PATH.with_name("concepts-20261120.json").read_text(encoding="utf-8"))
+        translations = {
+            "ポリゴン": "Porygon", "ポリゴン2": "Porygon2", "ポリゴンZ": "Porygon-Z",
+            "人間": "human", "人型模型": "human figure model", "ヒューマノイド": "humanoid robot",
+            "AI": "artificial intelligence", "機械学習": "machine learning", "コンピュータ": "computer",
+            "定型応答bot": "scripted bot", "AI搭載bot": "AI-powered bot",
+        }
+        self.assertEqual(set(translations), set(corpus["concepts"]))
+        words = wobble(corpus, [*translations, *translations.values()])["words"]
+        for ja, en in translations.items():
+            with self.subTest(ja=ja, en=en):
+                expected = {(ja, corpus["concepts"][ja]["id"])}
+                for label in (ja, en):
+                    self.assertEqual({(hit["concept"], hit["id"]) for hit in words[label]["exact"]}, expected)
+                concept = words[en]["exact"][0]["concept"]
+                self.assertEqual(concept, ja)
+                concept = words[ja]["exact"][0]["concept"]
+                self.assertEqual([s[3:] for s in corpus["names"][concept] if s.startswith("英名:")], [en])
+
+    def test_person_in_the_individual_human_sense(self):
+        from tools.tautology import wobble
+        corpus = json.loads(EXAMPLE_PATH.with_name("concepts-20261120.json").read_text(encoding="utf-8"))
+        words = wobble(corpus, ["person", "Person", "legal person"])["words"]
+        for word, tier in [("person", "exact"), ("Person", "notation")]:
+            self.assertEqual({h["id"] for h in words[word][tier]}, {"C013-human"})
+        self.assertFalse(any(words["legal person"].values()))
+
     def test_example_pairs_derive_genus_differentia_and_unique_roundtrip(self):
         corpus = _load_example()
         defined = ot.define_concepts(corpus)
