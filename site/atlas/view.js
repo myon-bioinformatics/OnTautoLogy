@@ -1,9 +1,7 @@
+import {renderDiagram} from '../shared/mermaid.js';
 const el = id => document.getElementById(id);
 const slug = new URLSearchParams(location.search).get('set');
 let data, selected, page, version = 0;
-const charts = import('https://cdn.jsdelivr.net/npm/mermaid@11.12.1/dist/mermaid.esm.min.mjs')
-  .then(({default: m}) => { m.initialize({startOnLoad:false, securityLevel:'strict'}); return m; })
-  .catch(() => null);
 async function get(path) {
   const response = await fetch(path);
   if (!response.ok) throw Error('資料を取得できませんでした。');
@@ -49,11 +47,12 @@ async function render() {
       }
       el('relations').append(item);
     }
-    const m = await charts;
-    if (!m) throw Error('図の読み込みに失敗しました。関係と値は一覧で確認できます。');
-    if (ticket !== version) return;
-    const {svg} = await m.render('focus-'+ticket,current.diagram);
-    if (ticket === version) el('diagram').innerHTML = svg;
+    try {
+      const svg = await renderDiagram('focus-'+ticket, current.diagram);
+      if (ticket === version) el('diagram').innerHTML = svg;
+    } catch {
+      if (ticket === version) el('status').textContent = '図を読み込めませんでした。関係と値は一覧で確認できます。';
+    }
   } catch (error) { if (ticket === version) el('status').textContent = error.message; }
 }
 function focus() {

@@ -23,14 +23,12 @@ figure svg {min-width: 48rem}
 <figure aria-label="AI搭載botの関係候補と根拠" id="graph"></figure>
 <p><a href="bot.ttl" download>知識グラフを取得（Turtle）</a> · <a href="bot.mmd">Mermaidソース</a></p>
 <script type="module">
+import {renderDiagram} from '../shared/mermaid.js';
 const figure = document.getElementById('graph');
 try {
-  const {default: mermaid} = await import('https://cdn.jsdelivr.net/npm/mermaid@11.12.1/dist/mermaid.esm.min.mjs');
-  mermaid.initialize({startOnLoad: false, securityLevel: 'strict'});
   const response = await fetch('bot.mmd');
   if (!response.ok) throw new Error('diagram unavailable');
-  const {svg} = await mermaid.render('bot-relations', await response.text());
-  figure.innerHTML = svg;
+  figure.innerHTML = await renderDiagram('bot-relations', await response.text());
 } catch {
   figure.textContent = '図を読み込めませんでした。関係候補は上の一覧で確認できます。';
 }
