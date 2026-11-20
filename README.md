@@ -718,3 +718,21 @@ python -S tools/knowledgegraph.py cases.json > cases.md
 第三弾の `cases --graph` は既存の評価結果から表示用のノード・辺を作る。
 判断が食い違う事例を含む場合は JSON を保存して終了コード 2 を返す。
 `exchange export` のグラフ JSON も同じ表示器で開ける。
+
+#### TOO・TOL・ONTO など外部から使う Python API
+
+OTL をインストールした Python から次の入口を使う。TOO などの利用側が語彙・概念 ID・関係の向きを決め、
+OTL が検証・グラフ操作の実装を持つ。ONTO の索引には、参照したデータとその版を記録できる。
+
+```python
+from ontautology_shared import ontology, knowledgegraph
+
+findings = ontology.violations(graph, vocabulary)
+cycles = knowledgegraph.relation_cycles(graph["edges"])
+diagram = knowledgegraph.graph_mermaid(graph, focus="A")
+```
+
+[実行例](examples/shared_taxonomy.py) は親 B・C から子 A への分類を定義し、同じデータで
+語彙と循環を検査して Mermaid 図を作る。追加の Python 依存は不要。CI は wheel をクリーンな環境に
+インストールしてこの例を実行する。利用側で固定する版は OTL のコミットまたはリリースを指定する。
+既存の `tools/ontology.py` と `tools/knowledgegraph.py` も同じ実装を呼び出す。

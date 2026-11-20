@@ -27,6 +27,13 @@ jobs:
         with:
           version: latest
           python-version: ${{ matrix.python }}
+      - name: Exercise installed shared API from outside the checkout
+        run: |
+          uv build --wheel --out-dir "$RUNNER_TEMP/wheels"
+          cd "$RUNNER_TEMP"
+          uv venv consumer
+          uv pip install --python consumer/bin/python --no-deps wheels/*.whl
+          consumer/bin/python -I "$GITHUB_WORKSPACE/examples/shared_taxonomy.py"
       - run: uv run --no-project python -S -m unittest discover -s tests -v
       - run: uv run --no-project python -S gh_audit/gh_audit.py audit examples/audit-20261114.json -o /tmp/graph.json
       - run: uv run --no-project python -S gh_audit/gh_audit.py check /tmp/graph.json

@@ -10,7 +10,7 @@ core (ontautology.py) and the generic tools stay free of it. Never fetches or mu
 CLI: python -S gh_audit/gh_audit.py audit | plan | turtle | diff | transfers ...; the core commands (check, reach,
 why, cycles, order, ladder, keys) read an audit graph here too, through the core's own command line.
 
-Dependency goes one way: this file imports the core and tools/ontology.py; nothing generic imports it.
+Dependency goes one way: this file imports the core and ontautology_shared.ontology; nothing generic imports it.
 Audit enhancements go into this folder (gh_audit/), not into the core or tools/.
 Every function is callable by name from Python, and from Node through vendor/py_launch.cjs (--call).
 """
@@ -24,7 +24,7 @@ from urllib.parse import quote
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import ontautology as ot  # noqa: E402
 from ontautology import digest, timestamp  # noqa: E402,F401  (the watch layer is shared with phase 2)
-from tools import ontology  # noqa: E402
+from ontautology_shared import ontology  # noqa: E402
 
 __all__ = ["KG_SCHEMA", "RELATIONS", "STATES", "audit", "audit_entities", "audit_runs", "digest", "edges_of", "enrich", "inventory_entries", "observation_diff", "plan", "pr_id", "repository", "timestamp", "transfer_entities", "transfer_report", "turtle", "validate", "main"]
 

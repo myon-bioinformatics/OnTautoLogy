@@ -36,12 +36,15 @@ def random_graph(seed, nodes=12, edges=24):
 
 class OneWayDependency(unittest.TestCase):
     def test_generic_code_never_reads_the_github_audit(self):
-        for path in [ROOT / "ontautology.py", *sorted((ROOT / "tools").glob("*.py"))]:
+        for path in [ROOT / "ontautology.py", *(ROOT / "tools").glob("*.py"),
+                     *(ROOT / "ontautology_shared").glob("*.py")]:
             imports = "\n".join(re.findall(r"(?m)^(?:from|import) .*", path.read_text(encoding="utf-8")))
             with self.subTest(file=path.name):
                 self.assertNotIn("gh_audit", imports)
                 self.assertIsNone(re.search(r"\b(?:from|import) tools\b", imports))
-                if path.parent.name == "tools":
+                if path.name in ("ontology.py", "knowledgegraph.py") and path.parent.name == "tools":
+                    self.assertIn("from ontautology_shared.", imports)
+                elif path.name != "__init__.py" and path != ROOT / "ontautology.py":
                     self.assertIn("import ontautology as ot", imports)
         audit = "\n".join(re.findall(r"(?m)^(?:from|import) .*", (ROOT / "gh_audit/gh_audit.py").read_text(encoding="utf-8")))
         self.assertIn("import ontautology as ot", audit)

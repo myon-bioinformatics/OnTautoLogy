@@ -18,4 +18,4 @@ ontautology = "ontautology:main"
 
 [tool.setuptools]
 py-modules = ["ontautology"]
-packages = ["graph_exchange"]
+packages = ["graph_exchange", "ontautology_shared"]
