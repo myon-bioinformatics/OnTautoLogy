@@ -714,6 +714,27 @@ olnm の委譲コマンドを使う場合は各行の先頭を `olnm ontautology
 CI の graph-exchange ジョブは実際の両 DB を起動し、既存の夜間対応事例から選んだ
 判断・出典に反例を加え、両方向の RDF グラフ同型・問い合わせ結果・再投入を検査する。
 
+#### 命題の真偽と事例ごとの判断をTTLにする
+
+チェックアウトで `exchange` extra を有効にして実行します。
+
+```sh
+uv run --extra exchange python tools/tautology.py classify --ttl --rule OR p NOT p
+uv run --extra exchange python tools/tautology.py cases examples/concepts-20261115.json --ttl -o cases.ttl
+```
+
+`isTrue` は真理値表の全割当てで真なら `true`、すべて偽なら `false` です。
+割当てで値が変わる式には `classification` が `contingent` と付きます。
+
+事例では「K001はエスカレーションに該当する」を一つの命題にし、判断記録から
+`regardsAsTrue` または `regardsAsFalse` で結びます。判断者・役割・メモ・根拠は
+その判断記録に付き、別の担当者が反対の判断をしても両方を辿れます。判断のない
+事例には判断リンクがありません。語彙の名前空間は `urn:otl:` です。
+既存の `cases` と同じく、見直し対象があるとTTLを書き出した上で終了コード2を返します。
+
+規則の適合率・再現率・正解率には、Aoiでも使用するPythDRagorasの
+`classification_metrics` を使います。取得元とファイルのハッシュは `vendor.lock.json` に記録しています。
+
 #### 保存したグラフを見る
 
 基準事例の [K001-night-db.ttl](examples/K001-night-db.ttl) を Git で保持する。

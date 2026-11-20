@@ -32,6 +32,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import ontautology as ot  # noqa: E402
+from vendor.pythdragoras import classification_metrics  # noqa: E402
 
 __all__ = ["standing", "gaps", "entailed", "holds", "atoms", "judge", "rules", "holdout", "guess", "guess_report", "wobble", "cases", "equivalent", "classify", "evaluate_nodes", "main"]
 OPS = {"AND": all, "OR": any, "NAND": lambda v: not all(v), "NOR": lambda v: not any(v), "NOT": lambda v: not v[0]}
@@ -83,12 +84,12 @@ def judge(corpus, concept, rule):
         fn += [name] if not said and name == concept else []
         tn += not said and name != concept
     tp = len(matched) - len(fp)
-    seen = tp + len(fp) + len(fn) + tn
+    scores = classification_metrics(tp, len(fp), len(fn), tn)
+    metrics = {key: round(scores[key], 4) if scores[key] is not None else None
+               for key in ("accuracy", "precision", "recall")}
     verdict = "refuted" if fp or fn else "undecided" if to_model else "reversible"
     return {"concept": concept, "rule": rule, "matched": matched, "fp": fp, "fn": fn, "to_model": to_model,
-            "tp": tp, "tn": tn, "accuracy": round((tp + tn) / seen, 4) if seen else None,
-            "precision": round(tp / len(matched), 4) if matched else None,
-            "recall": round(tp / (tp + len(fn)), 4) if tp + len(fn) else None,
+            "tp": tp, "tn": tn, **metrics,
             "propositions": {"proposition": not fp, "contrapositive": not fp, "converse": not fn, "inverse": not fn},
             "verdict": verdict, "basis": "derived" if verdict == "reversible" else "hypothesis"}
 
@@ -492,7 +493,7 @@ def cases(corpus, *, sure=1):
         if cid not in found or judgment.get("concept") not in held or not isinstance(judgment.get("holds"), bool):
             raise ValueError("a judgment names a known case, an observed concept and holds (true / false)")
         candidate = found[cid]["candidate"]
-        found[cid]["judgments"].append({**{k: judgment[k] for k in ("concept", "holds", "actor", "role", "note") if k in judgment},
+        found[cid]["judgments"].append({**{k: judgment[k] for k in ("concept", "holds", "actor", "role", "note", "evidence") if k in judgment},
                                         "basis": "observed", "agrees": None if candidate is None else (judgment["concept"] == candidate["concept"]) == judgment["holds"]})
     for row in found.values():
         agrees = [j["agrees"] for j in row["judgments"]]
@@ -582,7 +583,7 @@ def _judge_arguments(parser):
     parser.add_argument("rule", type=_rule, help='JSON such as \'["AND", "弦楽器", ["NOR", "4弦標準"]]\'')
 
 
-def _classify_arguments(parser):
+def _rule_arguments(parser):
     inputs = parser.add_mutually_exclusive_group(required=True)
     inputs.add_argument("rule", nargs="?", help="one feature name or JSON rule")
     inputs.add_argument("--rule", dest="tokens", nargs="+", metavar="TOKEN",
@@ -607,8 +608,18 @@ def _input_rule(args):
     return stack[0]
 
 
+def _classify_arguments(parser):
+    _rule_arguments(parser)
+    parser.add_argument("--ttl", action="store_true", help="emit the truth-table result as Turtle")
+
+
 def _classify(args):
-    return classify(_input_rule(args)), False
+    rule = _input_rule(args)
+    result = classify(rule)
+    if args.ttl:
+        from ontautology_shared.truth import formula_graph
+        return formula_graph(rule, result).serialize(format="turtle"), False
+    return result, False
 
 
 def evaluate_nodes(graph, rule, *, node_type=None, partial=False):
@@ -646,7 +657,7 @@ def _evaluate_arguments(parser):
     parser.add_argument("graph", type=Path, help="graph JSON file, or - for stdin")
     parser.add_argument("--type", dest="node_type", help="only evaluate nodes of this type")
     parser.add_argument("--partial", action="store_true", help="check both values of missing facts (up to 16 per node)")
-    _classify_arguments(parser)
+    _rule_arguments(parser)
 
 
 def _evaluate(args):
@@ -707,7 +718,9 @@ def _wobble(args):
 
 def _cases_arguments(parser):
     _corpus(parser)
-    parser.add_argument("--graph", dest="as_graph", action="store_true", help="emit case statuses, candidates and judgments as nodes and edges")
+    output = parser.add_mutually_exclusive_group()
+    output.add_argument("--ttl", action="store_true", help="emit attributed case judgments as Turtle")
+    output.add_argument("--graph", dest="as_graph", action="store_true", help="emit case statuses, candidates and judgments as nodes and edges")
     parser.add_argument("--sure", type=float, default=1.0, help="weight the case's elements need before a concept is its candidate (default 1)")
 
 
@@ -715,6 +728,9 @@ def _cases(args):
     corpus = ot._read_json(args.graph)
     found = cases(corpus, sure=args.sure)
     disputed = bool(found["summary"]["disputed"])
+    if args.ttl:
+        from ontautology_shared.truth import judgment_graph
+        return judgment_graph(corpus, found["cases"]).serialize(format="turtle"), disputed
     if not args.as_graph:
         return found, disputed
 

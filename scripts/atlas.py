@@ -17,6 +17,7 @@ sys.path.insert(0, str(ROOT))
 from gh_audit.gh_audit import audit, plan, transfer_report, turtle
 from ontautology import concept_edges, define_concepts
 from ontautology_shared._onto.knowledgegraph import graph_mermaid
+from ontautology_shared.truth import judgment_graph
 from tools import tautology
 from examples.relation_holdout import replay
 
@@ -113,6 +114,7 @@ def datasets():
             if output.returncode != (2 if rows["summary"]["disputed"] else 0):
                 raise RuntimeError(output.stderr or "case graph failed")
             graph = domain_graph(json.loads(output.stdout))
+            graph += judgment_graph(data, rows["cases"])
             for case in data["cases"]:
                 term = resource("case:"+case["id"])
                 record(graph, term, {"input": case, **rows["cases"][case["id"]]})

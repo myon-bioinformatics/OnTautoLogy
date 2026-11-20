@@ -1,5 +1,7 @@
 import json
 import os
+import subprocess
+import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
@@ -68,6 +70,35 @@ class Exchange(unittest.TestCase):
         copy.add((BNode(), RDF.type, OTL.Case))
         with self.assertRaisesRegex(ValueError, "stable IRIs"):
             statements(copy)
+
+    def test_classify_turtle(self):
+        for rule, verdict, value in ((["OR", "p", ["NOT", "p"]], "tautology", True),
+                                     (["AND", "p", ["NOT", "p"]], "contradiction", False),
+                                     ("p", "contingent", None)):
+            done = subprocess.run([sys.executable, str(ROOT / "tools/tautology.py"), "classify",
+                                   "--ttl", json.dumps(rule)], capture_output=True, text=True, check=True)
+            graph = Graph().parse(data=done.stdout, format="turtle")
+            prop, = graph.subjects(RDF.type, OTL.Proposition)
+            self.assertEqual(graph.value(prop, OTL.classification), OTL[verdict])
+            self.assertEqual(graph.value(prop, OTL.isTrue), Literal(value) if value is not None else None)
+
+    def test_opposing_judgments_share_one_proposition(self):
+        corpus = json.loads((ROOT / "examples/concepts-20261115.json").read_text())
+        first = corpus["judgments"][0]
+        corpus["judgments"].append({**first, "actor": "再確認者", "holds": False, "evidence": "追試記録"})
+        done = subprocess.run([sys.executable, str(ROOT / "tools/tautology.py"), "cases", "-", "--ttl"],
+                              input=json.dumps(corpus), capture_output=True, text=True)
+        self.assertEqual(done.returncode, 2, done.stderr)
+        graph = Graph().parse(data=done.stdout, format="turtle")
+        case = OTL["case:" + first["case"]]
+        prop, = graph.subjects(OTL.aboutCase, case)
+        yes, = graph.subjects(OTL.regardsAsTrue, prop)
+        no, = graph.subjects(OTL.regardsAsFalse, prop)
+        self.assertEqual(set(graph.objects(case, OTL.judgment)), {yes, no})
+        self.assertEqual(graph.value(yes, OTL.actor), Literal(first["actor"]))
+        self.assertEqual(graph.value(no, OTL.evidence), Literal("追試記録"))
+        self.assertFalse(list(graph.triples((None, OTL.isTrue, None))))
+        self.assertFalse(list(graph.objects(OTL["case:K003-shift-change"], OTL.judgment)))
 
     def test_input_formats(self):
         from ontautology_shared._onto.ontology import read_graph
