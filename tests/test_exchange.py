@@ -123,3 +123,24 @@ class PagesGraph(unittest.TestCase):
         root = ROOT / "site" / "concepts"
         diagram = (root / "bot.mmd").read_text(encoding="utf-8")
         self.assertEqual(rdf_mermaid(root / "bot.ttl"), f"```mermaid\n{diagram}```\n")
+
+
+class WaveAtlas(unittest.TestCase):
+    def test_claim_is_queryable_without_asserting_candidate(self):
+        from scripts.atlas import OT, domain_graph, resource, views
+
+        nodes = [{"id": "concept:AI", "name": "AI"}, {"id": "concept:bot", "name": "bot"}]
+        edge = {"source": "concept:bot", "kind": "applicationOf", "target": "concept:AI",
+                "basis": "hypothesis", "lock": "snapshot:test"}
+        g = domain_graph({"nodes": nodes, "edges": [edge]})
+        bot, ai = resource("concept:bot"), resource("concept:AI")
+        self.assertNotIn((bot, OT.applicationOf, ai), g)
+        claim, = g.subjects(RDF.subject, bot)
+        self.assertIn((claim, RDF.object, ai), g)
+        self.assertIn((claim, OT["field:lock"], resource("snapshot:test")), g)
+        for index in range(19):
+            g.add((bot, OT.test, Literal(index)))
+        result = views(g, bot)
+        pages = result["nodes"][result["start"]]["pages"]
+        self.assertGreater(len(pages), 1)
+        self.assertEqual(sum(len(p["edges"]) for p in pages), len(list(g.triples((bot, None, None)))) + 1)

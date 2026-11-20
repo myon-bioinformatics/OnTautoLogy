@@ -1,0 +1,133 @@
+{
+  "waves": {
+    "audit": {
+      "classes": {
+        "dependency": {
+          "edges": 13,
+          "incident_nodes": 15,
+          "multiple_sources": [
+            "pr:myon-bioinformatics/Aoi#210"
+          ],
+          "sample_cycles": []
+        },
+        "overlap": {
+          "edges": 25,
+          "incident_nodes": 8,
+          "multiple_sources": [
+            "pr:myon-bioinformatics/Aoi#210"
+          ],
+          "sample_cycles": []
+        }
+      },
+      "unclassified_edges": 2304
+    },
+    "concepts": {
+      "classes": {
+        "hierarchy": {
+          "edges": 29,
+          "incident_nodes": 24,
+          "multiple_sources": [
+            "elem:区分:仕組み",
+            "elem:区分:出来事",
+            "elem:区分:心の状態",
+            "elem:区分:架空の人物",
+            "elem:区分:架空の生き物",
+            "elem:区分:生き物",
+            "elem:区分:行い",
+            "elem:区分:道具",
+            "elem:区分:飲食物"
+          ],
+          "sample_cycles": []
+        },
+        "similarity": {
+          "edges": 62,
+          "incident_nodes": 42,
+          "multiple_sources": [
+            "concept:C001-iphone",
+            "concept:C002-luigi",
+            "concept:C003-pikachu",
+            "concept:C004-energy-drink",
+            "concept:C005-guitar",
+            "concept:C006-salmon",
+            "concept:C007-spider-man",
+            "concept:C008-ai-agent",
+            "concept:C009-incident",
+            "concept:C010-anxiety",
+            "concept:C011-escalation"
+          ],
+          "sample_cycles": [
+            [
+              "concept:Android",
+              "concept:C001-iphone",
+              "concept:Android"
+            ],
+            [
+              "concept:C001-iphone",
+              "concept:iPad",
+              "concept:C001-iphone"
+            ],
+            [
+              "concept:C002-luigi",
+              "concept:マリオ",
+              "concept:C002-luigi"
+            ],
+            [
+              "concept:C002-luigi",
+              "concept:ワリオ",
+              "concept:C002-luigi"
+            ],
+            [
+              "concept:C002-luigi",
+              "concept:ワルイージ",
+              "concept:C002-luigi"
+            ]
+          ]
+        }
+      },
+      "unclassified_edges": 735
+    },
+    "cases": {
+      "classes": {
+        "affirmation": {
+          "edges": 3,
+          "incident_nodes": 5,
+          "multiple_sources": [
+            "concept:C011-escalation"
+          ],
+          "sample_cycles": []
+        },
+        "hypothesis": {
+          "edges": 3,
+          "incident_nodes": 6,
+          "multiple_sources": [],
+          "sample_cycles": []
+        },
+        "judgment-record": {
+          "edges": 3,
+          "incident_nodes": 6,
+          "multiple_sources": [],
+          "sample_cycles": []
+        },
+        "negation": {
+          "edges": 0,
+          "incident_nodes": 0,
+          "multiple_sources": [],
+          "sample_cycles": []
+        },
+        "unknown-element": {
+          "edges": 1,
+          "incident_nodes": 2,
+          "multiple_sources": [],
+          "sample_cycles": []
+        }
+      },
+      "unclassified_edges": 0
+    }
+  },
+  "case_status": {
+    "K001-night-db": "confirmed",
+    "K002-share-only": "disputed",
+    "K003-shift-change": "pending",
+    "K004-first-word": "judged"
+  }
+}
