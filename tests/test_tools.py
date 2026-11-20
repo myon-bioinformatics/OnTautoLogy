@@ -494,6 +494,26 @@ class JudgeTests(unittest.TestCase):
         for invalid in (["AND", "p"], ["p", "q"], ["NOT"]):
             self.assertEqual(run_cli(script, "classify", "--rule", *invalid).returncode, 1)
 
+    def test_evaluate_saved_nodes_in_isolated_python(self):
+        graph = {"nodes": [
+            {"id": "a", "type": "Observation", "draft": False},
+            {"id": "b", "type": "Observation", "draft": True},
+            {"id": "c", "type": "Observation", "draft": None},
+            {"id": "d", "type": "PullRequest"},
+        ]}
+        with tempfile.TemporaryDirectory() as cwd:
+            path = Path(cwd) / "audit.json"
+            path.write_text(json.dumps(graph), encoding="utf-8")
+            cmd = [sys.executable, "-I", "-S", str(ROOT / "tools/tautology.py"), "evaluate"]
+            options = ["--type", "Observation", "--rule", "NOT", "draft"]
+            for source in ("audit.json", "-"):
+                run = subprocess.run([*cmd, source, *options], cwd=cwd, input=json.dumps(graph),
+                                     capture_output=True, text=True)
+                self.assertEqual(run.returncode, 2, run.stderr)
+                result = json.loads(run.stdout)
+                self.assertEqual(result["counts"], {"holds": 1, "violated": 1, "unknown": 1})
+                self.assertEqual(result["nodes"][-1], {"id": "c", "verdict": "unknown", "missing": ["draft"]})
+
     def test_random_rules_rewritten_by_de_morgan_stay_equivalent(self):
         for seed in range(40):
             rng = random.Random(seed)

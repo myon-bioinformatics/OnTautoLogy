@@ -602,6 +602,15 @@ PR ごとに最新の観測を選び、`contained_in_main=true` の依存先を�
 
 `classify --rule` は演算子を先に書きます。`NOT` は1項、`AND OR NAND NOR` は各2項です。空白やシェルの特殊文字を含む名前、演算子と同名の変数、0項・多項の演算は従来のJSON形式で指定できます。
 
+保存したグラフを調べるときは、Aoi と同じく Python の隔離オプションをスクリプト名の前に置き、入力パスをコマンドの後に渡します。
+
+```sh
+python -I -S gh_audit/gh_audit.py audit examples/audit-20261114.json -o audit.json
+python -I -S tools/tautology.py evaluate audit.json --type Observation --rule OR NOT merged NOT draft
+```
+
+この例では各観測の「マージ済みならドラフトではない」を確認します。変数はノード直下の真偽値属性名です。必要な属性が欠損・null・真偽値以外なら、その観測を unknown として属性名を返します。辺をたどる規則は対象外です。入力に `-` を渡すと標準入力を読み、`-o` で結果を保存できます。違反・未確定・対象0件は終了コード2です。
+
 `classify` の割当例は真になる変数名の一覧です。残りの変数は偽です。`[]` は全変数が偽の割当、`null` はその真理値を取る割当が存在しないことを表します。分類できれば終了コードは0です。入力エラー・変数上限超過は1です。
 
 ### 🐍 Python・Node から呼ぶ

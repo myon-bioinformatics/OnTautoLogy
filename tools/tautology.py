@@ -33,7 +33,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import ontautology as ot  # noqa: E402
 
-__all__ = ["standing", "gaps", "entailed", "holds", "atoms", "judge", "rules", "holdout", "guess", "guess_report", "wobble", "cases", "equivalent", "classify", "main"]
+__all__ = ["standing", "gaps", "entailed", "holds", "atoms", "judge", "rules", "holdout", "guess", "guess_report", "wobble", "cases", "equivalent", "classify", "evaluate_nodes", "main"]
 OPS = {"AND": all, "OR": any, "NAND": lambda v: not all(v), "NOR": lambda v: not any(v), "NOT": lambda v: not v[0]}
 
 
@@ -578,9 +578,9 @@ def _classify_arguments(parser):
                         help="prefix notation, e.g. OR NOT reviewed mergeable")
 
 
-def _classify(args):
+def _input_rule(args):
     if args.tokens is None:
-        return classify(_rule(args.rule)), False
+        return _rule(args.rule)
     # Read prefix notation backwards: operands are on the stack when their operator arrives.
     stack = []
     for token in reversed(args.tokens):
@@ -593,7 +593,46 @@ def _classify(args):
         stack.append([token, *(stack.pop() for _ in range(count))])
     if len(stack) != 1:
         raise ValueError("--rule expects a single prefix expression")
-    return classify(stack[0]), False
+    return stack[0]
+
+
+def _classify(args):
+    return classify(_input_rule(args)), False
+
+
+def evaluate_nodes(graph, rule, *, node_type=None):
+    """Check boolean properties for each selected node. Missing evidence stays unknown."""
+    names = atoms(rule)
+    if not isinstance(graph, dict) or not isinstance(graph.get("nodes"), list):
+        raise ValueError("expected a graph with a nodes array")
+    rows = []
+    counts = {"holds": 0, "violated": 0, "unknown": 0}
+    for node in graph["nodes"]:
+        if not isinstance(node, dict) or not isinstance(node.get("id"), str):
+            raise ValueError("expected a node with a string id")
+        if node_type is not None and node.get("type") != node_type:
+            continue
+        missing = [name for name in names if not isinstance(node.get(name), bool)]
+        if missing:
+            verdict = "unknown"
+        else:
+            present = {name for name in names if node[name]}
+            verdict = "holds" if holds(rule, present) else "violated"
+        rows.append({"id": node["id"], "verdict": verdict, "missing": missing})
+        counts[verdict] += 1
+    return {"nodes": rows, "counts": counts}
+
+
+def _evaluate_arguments(parser):
+    parser.add_argument("graph", type=Path, help="graph JSON file, or - for stdin")
+    parser.add_argument("--type", dest="node_type", help="only evaluate nodes of this type")
+    _classify_arguments(parser)
+
+
+def _evaluate(args):
+    result = evaluate_nodes(ot._read_json(args.graph), _input_rule(args), node_type=args.node_type)
+    counts = result["counts"]
+    return result, bool(not result["nodes"] or counts["unknown"] or counts["violated"])
 
 
 def _equivalent_arguments(parser):
@@ -688,6 +727,7 @@ def main(argv=None):
     return ot.main(argv, commands=(
         ("rules", "🧩 第二弾 · ⚖️ candidate rules per concept, judged; the first reversible one is the definition", _rules_arguments, _rules),
         ("judge", "🧩 第二弾 · 🧮 one rule as the judge of a concept: FN / FP / accuracy / propositions", _judge_arguments, _judge),
+        ("evaluate", "check a rule against saved node properties", _evaluate_arguments, _evaluate),
         ("classify", "classify one propositional rule by its truth table", _classify_arguments, _classify),
         ("equivalent", "🧩 第二弾 · ✅ two rules on every truth assignment (proof) or a counterexample", _equivalent_arguments, _equivalent),
         ("holdout", "🧩 第二弾 · 🙈 unseen concepts and 🎭 masked elements: how definitions hold on what they were not built from", _rules_arguments, _holdout),
