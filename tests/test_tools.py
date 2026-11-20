@@ -783,6 +783,16 @@ class CasesTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "K001-night-db: missing marker slots: hereafter in"):
             tautology.cases(corpus, require_markers=True)
 
+    def test_meaning_requires_consistent_interpretation_in_one_case(self):
+        from ontautology_shared.markers import marker_slots
+        arg = {"meaning": "route", "expression": "via chat", "role": "channel", "value": "chat"}
+        for change in ({"role": "place"}, {"value": "mail"}, {"value": None}):
+            with self.subTest(change=change), self.assertRaisesRegex(ValueError, "conflicting"):
+                marker_slots({"via": [arg], "through": [{**arg, **change}]})
+        for change in ({"meaning": ""}, {"expression": None}):
+            with self.assertRaises(ValueError):
+                marker_slots({"via": [{**arg, **change}]})
+
     def test_the_example_cases_and_their_status(self):
         found = tautology.cases(concepts())
         rows = found["cases"]

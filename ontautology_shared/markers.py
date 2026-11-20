@@ -21,17 +21,26 @@ def marker_slots(entries, profile=MARKERS):
     if not isinstance(entries, dict):
         raise ValueError("markers must be an object")
     slots = dict.fromkeys(profile)
+    meanings = {}
     for marker, arguments in entries.items():
         ot._nonempty_str(marker, "marker")
         if arguments is not None:
             if not isinstance(arguments, list):
                 raise ValueError(f"{marker}: provide null or a list of arguments")
             for arg in arguments:
-                if not isinstance(arg, dict) or set(arg) != {"role", "value"}:
+                if (not isinstance(arg, dict) or not {"role", "value"} <= arg.keys()
+                        or arg.keys() - {"role", "value", "expression", "meaning"}):
                     raise ValueError(f"{marker}: each argument needs role and value")
                 ot._nonempty_str(arg["role"], "role")
                 value = arg["value"]
                 if value is not None:
                     ot._nonempty_str(value, "value")
+                if "expression" in arg:
+                    ot._nonempty_str(arg["expression"], "expression")
+                if "meaning" in arg:
+                    key = ot._nonempty_str(arg["meaning"], "meaning")
+                    interpretation = (arg["role"], value)
+                    if meanings.setdefault(key, interpretation) != interpretation:
+                        raise ValueError(f"{marker}: meaning {key!r} has conflicting roles or values")
         slots[marker] = arguments
     return slots

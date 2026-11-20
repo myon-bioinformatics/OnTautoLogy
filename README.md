@@ -778,6 +778,20 @@ SELECT ?recipient ?judge ?role ?asked WHERE {
 TTLでは `ot:marker:to` のような述語から引数の `ot:role` と `rdf:value` をたどります。
 未記載は `ot:Unspecified`、確認済みの0件は `rdf:nil`、値が不明な引数は `ot:Unknown` で表します。
 
+同じ意味を複数の表現で記録する場合は、各引数に元の表現 `expression` と、
+その事例内で共通の `meaning` ID を付けます。K002の英語注釈はこの形です。
+
+```json
+{
+  "via": [{"expression":"via chat","meaning":"channel-chat","role":"channel","value":"チャット"}],
+  "through": [{"expression":"through chat","meaning":"channel-chat","role":"channel","value":"チャット"}]
+}
+```
+
+TTLでは二つの引数が `ot:expresses` で同じリソースを指します。表現数は2件、意味は1件として
+数えられます。同じ前置詞の中でも複数の表現を列挙できます。IDの有効範囲はその出来事
+（出来事の指定がないときは事例）です。同じIDに異なる役割・値を指定すると入力エラーになります。
+
 #### リバーシで一手と評価を照合する
 
 初期配置から黒白が各1回打つまでに到達する17盤面で、各64マスを候補として検査します。

@@ -61,7 +61,15 @@ def add_markers(graph, subject, slots):
             graph.add((subject, predicate, node))
             graph.add((node, OT.role, Literal(argument["role"])))
             value = argument["value"]
-            graph.add((node, RDF.value, OT.Unknown if value is None else Literal(value)))
+            term = OT.Unknown if value is None else Literal(value)
+            graph.add((node, RDF.value, term))
+            if "expression" in argument:
+                graph.add((node, OT.expression, Literal(argument["expression"])))
+            if "meaning" in argument:
+                meaning = URIRef(f"{subject}/meaning/{quote(argument['meaning'], safe='')}")
+                graph.add((node, OT.expresses, meaning))
+                graph.add((meaning, OT.role, Literal(argument["role"])))
+                graph.add((meaning, RDF.value, term))
 
 
 def judgment_graph(corpus, cases):

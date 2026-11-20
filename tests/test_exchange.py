@@ -157,6 +157,28 @@ class Exchange(unittest.TestCase):
         self.assertEqual(graph.value(graph.value(event, predicate("hereafter in")), RDF.value), OTL.Unknown)
         self.assertEqual(graph.value(graph.value(event, predicate("@none")), RDF.value), Literal("report"))
 
+    def test_marker_expressions_share_only_explicit_local_meanings(self):
+        from ontautology_shared.markers import marker_slots
+        from ontautology_shared.truth import add_markers
+        arg = {"role": "channel", "value": "chat", "meaning": "relay"}
+        slots = marker_slots({"via": [{**arg, "expression": "via chat"}, {**arg, "expression": "via the chat"}],
+                              "through": [{**arg, "expression": "through chat"}],
+                              "by": [{"role": "channel", "value": "chat"}]})
+        graph = Graph()
+        for event in (OTL.first, OTL.second):
+            add_markers(graph, event, slots)
+        graph = Graph().parse(data=graph.serialize(format="turtle"), format="turtle")
+        meanings = []
+        for event in (OTL.first, OTL.second):
+            records = set(graph.objects(event, OTL["marker:via"])) | set(graph.objects(event, OTL["marker:through"]))
+            self.assertEqual({str(graph.value(r, OTL.expression)) for r in records},
+                             {"via chat", "via the chat", "through chat"})
+            meaning, = {graph.value(r, OTL.expresses) for r in records}
+            self.assertEqual(graph.value(meaning, RDF.value), Literal("chat"))
+            self.assertIsNone(graph.value(graph.value(event, OTL["marker:by"]), OTL.expresses))
+            meanings.append(meaning)
+        self.assertNotEqual(*meanings)
+
     def test_reversi_preview_shares_move_and_preserves_opposing_judgments(self):
         from examples import reversi
         graph = reversi.graph(reversi.opening_cases(), preview=True)
