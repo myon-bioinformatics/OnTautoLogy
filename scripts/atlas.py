@@ -20,6 +20,7 @@ from ontautology_shared._onto.knowledgegraph import graph_mermaid
 from ontautology_shared.truth import judgment_graph
 from tools import tautology
 from examples.relation_holdout import replay
+from examples import reversi
 
 OT = Namespace("urn:otl:")
 TITLES = ("第一弾　GitHub監査と移管", "第二弾　概念・語彙と論理検証", "第三弾　事例・判断と比較評価")
@@ -132,6 +133,7 @@ def datasets():
         (3, "K001", "夜間DB対応のRDF交換例", "examples/K001-night-db.ttl"),
     ):
         yield wave, slug, title, source, Graph().parse(ROOT/source, format="turtle")
+    yield 3, "reversi", "リバーシの合法手と二つの評価", "examples/reversi.py", reversi.graph(reversi.opening_cases(), preview=True)
     source = "site/third-design/baseline-evidence.json"
     yield 3, "baseline", "固定版の評価値・測定条件", source, read(source)
     board = subprocess.check_output(["node", "scripts/board_export.cjs"], cwd=ROOT)

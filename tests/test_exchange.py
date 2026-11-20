@@ -137,6 +137,19 @@ class Exchange(unittest.TestCase):
         self.assertEqual(graph.value(request, OTL.requestedDecision), Literal("再起動してよいか"))
         self.assertFalse(list(graph.objects(OTL["case:K003-shift-change"], OTL.event)))
 
+    def test_reversi_preview_shares_move_and_preserves_opposing_judgments(self):
+        from examples import reversi
+        graph = reversi.graph(reversi.opening_cases(), preview=True)
+        graph = Graph().parse(data=graph.serialize(format="turtle"), format="turtle")
+        self.assertEqual(len(set(graph.subjects(RDF.type, OTL.CandidateMove))), 6)
+        move = OTL["reversi:d3/e3"]
+        self.assertEqual(set(graph.objects(move, OTL.flips)), {Literal("e4")})
+        prop, = graph.subjects(OTL.aboutEvent, move)
+        for predicate, policy in ((OTL.regardsAsTrue, "mostFlips"), (OTL.regardsAsFalse, "fewestReplies")):
+            judgment, = graph.subjects(predicate, prop)
+            self.assertEqual(graph.value(judgment, OTL.actor), Literal(policy))
+        self.assertIsNone(graph.value(prop, OTL.isTrue))
+
     def test_input_formats(self):
         from ontautology_shared._onto.ontology import read_graph
         from tools.knowledgegraph import rdf_mermaid

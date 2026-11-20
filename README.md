@@ -757,6 +757,26 @@ SELECT ?recipient ?judge ?role ?asked WHERE {
 }
 ```
 
+#### リバーシで一手と評価を照合する
+
+初期配置から黒白が各1回打つまでに到達する17盤面で、各64マスを候補として検査します。
+座標は上段左から a1〜h1、黒を B、白を W とします。各候補に盤面・手番・着手点・返る石を記録します。
+合法手には「今すぐ最も多く返す」「相手の次の合法手数を最小にする」の二つの基準を適用します。
+最多・最少で同点の手はすべてその基準で推奨します。評価者はこの二つの仮想方針です。
+
+たとえば黒 d3 の後、白 c3 と白 e3 はともに1石を返します。次の黒の選択肢は c3 なら4手、
+e3 なら5手です。白 e3 を第一の方針は推奨し、第二の方針は推奨しません。
+二つの判断が同じ着手候補を参照するので、どの条件で意見が割れたかを辿れます。
+
+```sh
+python -S examples/reversi.py
+python -S examples/reversi.py --format json > reversi.json
+uv run --extra exchange python examples/reversi.py --format ttl > reversi.ttl
+```
+
+全1,088候補をオンデマンドで生成します。第三弾のPagesには初期盤面と黒 d3 後の6候補を掲載します。
+[オセロの公式ルール](https://www.worldothello.org/about/about-othello/othello-rules/official-rules/english)
+
 #### 分類規則からの論理的帰結を確かめる
 
 「猫なら哺乳類」と「これは猫」を前提にして「これは哺乳類」を検査します。
