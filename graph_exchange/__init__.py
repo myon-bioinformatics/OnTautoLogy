@@ -95,8 +95,8 @@ def transfer(backend, scope, graph=None):
     return output
 
 
-def main(argv):
-    parser = argparse.ArgumentParser(prog="ontautology exchange")
+def main(argv=None, *, prog="ontautology exchange"):
+    parser = argparse.ArgumentParser(prog=prog)
     subs = parser.add_subparsers(dest="action", required=True)
     for action in ("import", "export"):
         sub = subs.add_parser(action)
@@ -127,3 +127,7 @@ def main(argv):
         else:
             print(graph.query(args.select).serialize(format="json").decode())
     return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(prog="python -m onto_exchange"))

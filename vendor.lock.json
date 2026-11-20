@@ -30,8 +30,8 @@
     },
     {
       "repository": "myon-bioinformatics/ONTO",
-      "ref": "0eec84d4e1a82305f0a0b57661aaeb837a9e2e20",
-      "commit": "0eec84d4e1a82305f0a0b57661aaeb837a9e2e20",
+      "ref": "da7dc961ad59865bbaf61f5c667a43c5c56a6422",
+      "commit": "da7dc961ad59865bbaf61f5c667a43c5c56a6422",
       "source": "ontology.py",
       "destination": "ontautology_shared/_onto/ontology.py",
       "blob_sha": "3fd9f58c9c5607c69dab250ba1d81152921a6086",
@@ -39,8 +39,8 @@
     },
     {
       "repository": "myon-bioinformatics/ONTO",
-      "ref": "0eec84d4e1a82305f0a0b57661aaeb837a9e2e20",
-      "commit": "0eec84d4e1a82305f0a0b57661aaeb837a9e2e20",
+      "ref": "da7dc961ad59865bbaf61f5c667a43c5c56a6422",
+      "commit": "da7dc961ad59865bbaf61f5c667a43c5c56a6422",
       "source": "knowledgegraph.py",
       "destination": "ontautology_shared/_onto/knowledgegraph.py",
       "blob_sha": "c730f609066c60398422d9252b3a7ca072b6c729",
@@ -48,12 +48,21 @@
     },
     {
       "repository": "myon-bioinformatics/ONTO",
-      "ref": "0eec84d4e1a82305f0a0b57661aaeb837a9e2e20",
-      "commit": "0eec84d4e1a82305f0a0b57661aaeb837a9e2e20",
+      "ref": "da7dc961ad59865bbaf61f5c667a43c5c56a6422",
+      "commit": "da7dc961ad59865bbaf61f5c667a43c5c56a6422",
       "source": "LICENSE",
       "destination": "ontautology_shared/_onto/LICENSE",
       "blob_sha": "4ec4989b801bf1a3df6184d21f79e6e7ed5931f6",
       "sha256": "15f66204c4a6a1ce0c94f0ed4319ff9400f872e85fd32c95f21695c2f231af59"
+    },
+    {
+      "repository": "myon-bioinformatics/ONTO",
+      "ref": "da7dc961ad59865bbaf61f5c667a43c5c56a6422",
+      "commit": "da7dc961ad59865bbaf61f5c667a43c5c56a6422",
+      "source": "onto_exchange.py",
+      "destination": "graph_exchange/__init__.py",
+      "blob_sha": "31b1f7af122aebcd14ee06ec87708b1cf218f1cd",
+      "sha256": "a5d03109c738f03d11b70d536f70fb46a2a42d07ffde2ceaef2955f446b28c8e"
     }
   ]
 }

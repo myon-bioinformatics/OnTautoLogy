@@ -639,6 +639,13 @@ uv run --no-project --with redis python -m unittest discover -s tests -p test_to
 
 リポジトリのあり方をルールとしてグラフに載せる案は、[docs/policy-rules.md](docs/policy-rules.md) にあります。実装ではなく、見直し前提の設計メモです。
 
+### ONTO と OTL の分担
+
+語彙検査・グラフの構造解析と表示・RDF/DB 入出力の編集元は [ONTO](https://github.com/myon-bioinformatics/ONTO)。
+OTL は規則・同値性と反例・候補と人の判断の照合を担当する。
+例えば K002 の候補を RDF に保存する処理は ONTO、候補と判断を比較して `disputed` と判定する処理は OTL に置く。
+`graph_exchange/` は ONTO 直下の `onto_exchange.py` を固定した同梱版で、従来の OTL CLI と Python API から利用できる。
+
 ### Python で Neo4j・ArcadeDB と Turtle を往復する
 
 OTL の checkout で `uv tool install '.[exchange]'` を実行する。Python からは
