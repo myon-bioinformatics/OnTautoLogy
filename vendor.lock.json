@@ -57,12 +57,12 @@
     },
     {
       "repository": "myon-bioinformatics/ONTO",
-      "ref": "da7dc961ad59865bbaf61f5c667a43c5c56a6422",
-      "commit": "da7dc961ad59865bbaf61f5c667a43c5c56a6422",
+      "ref": "1c4d14c6dccf9f0159e9be328955b80c4b9242c8",
+      "commit": "1c4d14c6dccf9f0159e9be328955b80c4b9242c8",
       "source": "onto_exchange.py",
       "destination": "graph_exchange/__init__.py",
-      "blob_sha": "31b1f7af122aebcd14ee06ec87708b1cf218f1cd",
-      "sha256": "a5d03109c738f03d11b70d536f70fb46a2a42d07ffde2ceaef2955f446b28c8e"
+      "blob_sha": "1d9c4222dddd6528afe8b91a8a31498012e80256",
+      "sha256": "292d96da62b2323631cb0df9f0db6afb177c8aea9bdd607c32be02ead427448e"
     }
   ]
 }

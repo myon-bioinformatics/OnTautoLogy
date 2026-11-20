@@ -4,6 +4,7 @@ import argparse
 import base64
 import json
 import os
+import sys
 from pathlib import Path
 from urllib.request import Request, urlopen
 
@@ -102,21 +103,34 @@ def main(argv=None, *, prog="ontautology exchange"):
         sub = subs.add_parser(action)
         sub.add_argument("backend", choices=("neo4j", "arcade"))
         sub.add_argument("scope")
-        sub.add_argument("file", type=Path, help=".ttl, .json" if action == "export" else ".ttl, .nt, .rdf")
+        if action == "export":
+            sub.add_argument("file", nargs="?", type=Path, help="output file (default: stdout)")
+            sub.add_argument("--format", choices=("ttl", "json"), help="stdout format (default: ttl)")
+        else:
+            sub.add_argument("file", type=Path, help=".ttl, .nt, .rdf")
     query = subs.add_parser("query")
     query.add_argument("file", type=Path, help=".ttl, .nt, .rdf")
     query.add_argument("select", help="SPARQL SELECT")
     args = parser.parse_args(argv)
     if args.action == "export":
-        suffix = args.file.suffix.lower()
-        if suffix not in ("", ".ttl", ".json"):
+        stdout = args.file is None or args.file == Path("-")
+        if not stdout and args.format:
+            parser.error("--format is for stdout; the filename selects the file format")
+        fmt = (args.format or "ttl") if stdout else (args.file.suffix.lower()[1:] or "ttl")
+        if fmt not in ("ttl", "json"):
             parser.error("Supported export extensions: .ttl, .json")
         graph = transfer(args.backend, args.scope)
-        if suffix == ".json":
-            output = json.dumps(graph_json(graph), ensure_ascii=False, indent=2)
-            args.file.write_text(output + "\n", encoding="utf-8")
+        if fmt == "json":
+            output = json.dumps(graph_json(graph), ensure_ascii=False, indent=2) + "\n"
+        elif stdout:
+            output = graph.serialize(format="turtle")
         else:
             graph.serialize(destination=args.file, format="turtle")
+            return 0
+        if stdout:
+            sys.stdout.write(output)
+        else:
+            args.file.write_text(output, encoding="utf-8")
     else:
         try:
             graph = read_graph(args.file)
