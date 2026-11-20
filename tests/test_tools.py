@@ -36,12 +36,17 @@ def random_graph(seed, nodes=12, edges=24):
 
 class OneWayDependency(unittest.TestCase):
     def test_generic_code_never_reads_the_github_audit(self):
-        for path in [ROOT / "ontautology.py", *sorted((ROOT / "tools").glob("*.py"))]:
+        for path in [ROOT / "ontautology.py", *(ROOT / "tools").glob("*.py"),
+                     *(ROOT / "ontautology_shared").glob("*.py")]:
             imports = "\n".join(re.findall(r"(?m)^(?:from|import) .*", path.read_text(encoding="utf-8")))
             with self.subTest(file=path.name):
                 self.assertNotIn("gh_audit", imports)
                 self.assertIsNone(re.search(r"\b(?:from|import) tools\b", imports))
-                if path.parent.name == "tools":
+                if path.name in ("ontology.py", "knowledgegraph.py") and path.parent.name == "tools":
+                    self.assertIn("from ontautology_shared.", imports)
+                elif path == ROOT / "ontautology_shared/ontology.py":
+                    self.assertIn("from ._onto.ontology import", imports)
+                elif path.name != "__init__.py" and path != ROOT / "ontautology.py":
                     self.assertIn("import ontautology as ot", imports)
         audit = "\n".join(re.findall(r"(?m)^(?:from|import) .*", (ROOT / "gh_audit/gh_audit.py").read_text(encoding="utf-8")))
         self.assertIn("import ontautology as ot", audit)
@@ -715,6 +720,24 @@ class CasesTests(unittest.TestCase):
                     {"judgments": [{"case": "K001-night-db", "concept": "未知", "holds": True}]}, {"cases": {}}):
             with self.subTest(bad=bad), self.assertRaises(ValueError):
                 tautology.cases({**corpus, **bad})
+
+    def test_stage_views(self):
+        from test_ontautology import run_cli
+        diagram = ROOT / "tools/knowledgegraph.py"
+        corpus = ROOT / "examples/concepts-20261115.json"
+        audit = run_cli(ROOT / "gh_audit/gh_audit.py", "audit", str(ROOT / "examples/audit-20261114.json"))
+        self.assertEqual(audit.returncode, 0, audit.stderr)
+        first = run_cli(diagram, "-", "--focus", "repo:myon-bioinformatics/Aoi", data=audit.stdout.decode())
+        second = run_cli(diagram, str(corpus), "--focus", "elem:連絡")
+        for result, relation in ((first, "belongsTo"), (second, "hasElement")):
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn(relation, result.stdout.decode())
+        cases = run_cli(ROOT / "tools/tautology.py", "cases", str(corpus), "--graph")
+        self.assertEqual(cases.returncode, 2, cases.stderr)
+        third = run_cli(diagram, "-", data=cases.stdout.decode())
+        self.assertEqual(third.returncode, 0, third.stderr)
+        for label in ("confirmed", "disputed", "pending", "judged", "hypothesis", "holds true", "to_model"):
+            self.assertIn(label, third.stdout.decode())
 
     def test_command_line_cases(self):
         from test_ontautology import run_cli

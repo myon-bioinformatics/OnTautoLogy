@@ -639,6 +639,13 @@ uv run --no-project --with redis python -m unittest discover -s tests -p test_to
 
 リポジトリのあり方をルールとしてグラフに載せる案は、[docs/policy-rules.md](docs/policy-rules.md) にあります。実装ではなく、見直し前提の設計メモです。
 
+### ONTO と OTL の分担
+
+語彙検査・グラフの構造解析と表示・RDF/DB 入出力の編集元は [ONTO](https://github.com/myon-bioinformatics/ONTO)。
+OTL は規則・同値性と反例・候補と人の判断の照合を担当する。
+例えば K002 の候補を RDF に保存する処理は ONTO、候補と判断を比較して `disputed` と判定する処理は OTL に置く。
+`graph_exchange/` は ONTO 直下の `onto_exchange.py` を固定した同梱版で、従来の OTL CLI と Python API から利用できる。
+
 ### Python で Neo4j・ArcadeDB と Turtle を往復する
 
 OTL の checkout で `uv tool install '.[exchange]'` を実行する。Python からは
@@ -673,7 +680,7 @@ CI の graph-exchange ジョブは実際の両 DB を起動し、既存の夜間
 
 基準事例の [K001-night-db.ttl](examples/K001-night-db.ttl) を Git で保持する。
 元の K001 から作った検証用の投影で、反例と確信度 0 を含む。
-CI は両方向の往復後に実 DB から復元した RDF を経路別の Turtle ファイルとして
+CI は両方向の往復後に実 DB から復元した RDF を経路別の Turtle・JSON ファイルとして
 Actions の `graph-exports` Artifact に保存する。保持期間はリポジトリ設定に従う。
 単発の実験を長期保存する場合は Artifact から Turtle をダウンロードできる。
 
@@ -689,5 +696,51 @@ uv run --extra exchange python tools/knowledgegraph.py examples/K001-night-db.tt
 
 読み込み（import、SPARQL 照会、Mermaid 表示）は Turtle (`.ttl`)、N-Triples
 (`.nt`)、RDF/XML (`.rdf`) に対応する。どれも単一 RDF グラフとして扱う。
-書き出し（export）と CI の保存形式は Turtle (`.ttl`) に統一する。
+書き出し（export）は Turtle (`.ttl`) とグラフ JSON (`.json`) に対応する。
+たとえば `olnm ontautology exchange export neo4j trial graph.json` で出力する。
+JSON の `nodes` は RDF の語、`rels` は有向の文を表す。各関係の
+`start.id` と `end.id` は同じファイルのノード ID を参照する。
+ID と述語は RDF の N3 表記を使い、リテラルの型と言語を保持する。
 拡張子を省いた既存の呼び出しは Turtle として扱う。
+
+#### 第一弾〜第三弾を同じ表示器で見る
+
+`tools/knowledgegraph.py` は保存したグラフを Mermaid Markdown に写す。
+JSON の表示は Python 標準ライブラリだけで動く。`--focus` にノード ID を渡すと、
+そのノードと直接つながる辺だけが図に入る。以下は checkout のルートで実行する。
+
+```sh
+# 第一弾：既存の監査から Aoi に直接つながる関係を表示
+python -S gh_audit/gh_audit.py audit examples/audit-20261114.json -o audit.json
+python -S tools/knowledgegraph.py audit.json --focus repo:myon-bioinformatics/Aoi > audit.md
+
+# 第二弾：コーパスに登録された「連絡」と概念の関係を表示
+python -S tools/knowledgegraph.py examples/concepts-20261115.json --focus elem:連絡 > concepts.md
+
+# 第三弾：K001〜K004 の候補・人の判断・未登録要素と状態を表示
+python -S tools/tautology.py cases examples/concepts-20261115.json --graph -o cases.json
+python -S tools/knowledgegraph.py cases.json > cases.md
+```
+
+第三弾の `cases --graph` は既存の評価結果から表示用のノード・辺を作る。
+判断が食い違う事例を含む場合は JSON を保存して終了コード 2 を返す。
+`exchange export` のグラフ JSON も同じ表示器で開ける。
+
+#### TOO・TOL・ONTO など外部から使う Python API
+
+OTL をインストールした Python から次の入口を使う。TOO などの利用側が語彙・概念 ID・関係の向きを決め、
+[ONTO](https://github.com/myon-bioinformatics/ONTO) の直下にある `ontology.py` と `knowledgegraph.py` が共通実装の正本。OTL は vendor.lock.json のコミットに固定した実装を同梱する。ONTO の索引には、参照したデータとその版を記録できる。
+
+```python
+from ontautology_shared import ontology, knowledgegraph
+
+findings = ontology.violations(graph, vocabulary)
+cycles = knowledgegraph.relation_cycles(graph["edges"])
+diagram = knowledgegraph.graph_mermaid(graph, focus="A")
+```
+
+[実行例](examples/shared_taxonomy.py) は親 B・C から子 A への分類を定義し、同じデータで
+語彙と循環を検査して Mermaid 図を作る。追加の Python 依存は不要。CI は wheel をクリーンな環境に
+インストールしてこの例を実行する。TOO・TOL で共通 API のみを使う場合は ONTO の版を指定し、
+`import ontology` と `import knowledgegraph` で直接利用できる。
+既存の `tools/ontology.py` と `tools/knowledgegraph.py` も同じ実装を呼び出す。

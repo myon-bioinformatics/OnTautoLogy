@@ -133,6 +133,7 @@ def why(edges, node, *, depth=3, limit=200):
     return {"node": node, "rows": rows[:limit], "cut": cut, "truncated": len(rows) > limit or (bool(queue) and len(rows) >= limit)}
 
 
+# Standalone copy of ONTO relation_cycles; test_fleet verifies the pinned source.
 def cycles(edges, *, limit=5):
     """Representative cycles, reported and never fatal: a graph with guesses and refutations need not be a DAG."""
     out = {}
@@ -202,6 +203,7 @@ def ladder(edges):
     return {"edges": len(edges), "basis": counts, "kinds": dict(sorted(kinds.items()))}
 
 
+# Standalone copy of ONTO key_report; test_fleet verifies the pinned source.
 def key_report(items, candidates):
     """Can an attribute set be the key of these entries? Identity is settled last: a handle first, a key only
     when the observations support it, and a key that collides is reported, not overwritten.

@@ -8,7 +8,7 @@ from uuid import uuid4
 try:
     from rdflib import BNode, Graph, Literal, Namespace, RDF
     from rdflib.compare import isomorphic
-    from graph_exchange import arcade, statements
+    from graph_exchange import arcade, main as exchange_cli, statements
     from ontautology import exchange
 except ModuleNotFoundError as exc:
     if exc.name != "rdflib" or os.getenv("OTL_LIVE"):
@@ -106,3 +106,11 @@ class Exchange(unittest.TestCase):
                 target.parent.mkdir(parents=True, exist_ok=True)
                 current.serialize(destination=target, format="turtle")
                 self.assertTrue(isomorphic(original, Graph().parse(target, format="turtle")))
+                json_path = target.with_suffix(".json")
+                self.assertEqual(exchange_cli(["export", backend, scope, str(json_path)]), 0)
+                data = json.loads(json_path.read_text(encoding="utf-8"))
+                terms = {node["id"]: node["properties"]["term"] for node in data["nodes"]}
+                actual = [(terms[r["start"]["id"]], r["properties"]["predicate"],
+                           terms[r["end"]["id"]]) for r in data["rels"]]
+                self.assertEqual(actual, [(r["subject"], r["predicate"], r["object"])
+                                          for r in statements(original)])
