@@ -37,8 +37,30 @@ class ConceptDefinitionTests(unittest.TestCase):
         defined = ot.define_concepts(corpus)["concepts"]
         for name in ("ポリゴン2", "人間", "AI"):
             self.assertEqual(defined[name]["definition"]["roundtrip"], {"verdict": "unique", "matched": [name]})
-        self.assertEqual(ot.roundtrip_elements(corpus, ["由来:人工"])["matched"], ["AI", "ポリゴン2"])
-        self.assertEqual(ot.roundtrip_elements(corpus, ["由来:人工", "現実の対象"])["matched"], ["AI"])
+        from tools.tautology import wobble
+        spellings = {"ポリゴン": "ポリゴン", "ポリゴン２": "ポリゴン2", "ポリゴンＺ": "ポリゴンZ"}
+        hits = wobble(corpus, list(spellings))["words"]
+        for word, expected in spellings.items():
+            self.assertEqual({hit["concept"] for hit in hits[word]["exact"]}, {expected})
+        for query, expected in [
+            (["タイプ:ノーマル"], ["ポリゴン", "ポリゴン2", "ポリゴンZ"]),
+            (["特性候補:トレース"], ["ポリゴン", "ポリゴン2"]),
+            (["進化元:ポリゴン"], ["ポリゴン2"]),
+            (["形態:人型"], ["人間", "人型模型", "ヒューマノイド"]),
+            (["形態:人型", "助数詞:人"], ["人間"]),
+            (["生物種", "助数詞:体"], []),
+            (["生物種", "助数詞:台"], []),
+            (["形態:人型", "助数詞:体"], ["人型模型"]),
+            (["形態:人型", "助数詞:台"], ["ヒューマノイド"]),
+            (["対象:手法"], ["機械学習"]),
+            (["対象:計算機"], ["コンピュータ"]),
+            (["手法例:機械学習", "実行基盤例:コンピュータ"], ["AI", "AI搭載bot"]),
+            (["入力から出力を推論"], ["AI", "AI搭載bot"]),
+            (["用途:自動応答"], ["定型応答bot", "AI搭載bot"]),
+            (["用途:自動応答", "入力から出力を推論"], ["AI搭載bot"]),
+        ]:
+            with self.subTest(query=query):
+                self.assertEqual(ot.roundtrip_elements(corpus, query)["matched"], sorted(expected))
 
     def test_example_pairs_derive_genus_differentia_and_unique_roundtrip(self):
         corpus = _load_example()

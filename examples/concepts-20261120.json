@@ -1,25 +1,213 @@
 {
   "schema": "ontautology-concepts/1",
-  "note": "第二弾の比較教材。人間は現生人類、AIはAIシステムを指す。「入力に応じた反応」は比較のために抽象化した観点。作品内の設定と現実の対象を区別する。",
-  "seeds": ["ポリゴン2", "人間", "AI"],
+  "note": "第二弾の比較教材。人間は現生人類、AIはAIシステムを指す。「入力に応じた反応」は比較のために抽象化した観点。作品内の設定と現実の対象を区別する。 ヒューマノイドは人型ロボット、模型は展示物、助数詞は人数・展示物・機器を数える各例に限定する。手法例・実行基盤例は関係の向きを表す教材属性。AI搭載botは機械学習を使う一例。",
+  "seeds": [
+    "ポリゴン2",
+    "人間",
+    "AI"
+  ],
   "concepts": {
-    "ポリゴン2": {"id": "C012-porygon2", "elements": ["入力に応じた反応", "由来:人工", "作品内の存在", "ポケモン", "タイプ:ノーマル", "特性候補:トレース"]},
-    "人間": {"id": "C013-human", "elements": ["入力に応じた反応", "現実の対象", "生物種", "分類:霊長類", "由来:生物進化"]},
-    "AI": {"id": "C014-ai-system", "elements": ["入力に応じた反応", "現実の対象", "由来:人工", "機械ベースのシステム", "入力から出力を推論"]}
+    "ポリゴン2": {
+      "id": "C012-porygon2",
+      "elements": [
+        "入力に応じた反応",
+        "由来:人工",
+        "作品内の存在",
+        "ポケモン",
+        "タイプ:ノーマル",
+        "特性候補:トレース",
+        "進化元:ポリゴン",
+        "進化先:ポリゴンZ"
+      ]
+    },
+    "人間": {
+      "id": "C013-human",
+      "elements": [
+        "入力に応じた反応",
+        "現実の対象",
+        "生物種",
+        "分類:霊長類",
+        "由来:生物進化",
+        "形態:人型",
+        "助数詞:人"
+      ]
+    },
+    "AI": {
+      "id": "C014-ai-system",
+      "elements": [
+        "入力に応じた反応",
+        "現実の対象",
+        "由来:人工",
+        "機械ベースのシステム",
+        "入力から出力を推論",
+        "手法例:機械学習",
+        "実行基盤例:コンピュータ",
+        "対象:システム一般"
+      ]
+    },
+    "ポリゴン": {
+      "id": "C015-porygon",
+      "elements": [
+        "入力に応じた反応",
+        "由来:人工",
+        "作品内の存在",
+        "ポケモン",
+        "タイプ:ノーマル",
+        "特性候補:トレース",
+        "進化先:ポリゴン2"
+      ]
+    },
+    "ポリゴンZ": {
+      "id": "C016-porygon-z",
+      "elements": [
+        "入力に応じた反応",
+        "由来:人工",
+        "作品内の存在",
+        "ポケモン",
+        "タイプ:ノーマル",
+        "進化元:ポリゴン2",
+        "特性候補:てきおうりょく"
+      ]
+    },
+    "人型模型": {
+      "id": "C017-human-model",
+      "elements": [
+        "現実の対象",
+        "由来:人工",
+        "形態:人型",
+        "用途:展示模型",
+        "助数詞:体"
+      ]
+    },
+    "ヒューマノイド": {
+      "id": "C018-humanoid-robot",
+      "elements": [
+        "現実の対象",
+        "由来:人工",
+        "形態:人型",
+        "入力に応じた反応",
+        "機械ベースのシステム",
+        "助数詞:台"
+      ]
+    },
+    "機械学習": {
+      "id": "C019-machine-learning",
+      "elements": [
+        "現実の対象",
+        "対象:手法",
+        "データから学習"
+      ]
+    },
+    "コンピュータ": {
+      "id": "C020-computer",
+      "elements": [
+        "現実の対象",
+        "由来:人工",
+        "対象:計算機",
+        "プログラムを実行"
+      ]
+    },
+    "定型応答bot": {
+      "id": "C021-scripted-bot",
+      "elements": [
+        "現実の対象",
+        "由来:人工",
+        "機械ベースのシステム",
+        "入力に応じた反応",
+        "用途:自動応答",
+        "実行基盤例:コンピュータ",
+        "応答方式:固定文の照合"
+      ]
+    },
+    "AI搭載bot": {
+      "id": "C022-ai-bot",
+      "elements": [
+        "現実の対象",
+        "由来:人工",
+        "機械ベースのシステム",
+        "入力に応じた反応",
+        "用途:自動応答",
+        "実行基盤例:コンピュータ",
+        "入力から出力を推論",
+        "手法例:機械学習",
+        "対象:個別の応用"
+      ]
+    }
   },
   "names": {
-    "ポリゴン2": ["別名:ポリゴン２", "英名:Porygon2"],
-    "人間": ["別名:ヒト", "学名:Homo sapiens"],
-    "AI": ["別名:人工知能", "英名:artificial intelligence"]
+    "ポリゴン2": [
+      "別名:ポリゴン２",
+      "英名:Porygon2"
+    ],
+    "人間": [
+      "別名:ヒト",
+      "学名:Homo sapiens"
+    ],
+    "AI": [
+      "別名:人工知能",
+      "英名:artificial intelligence"
+    ],
+    "ポリゴンZ": [
+      "別名:ポリゴンＺ",
+      "英名:Porygon-Z"
+    ]
   },
   "similar": [
-    {"left": "ポリゴン2", "right": "AI", "basis": "derived", "note": "人工という由来を比較する。ポリゴン2の能力は作品内の設定。"},
-    {"left": "人間", "right": "AI", "basis": "derived", "note": "入力に応じた反応を比較する。生物種と機械システムは区別する。"},
-    {"left": "ポリゴン2", "right": "人間", "basis": "derived", "note": "周囲に応じた振る舞いという観点で比較する。"}
+    {
+      "left": "ポリゴン2",
+      "right": "AI",
+      "basis": "derived",
+      "note": "人工という由来を比較する。ポリゴン2の能力は作品内の設定。"
+    },
+    {
+      "left": "人間",
+      "right": "AI",
+      "basis": "derived",
+      "note": "入力に応じた反応を比較する。生物種と機械システムは区別する。"
+    },
+    {
+      "left": "ポリゴン2",
+      "right": "人間",
+      "basis": "derived",
+      "note": "周囲に応じた振る舞いという観点で比較する。"
+    },
+    {
+      "left": "ポリゴン2",
+      "right": "ポリゴン",
+      "basis": "derived"
+    },
+    {
+      "left": "ポリゴン2",
+      "right": "ポリゴンZ",
+      "basis": "derived"
+    },
+    {
+      "left": "人間",
+      "right": "人型模型",
+      "basis": "derived"
+    },
+    {
+      "left": "人間",
+      "right": "ヒューマノイド",
+      "basis": "derived"
+    },
+    {
+      "left": "AI",
+      "right": "定型応答bot",
+      "basis": "derived"
+    },
+    {
+      "left": "AI",
+      "right": "AI搭載bot",
+      "basis": "derived"
+    }
   ],
   "sources": {
     "ポリゴン2": "https://zukan.pokemon.co.jp/detail/0233",
     "人間": "https://humanorigins.si.edu/evidence/human-fossils/species/homo-sapiens",
-    "AI": "https://www.oecd.org/content/dam/oecd/en/publications/reports/2024/03/explanatory-memorandum-on-the-updated-oecd-definition-of-an-ai-system_3c815e51/623da898-en.pdf"
+    "AI": "https://www.oecd.org/content/dam/oecd/en/publications/reports/2024/03/explanatory-memorandum-on-the-updated-oecd-definition-of-an-ai-system_3c815e51/623da898-en.pdf",
+    "ポリゴン": "https://zukan.pokemon.co.jp/detail/0137",
+    "ポリゴンZ": "https://zukan.pokemon.co.jp/detail/0474",
+    "bot": "https://www.ibm.com/think/topics/chatbots"
   }
 }
