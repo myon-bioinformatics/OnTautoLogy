@@ -12,4 +12,13 @@ jobs:
     uses: myon-bioinformatics/myon-bioinformatics/.github/workflows/reusable-pages-static.yml@81f6aea6231d4490e581443fdeb43a09e6018ff0
     with:
       artifact_path: site
-      build: python -S scripts/page_sizes.py && node --check site/third-design/app.js && node --input-type=module --check < site/third-design/shared/scroll.js
+      build: |
+        set -eu
+        python3 -m venv "$RUNNER_TEMP/otl-pages"
+        "$RUNNER_TEMP/otl-pages/bin/pip" install rdflib==7.6.0
+        "$RUNNER_TEMP/otl-pages/bin/python" scripts/atlas.py site/atlas
+        python -S scripts/page_sizes.py
+        node --check site/third-design/app.js
+        node --check site/third-design/review-records.js
+        node --input-type=module --check < site/atlas/view.js
+        node --input-type=module --check < site/third-design/shared/scroll.js

@@ -744,3 +744,13 @@ diagram = knowledgegraph.graph_mermaid(graph, focus="A")
 インストールしてこの例を実行する。TOO・TOL で共通 API のみを使う場合は ONTO の版を指定し、
 `import ontology` と `import knowledgegraph` で直接利用できる。
 既存の `tools/ontology.py` と `tools/knowledgegraph.py` も同じ実装を呼び出す。
+
+### 弾別のTurtleと関係図
+
+[知識グラフ一覧](https://myon-bioinformatics.github.io/OnTautoLogy/atlas/)で各弾の統合TTL、資料別TTL、固定コミットの出典を取得できる。
+関係図ではノード名を絞り込み、入出力の辺と根拠をたどる。長いラベルの全文は図の下の一覧に表示する。
+第一弾は監査・移管、第二弾は両日付の概念集・規則・再評価・語彙・bot、第三弾は固定事例・保存済み基準値・公開ワークボードの初期記録を扱う。
+ワークボードの各ブラウザ内の編集はローカル保存される。
+
+Pagesは公開時に `python scripts/atlas.py site/atlas` で再生成する（RDFLibとNodeを使用）。データベースは不要。
+`examples/wave-profiles.json` は `examples/wave-relations.md` の手順とCIの固定版TOO・TOLで生成した3弾の集計。
