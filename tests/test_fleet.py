@@ -36,6 +36,8 @@ class FleetContracts(unittest.TestCase):
             ("knowledgegraph.py", "knowledgegraph.py"), ("LICENSE", "LICENSE"))}
         rows = fleet.check_lock(ROOT, sources={
             **onto_sources,
+            "vendor/pythdragoras.py": ("myon-bioinformatics/PythDRagoras", "pythdragoras.py"),
+            "vendor/PythDRagoras-LICENSE": ("myon-bioinformatics/PythDRagoras", "LICENSE"),
             "vendor/py_launch.cjs": (fleet.PARENT, "py_launch.cjs"),
             "vendor/fleet_check.py": (fleet.PARENT, "fleet_check.py"),
             "vendor/myon-bioinformatics-LICENSE": (fleet.PARENT, "LICENSE"),

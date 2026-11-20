@@ -1,0 +1,641 @@
+{
+  "C003-pikachu": {
+    "name": "ピカチュウ",
+    "claims": {
+      "habitat": "森にすむ。",
+      "forest-group": "仲間と群れで暮らす姿が見られる。",
+      "cheek-sacs": "頬に電気袋がある。",
+      "paired-small": "顔の左右に一つずつ、小さな袋が並ぶ。",
+      "store": "体に電気を蓄える習性がある。",
+      "store-in-cheeks": "その貯蔵場所が頬の袋だ。",
+      "sac-softness": "強い電気を作れる個体ほど、その袋は柔らかく伸びやすい。",
+      "touch": "頬の袋に触れると、電気でしびれる。",
+      "sleep-make": "眠っている間に頬で発電する。",
+      "night-store": "夜中に眠りながら電気を蓄えるらしい。",
+      "sleep-discharge": "寝ぼけて電気を放つこともある。",
+      "sleep-deprived": "睡眠が足りないと、弱い電気しか出せない。",
+      "stress": "ときどき思い切り放電しないとストレスを感じる。",
+      "full-power": "全力の放電は雷に匹敵する。",
+      "pinch": "危機に陥ると放電する。",
+      "anger": "怒ったときには蓄えを一気に放つ。",
+      "warning": "頬から小さく火花を散らすのは、相手を警戒している合図だ。",
+      "survey-with-tail": "しっぽを立てて辺りの気配を探る。",
+      "bite-if-pulled": "しっぽをむやみに引くと、かみつく。",
+      "lightning-while-surveying": "辺りを探っている最中に、しっぽに雷が落ちることもある。",
+      "group-lightning": "何匹も集まると周囲に強い電気がたまり、落雷を招くことがあるという。",
+      "forest-lightning": "群れのすむ森では雷が頻繁に落ちて危険だ。",
+      "berries": "硬い木の実を食べるときは電撃で焼く。",
+      "soften": "焼くと木の実が柔らかくなることを知っている。",
+      "novelty": "初めて見る物には電撃を試す。",
+      "charred": "黒焦げの木の実は、電撃の加減を誤った跡だ。",
+      "greeting": "仲間との挨拶では、しっぽを合わせて電気をやり取りする。",
+      "revive": "弱った仲間には電気を送って元気を分けることがある。",
+      "power-plant": "『サン』の世界では、多数のピカチュウを集めて発電所を造る計画が発表された。"
+    },
+    "editions": {
+      "赤": {
+        "source": "https://wikiwiki.jp/pokemon1st/%E3%83%94%E3%82%AB%E3%83%81%E3%83%A5%E3%82%A6",
+        "claims": [
+          "cheek-sacs",
+          "paired-small",
+          "pinch"
+        ]
+      },
+      "緑": {
+        "source": "https://wikiwiki.jp/pokemon1st/%E3%83%94%E3%82%AB%E3%83%81%E3%83%A5%E3%82%A6",
+        "claims": [
+          "cheek-sacs",
+          "paired-small",
+          "pinch"
+        ]
+      },
+      "青": {
+        "source": "https://pokedex-online.jp/pokedex/kanto/0025/",
+        "claims": [
+          "group-lightning"
+        ]
+      },
+      "ピカチュウ": {
+        "source": "https://pokedex-online.jp/pokedex/kanto/0025/",
+        "claims": [
+          "survey-with-tail",
+          "bite-if-pulled"
+        ]
+      },
+      "金": {
+        "source": "https://pokedex-online.jp/pokedex/global/0025/",
+        "claims": [
+          "berries",
+          "soften"
+        ]
+      },
+      "銀": {
+        "source": "https://pokedex-online.jp/pokedex/global/0025/",
+        "claims": [
+          "survey-with-tail",
+          "lightning-while-surveying"
+        ]
+      },
+      "クリスタル": {
+        "source": "https://pokedex-online.jp/pokedex/johto/0022/",
+        "claims": [
+          "cheek-sacs",
+          "store",
+          "store-in-cheeks",
+          "anger"
+        ]
+      },
+      "ルビー": {
+        "source": "https://pokedex-online.jp/pokedex/hoenn/0156/",
+        "claims": [
+          "novelty",
+          "charred"
+        ]
+      },
+      "サファイア": {
+        "source": "https://pokedex-online.jp/pokedex/hoenn/0156/",
+        "claims": [
+          "cheek-sacs",
+          "store",
+          "store-in-cheeks",
+          "night-store",
+          "sleep-discharge"
+        ]
+      },
+      "ファイアレッド": {
+        "source": "https://pokedex-online.jp/pokedex/kanto_frlg/0025/",
+        "claims": [
+          "cheek-sacs",
+          "paired-small",
+          "pinch"
+        ]
+      },
+      "リーフグリーン": {
+        "source": "https://pokedex-online.jp/pokedex/kanto_frlg/0025/",
+        "claims": [
+          "group-lightning"
+        ]
+      },
+      "エメラルド": {
+        "source": "https://pokedex-online.jp/pokedex/hoenn/0156/",
+        "claims": [
+          "cheek-sacs",
+          "store",
+          "store-in-cheeks",
+          "full-power"
+        ]
+      },
+      "ダイヤモンド": {
+        "source": "https://pokedex-online.jp/pokedex/sinnoh/0104/",
+        "claims": [
+          "habitat",
+          "forest-group",
+          "cheek-sacs",
+          "store",
+          "store-in-cheeks"
+        ]
+      },
+      "パール": {
+        "source": "https://pokedex-online.jp/pokedex/sinnoh/0104/",
+        "claims": [
+          "cheek-sacs",
+          "warning"
+        ]
+      },
+      "プラチナ": {
+        "source": "https://pokedex-online.jp/pokedex/sinnoh/0104/",
+        "claims": [
+          "revive"
+        ]
+      },
+      "ハートゴールド": {
+        "source": "https://pokedex-online.jp/pokedex/global/0025/",
+        "claims": [
+          "berries",
+          "soften"
+        ]
+      },
+      "ソウルシルバー": {
+        "source": "https://pokedex-online.jp/pokedex/global/0025/",
+        "claims": [
+          "survey-with-tail",
+          "lightning-while-surveying"
+        ]
+      },
+      "ブラック": {
+        "source": "https://nununununu.com/%E3%83%9D%E3%82%B1%E3%83%A2%E3%83%B3-no-025-%E3%83%94%E3%82%AB%E3%83%81%E3%83%A5%E3%82%A6/",
+        "claims": [
+          "revive"
+        ]
+      },
+      "ホワイト": {
+        "source": "https://nununununu.com/%E3%83%9D%E3%82%B1%E3%83%A2%E3%83%B3-no-025-%E3%83%94%E3%82%AB%E3%83%81%E3%83%A5%E3%82%A6/",
+        "claims": [
+          "revive"
+        ]
+      },
+      "ブラック2": {
+        "source": "https://nununununu.com/%E3%83%9D%E3%82%B1%E3%83%A2%E3%83%B3-no-025-%E3%83%94%E3%82%AB%E3%83%81%E3%83%A5%E3%82%A6/",
+        "claims": [
+          "revive"
+        ]
+      },
+      "ホワイト2": {
+        "source": "https://nununununu.com/%E3%83%9D%E3%82%B1%E3%83%A2%E3%83%B3-no-025-%E3%83%94%E3%82%AB%E3%83%81%E3%83%A5%E3%82%A6/",
+        "claims": [
+          "revive"
+        ]
+      },
+      "X": {
+        "source": "https://pokedex-online.jp/pokedex/global/0025/",
+        "claims": [
+          "survey-with-tail",
+          "lightning-while-surveying"
+        ]
+      },
+      "Y": {
+        "source": "https://pokedex-online.jp/pokedex/global/0025/",
+        "claims": [
+          "cheek-sacs",
+          "paired-small",
+          "pinch"
+        ]
+      },
+      "オメガルビー": {
+        "source": "https://pokedex-online.jp/pokedex/hoenn_oras/0163/",
+        "claims": [
+          "novelty",
+          "charred"
+        ]
+      },
+      "アルファサファイア": {
+        "source": "https://pokedex-online.jp/pokedex/hoenn_oras/0163/",
+        "claims": [
+          "cheek-sacs",
+          "store",
+          "store-in-cheeks",
+          "night-store",
+          "sleep-discharge"
+        ]
+      },
+      "サン": {
+        "source": "https://pokedex-online.jp/pokedex/alola_sm/0025/",
+        "claims": [
+          "power-plant"
+        ]
+      },
+      "ムーン": {
+        "source": "https://pokedex-online.jp/pokedex/alola_sm/0025/",
+        "claims": [
+          "store",
+          "stress"
+        ]
+      },
+      "ウルトラサン": {
+        "source": "https://pokedex-online.jp/pokedex/alola_usum/0032/",
+        "claims": [
+          "store",
+          "habitat",
+          "forest-group",
+          "forest-lightning"
+        ]
+      },
+      "ウルトラムーン": {
+        "source": "https://pokedex-online.jp/pokedex/alola_usum/0032/",
+        "claims": [
+          "cheek-sacs",
+          "sleep-make",
+          "sleep-deprived"
+        ]
+      },
+      "Let’s Go! ピカチュウ": {
+        "source": "https://nununununu.com/%E3%83%9D%E3%82%B1%E3%83%A2%E3%83%B3-no-025-%E3%83%94%E3%82%AB%E3%83%81%E3%83%A5%E3%82%A6/",
+        "claims": [
+          "habitat",
+          "cheek-sacs",
+          "store",
+          "store-in-cheeks",
+          "touch"
+        ]
+      },
+      "Let’s Go! イーブイ": {
+        "source": "https://nununununu.com/%E3%83%9D%E3%82%B1%E3%83%A2%E3%83%B3-no-025-%E3%83%94%E3%82%AB%E3%83%81%E3%83%A5%E3%82%A6/",
+        "claims": [
+          "habitat",
+          "cheek-sacs",
+          "store",
+          "store-in-cheeks",
+          "touch"
+        ]
+      },
+      "ソード": {
+        "source": "https://pokedex-online.jp/pokedex/galar/0194/",
+        "claims": [
+          "cheek-sacs",
+          "sac-softness"
+        ]
+      },
+      "シールド": {
+        "source": "https://pokedex-online.jp/pokedex/galar/0194/",
+        "claims": [
+          "greeting"
+        ]
+      },
+      "ブリリアントダイヤモンド": {
+        "source": "https://pokedex-online.jp/pokedex/sinnoh_bdsp/0104/",
+        "claims": [
+          "habitat",
+          "forest-group",
+          "cheek-sacs",
+          "store",
+          "store-in-cheeks"
+        ]
+      },
+      "シャイニングパール": {
+        "source": "https://pokedex-online.jp/pokedex/sinnoh_bdsp/0104/",
+        "claims": [
+          "cheek-sacs",
+          "warning"
+        ]
+      },
+      "LEGENDS アルセウス": {
+        "source": "https://pokedex-online.jp/pokedex/hisui/0056/",
+        "claims": [
+          "habitat",
+          "cheek-sacs",
+          "store",
+          "store-in-cheeks",
+          "berries"
+        ]
+      },
+      "スカーレット": {
+        "source": "https://pokedex-online.jp/pokedex/paldea/0074/",
+        "claims": [
+          "cheek-sacs",
+          "store",
+          "store-in-cheeks",
+          "anger"
+        ]
+      },
+      "バイオレット": {
+        "source": "https://pokedex-online.jp/pokedex/paldea/0074/",
+        "claims": [
+          "group-lightning"
+        ]
+      },
+      "LEGENDS Z-A": {
+        "source": "https://github.com/projectpokemon/za-textport/blob/0eb14d75de5282f33b783854e1a5aca8c168d83c/JPN/ZukanA.txt#L26",
+        "claims": [
+          "cheek-sacs",
+          "paired-small",
+          "pinch"
+        ]
+      }
+    }
+  },
+  "C012-porygon2": {
+    "name": "ポリゴン２",
+    "claims": {
+      "artificial": "人の科学技術から生まれた人工のポケモンだ。",
+      "upgrade-for-planets": "ポリゴンを改良した目的は、ほかの惑星の開発だった。",
+      "cutting-edge": "その進化には当時の先端技術が使われた。",
+      "special-data": "更新には特殊なデータが使われた。",
+      "improved-through-research": "研究が進むにつれて能力が向上した。",
+      "planet-software": "惑星開発向けのソフトウェアを備える。",
+      "vacuum": "真空の宇宙でも活動できる。",
+      "space-survival": "宇宙空間でも命を保てる。",
+      "zero-gravity": "一方、無重力では思うように身動きできない。",
+      "cannot-fly-yet": "空を飛ぶこともまだできない。",
+      "goal-difficult": "惑星開発の実現はなお難しいようだ。",
+      "ai": "人工知能を搭載している。",
+      "self-learn": "自ら学ぶ力がある。",
+      "gestures-emotions": "新しい仕草や感情も、自分で覚えていく。",
+      "unneeded": "学ぶ内容には余計なことまで含まれる。",
+      "grow": "自分で学ぶことが成長につながる。",
+      "unprogrammed-response": "ときにはプログラムにない反応も見せる。",
+      "occasional-unprogrammed-gesture": "その一例が、指示されていない仕草だ。",
+      "language": "AIを備えた結果、ポリゴン２同士だけに通じる言葉を話し始めた。",
+      "item": "ヒスイでは不思議な道具による進化が記録された。",
+      "expression": "進化して仕草の種類が増え、表情も豊かになったという。",
+      "unknown": "当時の観察者にとって、その生態は謎のままだった。"
+    },
+    "editions": {
+      "金": {
+        "source": "https://pokedex-online.jp/pokedex/global/0233/",
+        "claims": [
+          "upgrade-for-planets",
+          "cannot-fly-yet"
+        ]
+      },
+      "銀": {
+        "source": "https://pokedex-online.jp/pokedex/global/0233/",
+        "claims": [
+          "improved-through-research",
+          "unprogrammed-response",
+          "occasional-unprogrammed-gesture"
+        ]
+      },
+      "クリスタル": {
+        "source": "https://pokedex-online.jp/pokedex/global/0233/",
+        "claims": [
+          "artificial",
+          "cutting-edge",
+          "unprogrammed-response"
+        ]
+      },
+      "ルビー": {
+        "source": "https://pokedex-online.jp/pokedex/global/0233/",
+        "claims": [
+          "artificial",
+          "ai",
+          "self-learn",
+          "gestures-emotions"
+        ]
+      },
+      "サファイア": {
+        "source": "https://pokedex-online.jp/pokedex/global/0233/",
+        "claims": [
+          "artificial",
+          "ai",
+          "self-learn",
+          "gestures-emotions"
+        ]
+      },
+      "ファイアレッド": {
+        "source": "https://pokedex-online.jp/pokedex/global/0233/",
+        "claims": [
+          "improved-through-research",
+          "unprogrammed-response",
+          "occasional-unprogrammed-gesture"
+        ]
+      },
+      "リーフグリーン": {
+        "source": "https://pokedex-online.jp/pokedex/global/0233/",
+        "claims": [
+          "upgrade-for-planets",
+          "cannot-fly-yet"
+        ]
+      },
+      "エメラルド": {
+        "source": "https://pokedex-online.jp/pokedex/global/0233/",
+        "claims": [
+          "artificial",
+          "ai",
+          "self-learn",
+          "gestures-emotions"
+        ]
+      },
+      "ダイヤモンド": {
+        "source": "https://pokedex-online.jp/pokedex/global/0233/",
+        "claims": [
+          "planet-software",
+          "vacuum"
+        ]
+      },
+      "パール": {
+        "source": "https://pokedex-online.jp/pokedex/global/0233/",
+        "claims": [
+          "planet-software",
+          "vacuum"
+        ]
+      },
+      "プラチナ": {
+        "source": "https://pokedex-online.jp/pokedex/global/0233/",
+        "claims": [
+          "upgrade-for-planets",
+          "goal-difficult"
+        ]
+      },
+      "ハートゴールド": {
+        "source": "https://pokedex-online.jp/pokedex/global/0233/",
+        "claims": [
+          "upgrade-for-planets",
+          "cannot-fly-yet"
+        ]
+      },
+      "ソウルシルバー": {
+        "source": "https://pokedex-online.jp/pokedex/global/0233/",
+        "claims": [
+          "improved-through-research",
+          "unprogrammed-response",
+          "occasional-unprogrammed-gesture"
+        ]
+      },
+      "ブラック": {
+        "source": "https://pokedex-online.jp/pokedex/global/0233/",
+        "claims": [
+          "upgrade-for-planets",
+          "goal-difficult"
+        ]
+      },
+      "ホワイト": {
+        "source": "https://pokedex-online.jp/pokedex/global/0233/",
+        "claims": [
+          "upgrade-for-planets",
+          "goal-difficult"
+        ]
+      },
+      "ブラック2": {
+        "source": "https://pokedex-online.jp/pokedex/global/0233/",
+        "claims": [
+          "upgrade-for-planets",
+          "goal-difficult"
+        ]
+      },
+      "ホワイト2": {
+        "source": "https://pokedex-online.jp/pokedex/global/0233/",
+        "claims": [
+          "upgrade-for-planets",
+          "goal-difficult"
+        ]
+      },
+      "X": {
+        "source": "https://pokedex-online.jp/pokedex/global/0233/",
+        "claims": [
+          "improved-through-research",
+          "unprogrammed-response",
+          "occasional-unprogrammed-gesture"
+        ]
+      },
+      "Y": {
+        "source": "https://pokedex-online.jp/pokedex/global/0233/",
+        "claims": [
+          "planet-software",
+          "vacuum"
+        ]
+      },
+      "オメガルビー": {
+        "source": "https://pokedex-online.jp/pokedex/global/0233/",
+        "claims": [
+          "artificial",
+          "ai",
+          "self-learn",
+          "gestures-emotions"
+        ]
+      },
+      "アルファサファイア": {
+        "source": "https://pokedex-online.jp/pokedex/global/0233/",
+        "claims": [
+          "artificial",
+          "ai",
+          "self-learn",
+          "gestures-emotions"
+        ]
+      },
+      "サン": {
+        "source": "https://pokedex-online.jp/pokedex/alola_sm/0218/",
+        "claims": [
+          "upgrade-for-planets",
+          "cutting-edge"
+        ]
+      },
+      "ムーン": {
+        "source": "https://pokedex-online.jp/pokedex/alola_sm/0218/",
+        "claims": [
+          "upgrade-for-planets",
+          "goal-difficult"
+        ]
+      },
+      "ウルトラサン": {
+        "source": "https://pokedex-online.jp/pokedex/alola_usum/0282/",
+        "claims": [
+          "ai",
+          "self-learn",
+          "unneeded"
+        ]
+      },
+      "ウルトラムーン": {
+        "source": "https://pokedex-online.jp/pokedex/alola_usum/0282/",
+        "claims": [
+          "space-survival",
+          "zero-gravity"
+        ]
+      },
+      "ソード": {
+        "source": "https://pokedex-online.jp/pokedex/isle_of_armor/0209/",
+        "claims": [
+          "special-data",
+          "self-learn",
+          "grow"
+        ]
+      },
+      "シールド": {
+        "source": "https://pokedex-online.jp/pokedex/isle_of_armor/0209/",
+        "claims": [
+          "ai",
+          "language"
+        ]
+      },
+      "ブリリアントダイヤモンド": {
+        "source": "https://pokedex-online.jp/pokedex/global/0233/",
+        "claims": [
+          "planet-software",
+          "vacuum"
+        ]
+      },
+      "シャイニングパール": {
+        "source": "https://pokedex-online.jp/pokedex/global/0233/",
+        "claims": [
+          "planet-software",
+          "vacuum"
+        ]
+      },
+      "LEGENDS アルセウス": {
+        "source": "https://pokedex-online.jp/pokedex/hisui/0134/",
+        "claims": [
+          "item",
+          "expression",
+          "unknown"
+        ]
+      },
+      "スカーレット": {
+        "source": "https://pokedex-online.jp/pokedex/global/0233/",
+        "claims": [
+          "artificial",
+          "cutting-edge",
+          "unprogrammed-response"
+        ]
+      },
+      "バイオレット": {
+        "source": "https://pokedex-online.jp/pokedex/global/0233/",
+        "claims": [
+          "upgrade-for-planets",
+          "cannot-fly-yet"
+        ]
+      },
+      "LEGENDS Z-A": {
+        "source": "https://github.com/projectpokemon/za-textport/blob/0eb14d75de5282f33b783854e1a5aca8c168d83c/JPN/ZukanA.txt#L234",
+        "claims": [
+          "upgrade-for-planets",
+          "cutting-edge"
+        ]
+      }
+    },
+    "no_entry": {
+      "赤": {
+        "reason": "初登場前",
+        "source": "https://pokemondb.net/pokedex/porygon2"
+      },
+      "緑": {
+        "reason": "初登場前",
+        "source": "https://pokemondb.net/pokedex/porygon2"
+      },
+      "青": {
+        "reason": "初登場前",
+        "source": "https://pokemondb.net/pokedex/porygon2"
+      },
+      "ピカチュウ": {
+        "reason": "初登場前",
+        "source": "https://pokemondb.net/pokedex/porygon2"
+      },
+      "Let’s Go! ピカチュウ": {
+        "reason": "未収録",
+        "source": "https://pokemondb.net/pokedex/porygon2"
+      },
+      "Let’s Go! イーブイ": {
+        "reason": "未収録",
+        "source": "https://pokemondb.net/pokedex/porygon2"
+      }
+    }
+  }
+}

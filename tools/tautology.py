@@ -32,31 +32,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import ontautology as ot  # noqa: E402
+from ontautology import OPS, _assignments, atoms, classify, holds  # noqa: E402
+from ontautology_shared.markers import MARKERS, marker_slots
+from vendor.pythdragoras import classification_metrics  # noqa: E402
 
-__all__ = ["standing", "gaps", "entailed", "holds", "atoms", "judge", "rules", "holdout", "guess", "guess_report", "wobble", "cases", "equivalent", "classify", "evaluate_nodes", "main"]
-OPS = {"AND": all, "OR": any, "NAND": lambda v: not all(v), "NOR": lambda v: not any(v), "NOT": lambda v: not v[0]}
-
-
-def _operator(rule):
-    if (not isinstance(rule, (list, tuple)) or not rule or not isinstance(rule[0], str)
-            or rule[0] not in OPS or (rule[0] == "NOT" and len(rule) != 2)):
-        raise ValueError(f"a rule is a feature name or [AND|OR|NOT|NAND|NOR, rule, ...]: {rule!r}")
-    return rule[0]
-
-
-def holds(rule, elements):
-    """Does rule hold for a set of elements? Empty AND is true and empty OR is false."""
-    if isinstance(rule, str):
-        return rule in elements
-    return OPS[_operator(rule)]([holds(part, elements) for part in rule[1:]])
-
-
-def atoms(rule):
-    """The feature names a valid rule mentions, sorted."""
-    if isinstance(rule, str):
-        return [rule]
-    _operator(rule)
-    return sorted({name for part in rule[1:] for name in atoms(part)})
+__all__ = ["standing", "gaps", "entailed", "holds", "atoms", "judge", "rules", "holdout", "guess", "guess_report", "wobble", "cases", "edition_narrative", "equivalent", "classify", "evaluate_nodes", "main"]
 
 
 def judge(corpus, concept, rule):
@@ -83,12 +63,12 @@ def judge(corpus, concept, rule):
         fn += [name] if not said and name == concept else []
         tn += not said and name != concept
     tp = len(matched) - len(fp)
-    seen = tp + len(fp) + len(fn) + tn
+    scores = classification_metrics(tp, len(fp), len(fn), tn)
+    metrics = {key: round(scores[key], 4) if scores[key] is not None else None
+               for key in ("accuracy", "precision", "recall")}
     verdict = "refuted" if fp or fn else "undecided" if to_model else "reversible"
     return {"concept": concept, "rule": rule, "matched": matched, "fp": fp, "fn": fn, "to_model": to_model,
-            "tp": tp, "tn": tn, "accuracy": round((tp + tn) / seen, 4) if seen else None,
-            "precision": round(tp / len(matched), 4) if matched else None,
-            "recall": round(tp / (tp + len(fn)), 4) if tp + len(fn) else None,
+            "tp": tp, "tn": tn, **metrics,
             "propositions": {"proposition": not fp, "contrapositive": not fp, "converse": not fn, "inverse": not fn},
             "verdict": verdict, "basis": "derived" if verdict == "reversible" else "hypothesis"}
 
@@ -444,7 +424,7 @@ def wobble(corpus, words=()):
                         "false_merges": shaken["notation"]["false_merges"] + shaken["typo"]["false_merges"]}}
 
 
-def cases(corpus, *, sure=1):
+def cases(corpus, *, sure=1, require_markers=False):
     """📋 Observed cases (who said what, in which role) read against the concepts, apart from what people judged.
 
     A case is an observation: what was said (``statement``), where (``context``), on what (``evidence``), by whom
@@ -487,12 +467,39 @@ def cases(corpus, *, sure=1):
                       "candidate": one and {"concept": one, "id": meta[one].get("id", one), "basis": "hypothesis", "confidence": confidence},
                       "fits": fits, "to_model": sorted(seen - set(holders)),
                       "missing": [slot for slot in slots if not case.get("6W1H", {}).get(slot)], "judgments": []}
+        if "event" in case:
+            event = case["event"]
+            if not isinstance(event, dict) or event.get("type") not in ("Notification", "DecisionRequest"):
+                raise ValueError(f"{cid}: event.type must be Notification or DecisionRequest")
+            target = "notifiedParty" if event["type"] == "Notification" else "decisionRequestedFrom"
+            roles = {"sender": case.get("actor"), target: case.get("6W1H", {}).get("誰へ"),
+                     "content": case.get("6W1H", {}).get("何を")}
+            if "requestedDecision" in event:
+                if event["type"] != "DecisionRequest":
+                    raise ValueError(f"{cid}: requestedDecision requires a DecisionRequest")
+                roles["requestedDecision"] = ot._nonempty_str(event["requestedDecision"], "requestedDecision")
+            found[cid]["event"] = {"id": "event:" + cid, "type": event["type"],
+                                   **{k: ot._nonempty_str(v, k) for k, v in roles.items() if v is not None and v != ""}}
+    # Every record includes even the custom markers used only by another record in this corpus.
+    profile = dict.fromkeys(MARKERS)
+    for case in raw_cases:
+        entries = case.get("markers", {})
+        if not isinstance(entries, dict):
+            raise ValueError("markers must be an object")
+        profile.update(dict.fromkeys(entries))
+    for case in raw_cases:
+        entries = case.get("markers", {})
+        if require_markers:
+            missing = [marker for marker in profile if marker not in entries]
+            if missing:
+                raise ValueError(f"{case['id']}: missing marker slots: {', '.join(missing)}")
+        found[case["id"]]["markers"] = marker_slots(entries, profile)
     for judgment in raw_judgments:
         cid = judgment.get("case") if isinstance(judgment, dict) else None
         if cid not in found or judgment.get("concept") not in held or not isinstance(judgment.get("holds"), bool):
             raise ValueError("a judgment names a known case, an observed concept and holds (true / false)")
         candidate = found[cid]["candidate"]
-        found[cid]["judgments"].append({**{k: judgment[k] for k in ("concept", "holds", "actor", "role", "note") if k in judgment},
+        found[cid]["judgments"].append({**{k: judgment[k] for k in ("concept", "holds", "actor", "role", "note", "evidence") if k in judgment},
                                         "basis": "observed", "agrees": None if candidate is None else (judgment["concept"] == candidate["concept"]) == judgment["holds"]})
     for row in found.values():
         agrees = [j["agrees"] for j in row["judgments"]]
@@ -516,32 +523,6 @@ def cases(corpus, *, sure=1):
         "to_model": sum(bool(row["to_model"]) for row in found.values()),
         **{status: count("status", status) for status in ("confirmed", "disputed", "judged", "pending")},
         "roles": {"cases": roles(found.values()), "judgments": roles(j for row in found.values() for j in row["judgments"])}}}
-
-
-def _assignments(names, limit):
-    if len(names) > limit:
-        raise ValueError(f"{len(names)} features exceed the truth-table limit {limit}")
-    for bits in itertools.product((False, True), repeat=len(names)):
-        yield {name for name, bit in zip(names, bits) if bit}
-
-
-def classify(rule, *, limit=16):
-    """Classify a propositional rule and return the first witness of each attainable truth value."""
-    names = atoms(rule)
-    witnesses = {True: None, False: None}
-    for present in _assignments(names, limit):
-        value = holds(rule, present)
-        if witnesses[value] is None:
-            witnesses[value] = sorted(present)
-        if witnesses[True] is not None and witnesses[False] is not None:
-            break
-    if witnesses[False] is None:
-        verdict = "tautology"
-    elif witnesses[True] is None:
-        verdict = "contradiction"
-    else:
-        verdict = "contingent"
-    return {"verdict": verdict, "atoms": names, "true_witness": witnesses[True], "false_witness": witnesses[False]}
 
 
 def equivalent(left, right, *, limit=16):
@@ -582,7 +563,7 @@ def _judge_arguments(parser):
     parser.add_argument("rule", type=_rule, help='JSON such as \'["AND", "弦楽器", ["NOR", "4弦標準"]]\'')
 
 
-def _classify_arguments(parser):
+def _rule_arguments(parser):
     inputs = parser.add_mutually_exclusive_group(required=True)
     inputs.add_argument("rule", nargs="?", help="one feature name or JSON rule")
     inputs.add_argument("--rule", dest="tokens", nargs="+", metavar="TOKEN",
@@ -607,8 +588,18 @@ def _input_rule(args):
     return stack[0]
 
 
+def _classify_arguments(parser):
+    _rule_arguments(parser)
+    parser.add_argument("--ttl", action="store_true", help="emit the truth-table result as Turtle")
+
+
 def _classify(args):
-    return classify(_input_rule(args)), False
+    rule = _input_rule(args)
+    result = classify(rule)
+    if args.ttl:
+        from ontautology_shared.truth import formula_graph
+        return formula_graph(rule, result).serialize(format="turtle"), False
+    return result, False
 
 
 def evaluate_nodes(graph, rule, *, node_type=None, partial=False):
@@ -646,7 +637,7 @@ def _evaluate_arguments(parser):
     parser.add_argument("graph", type=Path, help="graph JSON file, or - for stdin")
     parser.add_argument("--type", dest="node_type", help="only evaluate nodes of this type")
     parser.add_argument("--partial", action="store_true", help="check both values of missing facts (up to 16 per node)")
-    _classify_arguments(parser)
+    _rule_arguments(parser)
 
 
 def _evaluate(args):
@@ -706,15 +697,21 @@ def _wobble(args):
 
 
 def _cases_arguments(parser):
+    parser.add_argument("--require-markers", action="store_true", help="require every marker key in the input, including null slots")
     _corpus(parser)
-    parser.add_argument("--graph", dest="as_graph", action="store_true", help="emit case statuses, candidates and judgments as nodes and edges")
+    output = parser.add_mutually_exclusive_group()
+    output.add_argument("--ttl", action="store_true", help="emit attributed case judgments as Turtle")
+    output.add_argument("--graph", dest="as_graph", action="store_true", help="emit case statuses, candidates and judgments as nodes and edges")
     parser.add_argument("--sure", type=float, default=1.0, help="weight the case's elements need before a concept is its candidate (default 1)")
 
 
 def _cases(args):
     corpus = ot._read_json(args.graph)
-    found = cases(corpus, sure=args.sure)
+    found = cases(corpus, sure=args.sure, require_markers=args.require_markers)
     disputed = bool(found["summary"]["disputed"])
+    if args.ttl:
+        from ontautology_shared.truth import judgment_graph
+        return judgment_graph(corpus, found["cases"]).serialize(format="turtle"), disputed
     if not args.as_graph:
         return found, disputed
 
@@ -738,13 +735,59 @@ def _cases(args):
             nodes[target] = judgment["concept"]
             edges.append(dict(source=cid, kind="judgment", target=jid))
             edges.append(dict(source=jid, kind="holds " + str(judgment["holds"]).lower(), target=target))
-    return {"nodes": [{"id": key, "name": name} for key, name in nodes.items()],
-            "edges": edges}, disputed
+    result_nodes = []
+    for key, name in nodes.items():
+        node = {"id": key, "name": name}
+        if key.startswith("case:"):
+            node["markers"] = found["cases"][key[5:]]["markers"]
+        result_nodes.append(node)
+    return {"nodes": result_nodes, "edges": edges}, disputed
+
+
+def edition_narrative(subject):
+    """Group reviewed edition attestations by subject-local claim ID, in editorial order."""
+    claims = subject["claims"]
+    evidence = {key: {} for key in claims}
+    for edition, entry in subject["editions"].items():
+        source = entry["source"]
+        if not isinstance(source, str) or not source.strip():
+            raise ValueError(f"{edition}: missing source")
+        for key in entry["claims"]:
+            if key not in claims:
+                raise ValueError(f"{edition}: unknown claim {key!r}")
+            evidence[key][edition] = source
+    rows = []
+    for key, sentence in claims.items():
+        if not evidence[key]:
+            raise ValueError(f"{key}: claim has no edition")
+        if not isinstance(sentence, str) or not sentence.strip():
+            raise ValueError(f"{key}: missing sentence")
+        rows.append({"id": key, "text": sentence, "sources": evidence[key]})
+    result = {"name": subject["name"], "narrative": "".join(row["text"] for row in rows), "claims": rows}
+    if "no_entry" in subject:
+        if subject["editions"].keys() & subject["no_entry"].keys():
+            raise ValueError("an edition cannot both have and lack an entry")
+        result["no_entry"] = subject["no_entry"]
+    return result
+
+
+def _narrate_arguments(parser):
+    parser.add_argument("graph", type=Path, help="edition annotations by subject ID, or - for stdin")
+    parser.add_argument("subject", help="subject ID")
+    parser.add_argument("--sources", action="store_true", help="include each claim and its edition sources as JSON")
+
+
+def _narrate(args):
+    result = edition_narrative(ot._read_json(args.graph)[args.subject])
+    return (result if args.sources else result["narrative"] + "\n"), False
 
 
 def main(argv=None):
     """Exit codes as the core: 0 answered, 1 input error, 2 answered and something needs a look."""
     return ot.main(argv, commands=(
+        ("narrate", "tell each attested claim once across editions", _narrate_arguments, _narrate),
+        ("marker-template", "emit all standard marker slots for annotating a case", lambda parser: None,
+         lambda args: (marker_slots({}), False)),
         ("rules", "🧩 第二弾 · ⚖️ candidate rules per concept, judged; the first reversible one is the definition", _rules_arguments, _rules),
         ("judge", "🧩 第二弾 · 🧮 one rule as the judge of a concept: FN / FP / accuracy / propositions", _judge_arguments, _judge),
         ("evaluate", "check a rule against saved node properties", _evaluate_arguments, _evaluate),

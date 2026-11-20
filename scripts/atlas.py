@@ -17,8 +17,10 @@ sys.path.insert(0, str(ROOT))
 from gh_audit.gh_audit import audit, plan, transfer_report, turtle
 from ontautology import concept_edges, define_concepts
 from ontautology_shared._onto.knowledgegraph import graph_mermaid
+from ontautology_shared.truth import judgment_graph
 from tools import tautology
 from examples.relation_holdout import replay
+from examples import detail_propositions, reversi
 
 OT = Namespace("urn:otl:")
 TITLES = ("第一弾　GitHub監査と移管", "第二弾　概念・語彙と論理検証", "第三弾　事例・判断と比較評価")
@@ -112,14 +114,22 @@ def datasets():
                                     cwd=ROOT, capture_output=True, text=True)
             if output.returncode != (2 if rows["summary"]["disputed"] else 0):
                 raise RuntimeError(output.stderr or "case graph failed")
-            graph = domain_graph(json.loads(output.stdout))
+            projection = json.loads(output.stdout)
+            for node in projection["nodes"]:
+                node.pop("markers", None)  # judgment_graph emits the queryable slots once.
+            graph = domain_graph(projection)
+            graph += judgment_graph(data, rows["cases"])
             for case in data["cases"]:
                 term = resource("case:"+case["id"])
-                record(graph, term, {"input": case, **rows["cases"][case["id"]]})
+                details = dict(rows["cases"][case["id"]])
+                details.pop("markers")
+                record(graph, term, {"input": case, **details})
             yield 3, "cases-"+path.stem, "事例・候補・人の判断", source, graph
     source = "examples/concepts-20261120.json"
     yield 2, "bot-replay", "未登録語と手掛かりごとの判定", source, replay(
         read(source), "AI搭載bot", ["用途:自動応答", "入力から出力を推論"])
+    source = "examples/detail-propositions.json"
+    yield 2, "detail-propositions", "同じ命題を異なる条件で検証", source, detail_propositions.run(ROOT / source)
     source = "examples/lexical-gender.json"
     data = read(source)
     graph = domain_graph(data)
@@ -130,6 +140,7 @@ def datasets():
         (3, "K001", "夜間DB対応のRDF交換例", "examples/K001-night-db.ttl"),
     ):
         yield wave, slug, title, source, Graph().parse(ROOT/source, format="turtle")
+    yield 3, "reversi", "リバーシの合法手と二つの評価", "examples/reversi.py", reversi.graph(reversi.opening_cases(), preview=True)
     source = "site/third-design/baseline-evidence.json"
     yield 3, "baseline", "固定版の評価値・測定条件", source, read(source)
     board = subprocess.check_output(["node", "scripts/board_export.cjs"], cwd=ROOT)

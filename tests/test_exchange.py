@@ -1,5 +1,7 @@
 import json
 import os
+import subprocess
+import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
@@ -68,6 +70,127 @@ class Exchange(unittest.TestCase):
         copy.add((BNode(), RDF.type, OTL.Case))
         with self.assertRaisesRegex(ValueError, "stable IRIs"):
             statements(copy)
+
+    def test_classify_turtle(self):
+        for rule, verdict, value in ((["OR", "p", ["NOT", "p"]], "tautology", True),
+                                     (["AND", "p", ["NOT", "p"]], "contradiction", False),
+                                     ("p", "contingent", None)):
+            done = subprocess.run([sys.executable, str(ROOT / "tools/tautology.py"), "classify",
+                                   "--ttl", json.dumps(rule)], capture_output=True, text=True, check=True)
+            graph = Graph().parse(data=done.stdout, format="turtle")
+            prop, = graph.subjects(RDF.type, OTL.Proposition)
+            self.assertEqual(graph.value(prop, OTL.classification), OTL[verdict])
+            self.assertEqual(graph.value(prop, OTL.isTrue), Literal(value) if value is not None else None)
+
+    def test_entailment_turtle_keeps_the_result_scoped(self):
+        for premises, conclusion, verdict in [(["p"], "p", "entailed"), ([], "p", "counterexample"),
+                                              (["p", ["NOT", "p"]], "q", "inconsistent-premises")]:
+            done = subprocess.run([sys.executable, str(ROOT / "ontautology.py"), "entails", "-", "--ttl"],
+                                  input=json.dumps(dict(premises=premises, conclusion=conclusion)),
+                                  text=True, capture_output=True)
+            self.assertEqual(done.returncode, 0 if verdict == "entailed" else 2, done.stderr)
+            graph = Graph().parse(data=done.stdout, format="turtle")
+            check, = graph.subjects(RDF.type, OTL.InferenceCheck)
+            self.assertEqual(graph.value(check, OTL.verdict), OTL[verdict])
+            self.assertEqual(len(set(graph.objects(check, OTL.premise))), len(premises))
+            self.assertIsNotNone(graph.value(check, OTL.conclusion))
+            self.assertFalse(list(graph.triples((None, OTL.isTrue, None))))
+            if verdict == "counterexample":
+                self.assertEqual(json.loads(str(graph.value(check, OTL.counterexample))), {"p": False})
+
+    def test_opposing_judgments_share_one_proposition(self):
+        corpus = json.loads((ROOT / "examples/concepts-20261115.json").read_text())
+        first = corpus["judgments"][0]
+        corpus["judgments"].append({**first, "actor": "再確認者", "holds": False, "evidence": "追試記録"})
+        done = subprocess.run([sys.executable, str(ROOT / "tools/tautology.py"), "cases", "-", "--ttl"],
+                              input=json.dumps(corpus), capture_output=True, text=True)
+        self.assertEqual(done.returncode, 2, done.stderr)
+        graph = Graph().parse(data=done.stdout, format="turtle")
+        case = OTL["case:" + first["case"]]
+        prop, = graph.subjects(OTL.aboutCase, case)
+        yes, = graph.subjects(OTL.regardsAsTrue, prop)
+        no, = graph.subjects(OTL.regardsAsFalse, prop)
+        self.assertEqual(set(graph.objects(case, OTL.judgment)), {yes, no})
+        self.assertEqual(graph.value(yes, OTL.actor), Literal(first["actor"]))
+        self.assertEqual(graph.value(no, OTL.evidence), Literal("追試記録"))
+        self.assertFalse(list(graph.triples((None, OTL.isTrue, None))))
+        self.assertFalse(list(graph.objects(OTL["case:K003-shift-change"], OTL.judgment)))
+
+    def test_event_is_the_shared_object_of_judgments_not_the_recipient(self):
+        from tools.tautology import cases
+        from ontautology_shared.truth import judgment_graph
+        corpus = json.loads((ROOT / "examples/concepts-20261115.json").read_text())
+        share = next(j for j in corpus["judgments"] if j["case"] == "K002-share-only")
+        corpus["judgments"].append({**share, "actor": "担当F", "holds": False})
+        graph = judgment_graph(corpus, cases(corpus)["cases"])
+        graph = Graph().parse(data=graph.serialize(format="turtle"), format="turtle")
+        event = OTL["event:K002-share-only"]
+        self.assertEqual(graph.value(OTL["case:K002-share-only"], OTL.event), event)
+        prop, = graph.subjects(OTL.aboutEvent, event)
+        for field, person in ((OTL.regardsAsTrue, "担当E"), (OTL.regardsAsFalse, "担当F")):
+            judgment, = graph.subjects(field, prop)
+            self.assertEqual(graph.value(judgment, OTL.actor), Literal(person))
+        self.assertEqual(graph.value(event, OTL.notifiedParty), Literal("関係者"))
+        self.assertIsNone(graph.value(event, OTL.decisionRequestedFrom))
+        request = OTL["event:K001-night-db"]
+        self.assertEqual(graph.value(request, OTL.decisionRequestedFrom), Literal("二次対応"))
+        self.assertEqual(graph.value(request, OTL.requestedDecision), Literal("再起動してよいか"))
+        self.assertFalse(list(graph.objects(OTL["case:K003-shift-change"], OTL.event)))
+
+    def test_markers_keep_repeated_roles_missing_values_and_empty_slots(self):
+        from ontautology_shared.markers import MARKERS, marker_slots
+        from ontautology_shared.truth import add_markers
+        from urllib.parse import quote
+        slots = marker_slots({"to": [{"role": "recipient", "value": v} for v in ("A", "B")],
+                              "@none": [{"role": "content", "value": "report"}], "for": [],
+                              "hereafter in": [{"role": "scope", "value": None}]})
+        graph = Graph()
+        event = OTL["event:one"]
+        add_markers(graph, event, slots)
+        graph = Graph().parse(data=graph.serialize(format="turtle"), format="turtle")
+        predicate = lambda key: OTL["marker:" + quote(key, safe="")]
+        self.assertEqual(set(graph.predicates(event)), {predicate(m) for m in MARKERS})
+        self.assertEqual({graph.value(n, RDF.value) for n in graph.objects(event, predicate("to"))},
+                         {Literal("A"), Literal("B")})
+        self.assertEqual(graph.value(event, predicate("by")), OTL.Unspecified)
+        self.assertEqual(graph.value(event, predicate("for")), RDF.nil)
+        self.assertEqual(graph.value(graph.value(event, predicate("hereafter in")), RDF.value), OTL.Unknown)
+        self.assertEqual(graph.value(graph.value(event, predicate("@none")), RDF.value), Literal("report"))
+
+    def test_marker_expressions_share_only_explicit_local_meanings(self):
+        from ontautology_shared.markers import marker_slots
+        from ontautology_shared.truth import add_markers
+        arg = {"role": "channel", "value": "chat", "meaning": "relay"}
+        slots = marker_slots({"via": [{**arg, "expression": "via chat"}, {**arg, "expression": "via the chat"}],
+                              "through": [{**arg, "expression": "through chat"}],
+                              "by": [{"role": "channel", "value": "chat"}]})
+        graph = Graph()
+        for event in (OTL.first, OTL.second):
+            add_markers(graph, event, slots)
+        graph = Graph().parse(data=graph.serialize(format="turtle"), format="turtle")
+        meanings = []
+        for event in (OTL.first, OTL.second):
+            records = set(graph.objects(event, OTL["marker:via"])) | set(graph.objects(event, OTL["marker:through"]))
+            self.assertEqual({str(graph.value(r, OTL.expression)) for r in records},
+                             {"via chat", "via the chat", "through chat"})
+            meaning, = {graph.value(r, OTL.expresses) for r in records}
+            self.assertEqual(graph.value(meaning, RDF.value), Literal("chat"))
+            self.assertIsNone(graph.value(graph.value(event, OTL["marker:by"]), OTL.expresses))
+            meanings.append(meaning)
+        self.assertNotEqual(*meanings)
+
+    def test_reversi_preview_shares_move_and_preserves_opposing_judgments(self):
+        from examples import reversi
+        graph = reversi.graph(reversi.opening_cases(), preview=True)
+        graph = Graph().parse(data=graph.serialize(format="turtle"), format="turtle")
+        self.assertEqual(len(set(graph.subjects(RDF.type, OTL.CandidateMove))), 6)
+        move = OTL["reversi:d3/e3"]
+        self.assertEqual(set(graph.objects(move, OTL.flips)), {Literal("e4")})
+        prop, = graph.subjects(OTL.aboutEvent, move)
+        for predicate, policy in ((OTL.regardsAsTrue, "mostFlips"), (OTL.regardsAsFalse, "fewestReplies")):
+            judgment, = graph.subjects(predicate, prop)
+            self.assertEqual(graph.value(judgment, OTL.actor), Literal(policy))
+        self.assertIsNone(graph.value(prop, OTL.isTrue))
 
     def test_input_formats(self):
         from ontautology_shared._onto.ontology import read_graph
