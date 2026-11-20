@@ -44,6 +44,8 @@ class OneWayDependency(unittest.TestCase):
                 self.assertIsNone(re.search(r"\b(?:from|import) tools\b", imports))
                 if path.name in ("ontology.py", "knowledgegraph.py") and path.parent.name == "tools":
                     self.assertIn("from ontautology_shared.", imports)
+                elif path == ROOT / "ontautology_shared/ontology.py":
+                    self.assertIn("from ._onto.ontology import", imports)
                 elif path.name != "__init__.py" and path != ROOT / "ontautology.py":
                     self.assertIn("import ontautology as ot", imports)
         audit = "\n".join(re.findall(r"(?m)^(?:from|import) .*", (ROOT / "gh_audit/gh_audit.py").read_text(encoding="utf-8")))

@@ -722,7 +722,7 @@ python -S tools/knowledgegraph.py cases.json > cases.md
 #### TOO・TOL・ONTO など外部から使う Python API
 
 OTL をインストールした Python から次の入口を使う。TOO などの利用側が語彙・概念 ID・関係の向きを決め、
-OTL が検証・グラフ操作の実装を持つ。ONTO の索引には、参照したデータとその版を記録できる。
+[ONTO](https://github.com/myon-bioinformatics/ONTO) が共通の検証・グラフ操作の正本を持つ。OTL は vendor.lock.json のコミットに固定した実装を同梱する。ONTO の索引には、参照したデータとその版を記録できる。
 
 ```python
 from ontautology_shared import ontology, knowledgegraph
@@ -734,5 +734,6 @@ diagram = knowledgegraph.graph_mermaid(graph, focus="A")
 
 [実行例](examples/shared_taxonomy.py) は親 B・C から子 A への分類を定義し、同じデータで
 語彙と循環を検査して Mermaid 図を作る。追加の Python 依存は不要。CI は wheel をクリーンな環境に
-インストールしてこの例を実行する。利用側で固定する版は OTL のコミットまたはリリースを指定する。
+インストールしてこの例を実行する。TOO・TOL で共通 API のみを使う場合は ONTO の版を指定し、
+`from onto_shared import ontology, knowledgegraph` で直接利用できる。
 既存の `tools/ontology.py` と `tools/knowledgegraph.py` も同じ実装を呼び出す。

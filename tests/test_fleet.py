@@ -2,6 +2,7 @@
 
 Node runs every tool through vendor/py_launch.cjs, so no per-tool .mjs/.cjs wrapper is kept here.
 """
+import inspect
 import json
 import os
 import subprocess
@@ -29,13 +30,27 @@ def launch(*args):
 
 class FleetContracts(unittest.TestCase):
     def test_vendor_lock_matches_checked_in_bytes(self):
+        onto_dir = Path("ontautology_shared/_onto")
+        onto_sources = {(onto_dir / name).as_posix(): ("myon-bioinformatics/ONTO", upstream) for name, upstream in (
+            ("__init__.py", "onto_shared/__init__.py"), ("ontology.py", "onto_shared/ontology.py"),
+            ("knowledgegraph.py", "onto_shared/knowledgegraph.py"), ("LICENSE", "LICENSE"))}
         rows = fleet.check_lock(ROOT, sources={
+            **onto_sources,
             "vendor/py_launch.cjs": (fleet.PARENT, "py_launch.cjs"),
             "vendor/fleet_check.py": (fleet.PARENT, "fleet_check.py"),
             "vendor/myon-bioinformatics-LICENSE": (fleet.PARENT, "LICENSE"),
         })
-        self.assertEqual(sorted(rows), sorted(str(p.relative_to(ROOT).as_posix()) for p in (ROOT / "vendor").iterdir()
+        self.assertEqual(sorted(set(rows) - set(onto_sources)), sorted(str(p.relative_to(ROOT).as_posix()) for p in (ROOT / "vendor").iterdir()
                                               if p.is_file()))
+
+    def test_standalone_core_copies_match_the_onto_source(self):
+        from ontautology_shared._onto import knowledgegraph, ontology
+        # ontautology.py is also distributed on its own, without any sibling modules.
+        for standalone, upstream in ((ot.key_report, ontology.key_report),
+                                     (ot.cycles, knowledgegraph.relation_cycles)):
+            expected = inspect.getsource(upstream).replace("def " + upstream.__name__ + "(",
+                                                          "def " + standalone.__name__ + "(", 1)
+            self.assertEqual(inspect.getsource(standalone), expected)
 
     def test_workflow_actions_are_pinned_by_full_sha_with_version(self):
         self.assertTrue(fleet.check_actions(ROOT))
