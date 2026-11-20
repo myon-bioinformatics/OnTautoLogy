@@ -42,14 +42,27 @@ class EditionNarrative(unittest.TestCase):
         subject = self.subjects["C003-pikachu"]
         result = tautology.edition_narrative(subject)
         self.assertEqual(result["narrative"].count(subject["claims"]["survey-with-tail"]), 1)
-        self.assertEqual([list(row["sources"]) for row in result["claims"]],
-                         [["ピカチュウ", "銀", "ソウルシルバー"], ["ピカチュウ"], ["銀", "ソウルシルバー"]])
+        sources = {row["id"]: set(row["sources"]) for row in result["claims"]}
+        self.assertEqual(sources["bite-if-pulled"], {"ピカチュウ"})
+        self.assertEqual(sources["lightning-while-surveying"], {"銀", "ソウルシルバー", "X"})
+        self.assertEqual(sources["survey-with-tail"], sources["bite-if-pulled"] | sources["lightning-while-surveying"])
 
     def test_purpose_and_inability_remain_separate(self):
         rows = tautology.edition_narrative(self.subjects["C012-porygon2"])["claims"]
-        self.assertEqual([row["id"] for row in rows[:2]], ["upgrade-for-planets", "cannot-fly-yet"])
-        self.assertEqual(list(rows[1]["sources"]), ["金", "バイオレット"])
-        self.assertEqual(list(rows[-1]["sources"]), ["銀"])
+        sources = {row["id"]: set(row["sources"]) for row in rows}
+        self.assertIn("LEGENDS Z-A", sources["upgrade-for-planets"])
+        self.assertNotIn("LEGENDS Z-A", sources["cannot-fly-yet"])
+        self.assertEqual(sources["cannot-fly-yet"], {"金", "リーフグリーン", "ハートゴールド", "バイオレット"})
+        self.assertEqual(sources["zero-gravity"], {"ウルトラムーン"})
+
+    def test_full_edition_inventory(self):
+        pikachu, porygon = self.subjects["C003-pikachu"], self.subjects["C012-porygon2"]
+        report = tautology.edition_narrative(porygon)
+        absent = set(report["no_entry"])
+        self.assertEqual(absent, {"赤", "緑", "青", "ピカチュウ", "Let’s Go! ピカチュウ", "Let’s Go! イーブイ"})
+        self.assertEqual(len(pikachu["editions"]), 39)
+        self.assertEqual(set(pikachu["editions"]) - absent, set(porygon["editions"]))
+        self.assertTrue(all(entry["claims"] for subject in (pikachu, porygon) for entry in subject["editions"].values()))
 
     def test_a_claim_from_another_subject_is_unknown(self):
         subject = self.subjects["C003-pikachu"]

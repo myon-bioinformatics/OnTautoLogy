@@ -763,7 +763,12 @@ def edition_narrative(subject):
         if not isinstance(sentence, str) or not sentence.strip():
             raise ValueError(f"{key}: missing sentence")
         rows.append({"id": key, "text": sentence, "sources": evidence[key]})
-    return {"name": subject["name"], "narrative": "".join(row["text"] for row in rows), "claims": rows}
+    result = {"name": subject["name"], "narrative": "".join(row["text"] for row in rows), "claims": rows}
+    if "no_entry" in subject:
+        if subject["editions"].keys() & subject["no_entry"].keys():
+            raise ValueError("an edition cannot both have and lack an entry")
+        result["no_entry"] = subject["no_entry"]
+    return result
 
 
 def _narrate_arguments(parser):
