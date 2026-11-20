@@ -97,6 +97,14 @@ class ConceptDefinitionTests(unittest.TestCase):
                 concept = words[ja]["exact"][0]["concept"]
                 self.assertEqual([s[3:] for s in corpus["names"][concept] if s.startswith("英名:")], [en])
 
+    def test_person_in_the_individual_human_sense(self):
+        from tools.tautology import wobble
+        corpus = json.loads(EXAMPLE_PATH.with_name("concepts-20261120.json").read_text(encoding="utf-8"))
+        words = wobble(corpus, ["person", "Person", "legal person"])["words"]
+        for word, tier in [("person", "exact"), ("Person", "notation")]:
+            self.assertEqual({h["id"] for h in words[word][tier]}, {"C013-human"})
+        self.assertFalse(any(words["legal person"].values()))
+
     def test_example_pairs_derive_genus_differentia_and_unique_roundtrip(self):
         corpus = _load_example()
         defined = ot.define_concepts(corpus)
