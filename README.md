@@ -673,7 +673,7 @@ CI の graph-exchange ジョブは実際の両 DB を起動し、既存の夜間
 
 基準事例の [K001-night-db.ttl](examples/K001-night-db.ttl) を Git で保持する。
 元の K001 から作った検証用の投影で、反例と確信度 0 を含む。
-CI は両方向の往復後に実 DB から復元した RDF を経路別の Turtle ファイルとして
+CI は両方向の往復後に実 DB から復元した RDF を経路別の Turtle・JSON ファイルとして
 Actions の `graph-exports` Artifact に保存する。保持期間はリポジトリ設定に従う。
 単発の実験を長期保存する場合は Artifact から Turtle をダウンロードできる。
 
@@ -689,5 +689,9 @@ uv run --extra exchange python tools/knowledgegraph.py examples/K001-night-db.tt
 
 読み込み（import、SPARQL 照会、Mermaid 表示）は Turtle (`.ttl`)、N-Triples
 (`.nt`)、RDF/XML (`.rdf`) に対応する。どれも単一 RDF グラフとして扱う。
-書き出し（export）と CI の保存形式は Turtle (`.ttl`) に統一する。
+書き出し（export）は Turtle (`.ttl`) とグラフ JSON (`.json`) に対応する。
+たとえば `olnm ontautology exchange export neo4j trial graph.json` で出力する。
+JSON の `nodes` は RDF の語、`rels` は有向の文を表す。各関係の
+`start.id` と `end.id` は同じファイルのノード ID を参照する。
+ID と述語は RDF の N3 表記を使い、リテラルの型と言語を保持する。
 拡張子を省いた既存の呼び出しは Turtle として扱う。

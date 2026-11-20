@@ -44,6 +44,19 @@ def statements(graph):
     return sorted(rows, key=lambda r: (r["subject"], r["predicate"], r["object"]))
 
 
+def graph_json(graph):
+    """Build a portable node/relationship view of the scoped RDF statements."""
+    rows = statements(graph)
+    terms = sorted({row[key] for row in rows for key in ("subject", "object")})
+    nodes = [{"id": term, "labels": ["OtlTerm"], "properties": {"term": term}} for term in terms]
+    rels = [
+        {"label": "OtlStatement", "start": {"id": row["subject"]},
+         "end": {"id": row["object"]}, "properties": {"predicate": row["predicate"]}}
+        for row in rows
+    ]
+    return {"nodes": nodes, "rels": rels}
+
+
 def arcade(language, command, params):
     endpoint = os.environ["ARCADE_COMMAND_URL"]
     auth = base64.b64encode(os.environ["ARCADE_CREDENTIALS"].encode()).decode()
@@ -89,15 +102,21 @@ def main(argv):
         sub = subs.add_parser(action)
         sub.add_argument("backend", choices=("neo4j", "arcade"))
         sub.add_argument("scope")
-        sub.add_argument("file", type=Path, help=".ttl" if action == "export" else ".ttl, .nt, .rdf")
+        sub.add_argument("file", type=Path, help=".ttl, .json" if action == "export" else ".ttl, .nt, .rdf")
     query = subs.add_parser("query")
     query.add_argument("file", type=Path, help=".ttl, .nt, .rdf")
     query.add_argument("select", help="SPARQL SELECT")
     args = parser.parse_args(argv)
     if args.action == "export":
-        if args.file.suffix.lower() not in ("", ".ttl"):
-            parser.error("Export uses Turtle; use a .ttl filename")
-        transfer(args.backend, args.scope).serialize(destination=args.file, format="turtle")
+        suffix = args.file.suffix.lower()
+        if suffix not in ("", ".ttl", ".json"):
+            parser.error("Supported export extensions: .ttl, .json")
+        graph = transfer(args.backend, args.scope)
+        if suffix == ".json":
+            output = json.dumps(graph_json(graph), ensure_ascii=False, indent=2)
+            args.file.write_text(output + "\n", encoding="utf-8")
+        else:
+            graph.serialize(destination=args.file, format="turtle")
     else:
         try:
             graph = read_graph(args.file)
