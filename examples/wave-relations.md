@@ -2,7 +2,7 @@
 
 OTL の固定事例を `examples/sibling_format.py` で `otl-tol-graph/1` に写し、TOO の分類表で関係を選び、TOL の CLI で分類ごとの構造を調べる。循環検出は TOL が ONTO の `knowledgegraph.py` を呼ぶ。OTL は辺の本数だけを同じ規則で数え、TOL の `edges` と `unclassified_edges` に一致することを確かめる。CLI の文書にはツールの版、入力の sha256、次数、弱連結成分、独立閉路、深さが入る。それらのキーが増えても辺数の照合は壊さず、無いときは Pages の表で「—」にする。
 
-想定する版は TOO main `30c5ed689cb931bce3787e37056082ce8cb52b3d`（親は `5c138352` と `2e7002f8`）の `taxontoy.py` と、TOL main `d8880c9e55a0ce502dbf54a128bcaf471f0efc0e`（親は `7bd70a45` と `3184b725`）の `topontology.py` です。`taxonomy.py` は無く、`topology.py` は `from topology import summarize` の互換用で、コマンドとしては使いません。形式が変わったらこの手順と `sibling_format.py` だけを直します。
+想定する版は TOO main `8621f2261d694af0de35e103ad2387872ca10b99`（親は `30c5ed689cb931bce3787e37056082ce8cb52b3d` と `8cfb0cab3a917ffe9b945fc0c6d4ee0e8edc7f04`、版 0.2.0）の `taxontoy.py` と、TOL main `d8880c9e55a0ce502dbf54a128bcaf471f0efc0e`（親は `7bd70a45` と `3184b725`）の `topontology.py` です。表は `taxontoy-relations/2` で、`properties` に `transitive`・`symmetric`・`inverse_of`・`acyclic`・`disjoint_with` を宣言します。`taxontoy-relations/1` も読めます。`taxonomy.py` は無く、`topology.py` は `from topology import summarize` の互換用で、コマンドとしては使いません。形式が変わったらこの手順と `sibling_format.py` だけを直します。
 
 OTL のルートから実行する。`too` と `tol` は CI の `wave-relations.yml` に記載したコミットを checkout したディレクトリです。
 

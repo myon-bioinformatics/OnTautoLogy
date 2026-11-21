@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: myon-bioinformatics/TaxOntOy
-          ref: 30c5ed689cb931bce3787e37056082ce8cb52b3d # main
+          ref: 8621f2261d694af0de35e103ad2387872ca10b99 # main
           path: too
           persist-credentials: false
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
