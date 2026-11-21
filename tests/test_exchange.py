@@ -7,13 +7,15 @@ from tempfile import TemporaryDirectory
 import unittest
 from uuid import uuid4
 
+import onto_path
+
 try:
     from rdflib import BNode, Graph, Literal, Namespace, RDF
     from rdflib.compare import isomorphic
     from ontautology_shared._onto.ontology import arcade, main as exchange_cli, statements
     from ontautology import exchange
 except ModuleNotFoundError as exc:
-    if exc.name != "rdflib" or os.getenv("OTL_LIVE"):
+    if exc.name != "rdflib" or os.getenv(onto_path.OTL_LIVE_ENV):
         raise
     raise unittest.SkipTest("install the exchange extra")
 
@@ -207,7 +209,7 @@ class Exchange(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "input extensions"):
                 read_graph(Path(directory) / "case.nq")
 
-    @unittest.skipUnless(os.getenv("OTL_LIVE"), "requires both databases")
+    @unittest.skipUnless(os.getenv(onto_path.OTL_LIVE_ENV), "requires both databases")
     def test_both_directions(self):
         for command in ("CREATE VERTEX TYPE OtlTerm IF NOT EXISTS",
                         "CREATE EDGE TYPE OtlStatement IF NOT EXISTS"):
@@ -224,7 +226,7 @@ class Exchange(unittest.TestCase):
                 self.assertTrue(isomorphic(original, current))
                 self.assertEqual(expected, set(current.query(QUERY)))
                 current = Graph().parse(data=current.serialize(format="turtle"), format="turtle")
-            if directory := os.getenv("OTL_EXPORT_DIR"):
+            if directory := os.getenv(onto_path.OTL_EXPORT_DIR_ENV):
                 target = Path(directory) / ("-".join(route) + ".ttl")
                 target.parent.mkdir(parents=True, exist_ok=True)
                 current.serialize(destination=target, format="turtle")
