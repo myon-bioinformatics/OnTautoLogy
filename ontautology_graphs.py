@@ -1,9 +1,10 @@
 """Generic graph algorithms for OnTautoLogy (Python 3.11+, standard library only).
 
 Callers such as a topology summary or a relation table keep their own aggregation.
-This file only folds edges, lists a cycle basis, finds single points of failure,
-solves a small set cover, reports near-duplicate names, and counts first-parent
-git lag. It fetches nothing and does not merge the names it reports.
+This file only folds edges, lists a cycle basis, reports one directed cycle and
+one missing transitive chord, finds single points of failure, solves a small set
+cover, reports near-duplicate names, and counts first-parent git lag. It fetches
+nothing and does not merge the names it reports.
 
 An edge is ``{"source", "target"}`` plus ``kind`` or ``relation``. Endpoints and
 relation names are non-empty strings. CLI results carry the tool version and the
@@ -31,8 +32,9 @@ _DIRECTED = frozenset({"forward", "directed"})
 _NORMALIZERS = ("nfc", "slash", "git", "camel_snake", "casefold")
 _SUPER = object()
 __all__ = [
-    "collapse_reciprocal", "cycle_basis", "single_points_of_failure", "set_cover_min",
-    "near_duplicates", "names_from_graph", "first_parent_lag", "load_first_parent", "main",
+    "collapse_reciprocal", "cycle_basis", "directed_cycle_witness", "transitivity_witness",
+    "single_points_of_failure", "set_cover_min", "near_duplicates", "names_from_graph",
+    "first_parent_lag", "load_first_parent", "main",
 ]
 
 
@@ -214,6 +216,163 @@ def cycle_basis(graph):
         "counts": {"components": components, "edges": edge_count, "nodes": node_count},
         "cycles": cycles,
         "independent_cycles": independent,
+    }
+
+
+def _adjacency_by_source(edges):
+    adjacent = {}
+    for index, edge in enumerate(edges):
+        adjacent.setdefault(edge["source"], []).append(index)
+    for node in adjacent:
+        adjacent[node].sort(key=lambda index: (_edge_key(edges[index]), index))
+    return adjacent
+
+
+def _shortest_directed_length(edges, adjacent):
+    """Fewest edges in a simple directed cycle, counting a self-loop as one."""
+    best = None
+    for start in sorted(adjacent):
+        dist = {start: 0}
+        queue = [start]
+        head = 0
+        while True:
+            if head >= len(queue):
+                break
+            node = queue[head]
+            head += 1
+            for index in adjacent.get(node, ()):
+                nxt = edges[index]["target"]
+                step = dist[node] + 1
+                if nxt == start:
+                    if best is None or step < best:
+                        best = step
+                    continue
+                if nxt not in dist:
+                    dist[nxt] = step
+                    queue.append(nxt)
+    return best
+
+
+def _canonical_directed(indices, edges):
+    """Rotation, not reversal, with the smallest (edge key, index) sequence."""
+    chosen = None
+    size = len(indices)
+    offset = 0
+    while True:
+        if offset >= size:
+            break
+        rotated = indices[offset:] + indices[:offset]
+        ranked = []
+        for index in rotated:
+            ranked.append((_edge_key(edges[index]), index))
+        if chosen is None or ranked < chosen[0]:
+            chosen = (ranked, rotated)
+        offset += 1
+    return chosen
+
+
+def _keep_cycle(chosen, indices, edges):
+    ranked, rotated = _canonical_directed(indices, edges)
+    if chosen is None or ranked < chosen[0]:
+        return (ranked, rotated)
+    return chosen
+
+
+def _directed_search(edges, adjacent, length):
+    chosen = None
+    for start in sorted(adjacent):
+        stack = [(start, [])]
+        while True:
+            if not stack:
+                break
+            node, indices = stack.pop()
+            for index in adjacent.get(node, ()):
+                nxt = edges[index]["target"]
+                grown = indices + [index]
+                if len(grown) == length:
+                    if nxt == start:
+                        chosen = _keep_cycle(chosen, grown, edges)
+                    continue
+                stack.append((nxt, grown))
+    return chosen
+
+
+def directed_cycle_witness(graph):
+    """One simple directed cycle, the one with the fewest edges, or None.
+
+    A self-loop is a cycle of one edge and beats every longer cycle. Parallel
+    edges in the same direction are not a cycle. A reciprocal pair is a cycle of
+    two edges, the same pair ``cycle_basis`` keeps until ``collapse_reciprocal``
+    folds it. The walk stays directed: it may be rotated, not reversed. Among
+    shortest cycles the smallest rotation of ``(edge key, index)`` wins, with the
+    same edge key as ``cycle_basis``. ``nodes`` is that closed walk, repeating
+    the first node at the end. ``indices`` are positions in ``graph["edges"]``.
+
+    ``A→C``, ``B→C``, ``B→A``, ``C→A`` yields ``A→C→A``. The undirected basis
+    also contains the triangle, and that triangle is not a directed cycle.
+    """
+    edges = _graph_edges(graph)
+    adjacent = _adjacency_by_source(edges)
+    length = _shortest_directed_length(edges, adjacent)
+    if length is None:
+        return None
+    _ranked, indices = _directed_search(edges, adjacent, length)
+    nodes = [edges[indices[0]]["source"]]
+    labels = []
+    copied = []
+    for index in indices:
+        copied.append(dict(edges[index]))
+        labels.append(_relation(edges[index]))
+        nodes.append(edges[index]["target"])
+    return {"edges": copied, "indices": indices, "labels": labels, "nodes": nodes}
+
+
+def transitivity_witness(edges):
+    """One path ``a→b→c`` whose chord ``a→c`` is absent, or None.
+
+    ``a==c`` is a directed cycle, not a missing chord, so a reciprocal pair
+    without a self-loop is not a witness. Self-loops are not required. A
+    self-loop cannot be the missing chord either: if either step is a self-loop,
+    the chord is the other step, which is present. Any one edge ``a→c`` in this
+    list, including a parallel edge, supplies the chord. Indices are positions
+    in ``edges``. Among witnesses, the smallest ``(edge key, index)`` of the
+    first step, then of the second step, wins. Relation names are not filtered;
+    pass the edge set of the relation under test.
+    """
+    if not isinstance(edges, list):
+        raise ValueError("edges must be a list")
+    copied = []
+    for edge in edges:
+        copied.append(_copy_edge(edge))
+    present = set()
+    by_source = {}
+    for index, edge in enumerate(copied):
+        present.add((edge["source"], edge["target"]))
+        by_source.setdefault(edge["source"], []).append(index)
+    winner = None
+    for index, edge in enumerate(copied):
+        follows = by_source.get(edge["target"])
+        if follows is None:
+            continue
+        for follow in follows:
+            nxt = copied[follow]["target"]
+            source = edge["source"]
+            if source == nxt:
+                continue
+            if (source, nxt) in present:
+                continue
+            key = (_edge_key(edge), index, _edge_key(copied[follow]), follow)
+            if winner is None or key < winner[0]:
+                winner = (key, index, follow)
+    if winner is None:
+        return None
+    _key, index, follow = winner
+    first, second = copied[index], copied[follow]
+    return {
+        "edges": [dict(first), dict(second)],
+        "indices": [index, follow],
+        "missing": {"source": first["source"], "target": second["target"]},
+        "nodes": [first["source"], first["target"], second["target"]],
     }
 
 
@@ -799,6 +958,40 @@ def _render_collapse(result):
     return lines
 
 
+def _render_cycle(result):
+    if result is None:
+        return ["cycle: none"]
+    lines = ["cycle: " + " ".join(result["nodes"])]
+    position = 0
+    while True:
+        if position >= len(result["indices"]):
+            break
+        index = result["indices"][position]
+        edge = result["edges"][position]
+        lines.append(f"edge: {index} {_relation(edge)} {edge['source']} {edge['target']}")
+        position += 1
+    return lines
+
+
+def _render_transitive(result):
+    if result is None:
+        return ["witness: none"]
+    missing = result["missing"]
+    lines = [
+        "witness: " + " ".join(result["nodes"]),
+        f"missing: {missing['source']} {missing['target']}",
+    ]
+    position = 0
+    while True:
+        if position >= len(result["indices"]):
+            break
+        index = result["indices"][position]
+        edge = result["edges"][position]
+        lines.append(f"edge: {index} {_relation(edge)} {edge['source']} {edge['target']}")
+        position += 1
+    return lines
+
+
 def _render_basis(result):
     counts = result["counts"]
     lines = [
@@ -859,9 +1052,11 @@ _RENDER = {
     "basis": _render_basis,
     "collapse": _render_collapse,
     "cover": _render_cover,
+    "cycle": _render_cycle,
     "lag": _render_lag,
     "near": _render_near,
     "spof": _render_spof,
+    "transitive": _render_transitive,
 }
 
 
@@ -880,6 +1075,16 @@ def _cmd_collapse(args):
 def _cmd_basis(args):
     graph, record = _read_input(args.graph, "graph")
     return _document("basis", cycle_basis(graph), [record])
+
+
+def _cmd_cycle(args):
+    graph, record = _read_input(args.graph, "graph")
+    return _document("cycle", directed_cycle_witness(graph), [record])
+
+
+def _cmd_transitive(args):
+    graph, record = _read_input(args.graph, "graph")
+    return _document("transitive", transitivity_witness(_graph_edges(graph)), [record])
 
 
 def _roots_from(args):
@@ -934,9 +1139,11 @@ _COMMANDS = {
     "basis": _cmd_basis,
     "collapse": _cmd_collapse,
     "cover": _cmd_cover,
+    "cycle": _cmd_cycle,
     "lag": _cmd_lag,
     "near": _cmd_near,
     "spof": _cmd_spof,
+    "transitive": _cmd_transitive,
 }
 
 
@@ -950,7 +1157,7 @@ def main(argv=None):
     """0 = answered, 1 = the input cannot be read or does not satisfy the command."""
     parser = argparse.ArgumentParser(
         prog="ontautology-graphs",
-        description="collapse · basis · spof · cover · near · lag",
+        description="collapse · basis · cycle · transitive · spof · cover · near · lag",
     )
     commands = parser.add_subparsers(dest="command", required=True)
     collapse = commands.add_parser("collapse", help="fold mutual or undirected reciprocal edges")
@@ -960,6 +1167,12 @@ def main(argv=None):
     basis = commands.add_parser("basis", help="fundamental cycle basis of the undirected view")
     basis.add_argument("graph", type=Path)
     _add_format(basis)
+    cycle = commands.add_parser("cycle", help="shortest simple directed cycle")
+    cycle.add_argument("graph", type=Path)
+    _add_format(cycle)
+    transitive = commands.add_parser("transitive", help="one missing transitive chord")
+    transitive.add_argument("graph", type=Path)
+    _add_format(transitive)
     spof = commands.add_parser("spof", help="dominators, articulation points, and failure rank")
     spof.add_argument("graph", type=Path)
     spof.add_argument("roots", nargs="*")
