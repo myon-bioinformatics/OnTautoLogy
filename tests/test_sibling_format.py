@@ -1,16 +1,19 @@
 """TOO の分類表と TOL のグラフ入力へ渡す投影。閉路検出は呼ばない。"""
+import io
 import json
 import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from examples.sibling_format import (  # noqa: E402
-    SCHEMA, TOL_COMMIT, TOO_COMMIT, classification, counts_agree, export_graph, project,
-    relation_groups, render_relations_page, write_relations_site,
+    SCHEMA, TOL_COMMIT, TOO_COMMIT, classification, counts_agree, export_graph, main, project,
+    relation_groups, render_relations_page, source_graph, write_relations_site,
 )
 from gh_audit import gh_audit as ga  # noqa: E402
 
@@ -187,6 +190,111 @@ class ProjectionTests(unittest.TestCase):
             write_relations_site(ROOT / "examples/wave-profiles.json", folder / "site")
             self.assertEqual((folder / "site/index.html").read_text(encoding="utf-8"),
                              (ROOT / "site/relations/index.html").read_text(encoding="utf-8"))
+
+    def test_rejected_tables_graphs_and_cli_paths(self):
+        base = {
+            "schema": "taxontoy-relations/1",
+            "audit": {"dependsOn": "dependency"},
+            "concepts": {"narrower": "hierarchy"},
+            "cases": {"candidate": "hypothesis"},
+            "direction": {"dependsOn": "forward", "narrower": "forward", "candidate": "forward"},
+            "excluded": {"audit": ["observes"], "concepts": [], "cases": []},
+        }
+        for broken in (
+            {}, [], {**base, "extra": 1},
+            {**base, "direction": []}, {**base, "excluded": []},
+            {**base, "excluded": {"audit": "observes", "concepts": [], "cases": []}},
+            {**base, "excluded": {"audit": [""], "concepts": [], "cases": []}},
+            {**base, "excluded": {"audit": [1], "concepts": [], "cases": []}},
+            {**base, "direction": {"narrower": "forward", "candidate": "forward"}},
+            {"": {"a": "b"}}, {1: {"a": "b"}}, {"audit": []}, {"audit": {"": "b"}},
+            {"audit": {"a": ""}}, {"audit": {"a": 1}},
+        ):
+            with self.subTest(broken=broken), self.assertRaises(ValueError):
+                classification(broken)
+        for broken in (
+            [], {}, {"edges": "no"}, {"edges": [], "nodes": {}}, {"edges": [], "nodes": [1]},
+            {"edges": [], "nodes": [{"id": "a"}, {"id": "a"}]},
+            {"edges": [], "nodes": [{"id": "a", "type": 1}]},
+            {"edges": [], "nodes": [{"id": "a", "name": ""}]},
+            {"edges": ["no"]}, {"edges": [{"source": "", "target": "b", "kind": "k"}]},
+            {"edges": [{"source": "a", "target": "b", "kind": ""}]},
+            {"edges": [{"source": "a", "target": "b", "relation": ""}]},
+        ):
+            with self.subTest(broken=broken), self.assertRaises(ValueError):
+                project(broken)
+        only_relation = project({"edges": [{"source": "a", "target": "b", "relation": "rel"}]})
+        self.assertEqual(only_relation["edges"], [{"source": "a", "target": "b", "kind": "rel"}])
+        groups = relation_groups(
+            {"edges": [{"relation": "known", "source": "a", "target": "b"},
+                       {"relation": "other", "source": "a", "target": "c"}]},
+            {"known": "class"},
+        )
+        self.assertEqual(groups, {"classes": {"class": 1}, "unclassified": 1})
+        agreed = {"classes": {"class": {"edges": 1}}, "unclassified_edges": 1}
+        self.assertTrue(counts_agree(groups, agreed))
+        self.assertFalse(counts_agree(groups, {"classes": {}, "unclassified_edges": 1}))
+        self.assertFalse(counts_agree(groups, {"classes": {"class": {"edges": 1}}, "unclassified_edges": 0}))
+        self.assertFalse(counts_agree(groups, {}))
+        ready = {"schema": SCHEMA, "edges": []}
+        concept_graph = {"schema": "ontautology-concept-graph/1", "edges": []}
+        audit_graph = {"schema": "ontautology/1", "edges": []}
+        self.assertIs(source_graph("audit", ready), ready)
+        self.assertIs(source_graph("audit", audit_graph), audit_graph)
+        self.assertIs(source_graph("concepts", ready), ready)
+        self.assertIs(source_graph("concepts", concept_graph), concept_graph)
+        self.assertIs(source_graph("cases", ready), ready)
+        with self.assertRaises(ValueError):
+            source_graph("audit", [])
+        with self.assertRaises(ValueError):
+            source_graph("nope", {})
+        html = render_relations_page({
+            "waves": {"audit": {
+                "tool": {"name": "topontology"},
+                "unclassified_edges": 0,
+                "classes": {"dependency": {
+                    "edges": 1, "incident_nodes": 1, "multiple_sources": [], "sample_cycles": [["a", "a"]],
+                    "degree": {}, "weakly_connected_components": {"count": 1, "sizes": []},
+                    "independent_cycles": None, "depth": None,
+                }},
+            }},
+            "taxontoy": {"version": "0.1.0", "waves": {"audit": {"partition": {}}}},
+        })
+        self.assertIn("開いている", html)
+        self.assertIn("（なし）", html)
+        self.assertIn("不定<", html)
+        self.assertEqual(render_relations_page({"waves": {}, "taxontoy": []}), render_relations_page({"waves": {}}))
+
+        payload = {"schema": "ontautology/1", "nodes": [{"id": "a", "type": "T", "name": "n"}],
+                   "edges": [{"source": "a", "target": "b", "relation": "dependsOn"}]}
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            source = folder / "in.json"
+            source.write_text(json.dumps(payload), encoding="utf-8")
+            output = folder / "out.json"
+            table = folder / "table.json"
+            table.write_text(json.dumps({"audit": {"dependsOn": "dependency"}}), encoding="utf-8")
+            broken = folder / "broken.json"
+            broken.write_text("{", encoding="utf-8")
+            quiet = io.StringIO()
+            with redirect_stdout(quiet), redirect_stderr(quiet):
+                with patch("sys.stdin", io.StringIO(json.dumps(payload))):
+                    self.assertEqual(main(["export", "audit", "-"]), 0)
+                self.assertEqual(main(["export", "audit", str(source), "-o", str(output)]), 0)
+                self.assertEqual(json.loads(output.read_text(encoding="utf-8"))["schema"], SCHEMA)
+                self.assertEqual(main(["check", str(output), str(table), "audit"]), 0)
+                table.write_text(json.dumps({"cases": {"dependsOn": "dependency"}}), encoding="utf-8")
+                self.assertEqual(main(["check", str(output), str(table), "audit"]), 1)
+                self.assertEqual(main(["check", str(broken), str(table), "cases"]), 1)
+                self.assertEqual(main(["check", str(folder / "missing.json"), str(table), "cases"]), 1)
+                self.assertEqual(main(["page", str(ROOT / "examples/wave-profiles.json"), str(folder / "site")]), 0)
+                self.assertTrue((folder / "site/index.html").is_file())
+                program = ROOT / "examples/sibling_format.py"
+                with patch.object(sys, "argv", ["sibling_format.py", "export", "audit", str(source), "-o", str(output)]):
+                    with self.assertRaises(SystemExit) as caught:
+                        exec(compile(program.read_text(encoding="utf-8"), str(program), "exec"),
+                             {"__name__": "__main__", "__file__": str(program)})
+                self.assertEqual(caught.exception.code, 0)
 
 
 if __name__ == "__main__":
