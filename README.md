@@ -939,4 +939,18 @@ diagram = knowledgegraph.graph_mermaid(graph, focus="A")
 ワークボードの各ブラウザ内の編集はローカル保存される。
 
 Pagesは公開時に `python scripts/atlas.py site/atlas --renderer-output site/shared/mermaid.js` で再生成する（RDFLibとNodeを使用）。データベースは不要。
-`examples/wave-profiles.json` は `examples/wave-relations.md` の手順とCIの固定版TOO・TOLで生成した3弾の集計。
+`examples/wave-profiles.json` は `examples/wave-relations.md` の手順とCIの固定版TOO・TOLで生成した3弾の集計です。
+[構造集計](https://myon-bioinformatics.github.io/OnTautoLogy/relations/) はその JSON を表にして公開します。
+
+OTL から TOO の分類表と TOL の構造集計へ渡す処理は `examples/sibling_format.py` に閉じます。
+監査グラフの `relation` と、概念・事例グラフの `kind` を、TOL が読む `source`・`target`・`kind` だけにそろえて `otl-tol-graph/1` として書き出します。
+向きと ID は保存されたグラフのままで、芯の `edges_of` が行う反転はかけません。
+分類表は TOO の main `30c5ed689cb931bce3787e37056082ce8cb52b3d`（親は `5c138352` と `2e7002f8`）の `taxontoy-relations/1` です。入口は `taxontoy.py` で、`taxonomy.py` はありません。`audit`・`concepts`・`cases` が「関係名 → 分類名」、`direction` が向き、`excluded` がその弾では数えない関係名です。`taxontoy coverage` は分類済み・除外・未分類・表にあってグラフに無い名前が重ならず全体を覆うことを見ます。固定例に `holds false` の辺は無いので、否定は表に入っていません。
+集計そのものは TOL の main `d8880c9e55a0ce502dbf54a128bcaf471f0efc0e`（親は `7bd70a45` と `3184b725`）の `topontology.py` に任せます。`from topology import summarize` は互換の入口として残っていますが、OTL は両方とも CLI を呼び、版と入力の sha256 を結果に残します。分類ごとの次数・弱連結成分・独立閉路・深さは、従来の辺数と一緒に Pages へ出します。OTL が自分で数えるのは辺の本数だけで、CI では `edges` と `unclassified_edges` を突き合わせます。閉路検出は再実装しません。
+
+```sh
+python -S examples/sibling_format.py export audit examples/audit-20261114.json -o audit.json
+python -S examples/sibling_format.py export concepts examples/concepts-20261115.json -o concepts.json
+python -S examples/sibling_format.py export cases examples/concepts-20261115.json -o cases.json
+PYTHONPATH=tol:ontautology_shared/_onto python -S tol/topontology.py audit.json too/otl-relations.json audit
+```

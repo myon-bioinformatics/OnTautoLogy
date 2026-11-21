@@ -1,45 +1,103 @@
-"""Compare the three fixed OTL examples with TOO classifications and TOL metrics."""
+"""固定の3例を otl-tol-graph/1 に写し、TOO と TOL の CLI で比べる。
+
+投影を ``examples/tol-export/`` に書き、``too/taxontoy.py coverage`` と
+``tol/topontology.py`` をサブプロセスで呼ぶ。版と入力の sha256 はその文書のまま残す。
+``taxonomy.py`` は無く、``from topology import summarize`` も使わない。
+投影の辺数は、TOL が増やしたキーを除いた ``edges`` と ``unclassified_edges`` に一致させ、
+TOO の被覆が閉じていなければ失敗する。
+"""
 import json
 import subprocess
 import sys
 from pathlib import Path
 
-from topology import summarize
-
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from gh_audit.gh_audit import audit
-from ontautology import concept_edges
+from examples.sibling_format import PROFILES, classification, counts_agree, export_graph, relation_groups
 from tools.tautology import cases
+
+EXPORTS = Path("examples/tol-export")
+ONTO = Path("ontautology_shared/_onto")
 
 
 def read(path):
-    return json.loads(path.read_text(encoding="utf-8"))
+    return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
-def report(classification):
-    profiles = read(classification)
-    examples = ROOT / "examples"
-    corpus_path = examples / "concepts-20261115.json"
-    corpus = read(corpus_path)
-    judgments = cases(corpus)
+def as_relative(path):
+    candidate = Path(path)
+    if candidate.is_absolute():
+        try:
+            return candidate.resolve().relative_to(ROOT)
+        except ValueError:
+            return candidate
+    return candidate
+
+
+def write_graph(graph, profile):
+    relative = EXPORTS / f"{profile}.json"
+    destination = ROOT / relative
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(
+        json.dumps(graph, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return relative
+
+
+def run_cli(argv):
     result = subprocess.run(
-        [sys.executable, "-S", str(ROOT / "tools/tautology.py"), "cases", str(corpus_path), "--graph"],
-        stdout=subprocess.PIPE, encoding="utf-8",
-    )
-    expected_status = 2 if judgments["summary"]["disputed"] else 0
-    if result.returncode != expected_status:
-        raise RuntimeError(f"cases --graph exited with {result.returncode}, expected {expected_status}")
+        [sys.executable, "-S", *argv], cwd=ROOT, capture_output=True, text=True, encoding="utf-8")
+    if result.returncode != 0:
+        detail = "\n".join(part.strip() for part in (result.stderr, result.stdout) if part.strip())
+        raise RuntimeError(detail or f"exited {result.returncode}")
+    return json.loads(result.stdout)
+
+
+def coverage_cli(classification_path):
+    argv = [
+        str(ROOT / "too" / "taxontoy.py"), "coverage", Path(classification_path).as_posix(),
+        "--onto", ONTO.as_posix(), "--strict", "--format", "json",
+    ]
+    for profile in PROFILES:
+        argv.extend(["--graph", f"{profile}={(EXPORTS / (profile + '.json')).as_posix()}"])
+    return run_cli(argv)
+
+
+def summarize_cli(classification_path, profile):
+    return run_cli([
+        str(ROOT / "tol" / "topontology.py"),
+        (EXPORTS / f"{profile}.json").as_posix(),
+        Path(classification_path).as_posix(),
+        profile,
+    ])
+
+
+def report(classification_path):
+    classification_path = as_relative(classification_path)
+    table = classification(read(ROOT / classification_path if not Path(classification_path).is_absolute() else classification_path))
+    examples = ROOT / "examples"
+    corpus = read(examples / "concepts-20261115.json")
     graphs = {
-        "audit": audit([read(examples / "audit-20261114.json")]),
-        "concepts": concept_edges(corpus),
-        "cases": json.loads(result.stdout),
+        "audit": export_graph("audit", read(examples / "audit-20261114.json")),
+        "concepts": export_graph("concepts", corpus),
+        "cases": export_graph("cases", corpus),
     }
-    metrics = {wave: summarize(graph, profiles[wave]) for wave, graph in graphs.items()}
-    return {"waves": metrics, "case_status": {
+    judgments = cases(corpus)
+    for wave, graph in graphs.items():
+        if wave not in table:
+            raise RuntimeError(f"分類表に {wave} がありません")
+        write_graph(graph, wave)
+    covered = coverage_cli(classification_path)
+    metrics = {}
+    for wave, graph in graphs.items():
+        groups = relation_groups(graph, table[wave])
+        summary = summarize_cli(classification_path, wave)
+        if not counts_agree(groups, summary):
+            raise RuntimeError(f"{wave}: 投影の辺数 {groups} が TOL の集計 {summary} と一致しません")
+        metrics[wave] = summary
+    return {"taxontoy": covered, "waves": metrics, "case_status": {
         key: row["status"] for key, row in judgments["cases"].items()
     }}
 
 
 if __name__ == "__main__":
-    print(json.dumps(report(Path(sys.argv[1])), indent=2, ensure_ascii=False))
+    print(json.dumps(report(sys.argv[1]), indent=2, ensure_ascii=False))
