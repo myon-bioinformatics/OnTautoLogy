@@ -1,6 +1,8 @@
 """TOO の分類表と TOL のグラフ入力へ渡す投影。閉路検出は呼ばない。"""
+import dis
 import io
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -11,13 +13,63 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+
+_TARGET = str((ROOT / "examples" / "sibling_format.py").resolve())
+_SEEN_LINES = set()
+_SEEN_ARCS = set()
+_PENDING = {}
+_COVER_DIR = Path(tempfile.mkdtemp(prefix="sibling-format-cover-"))
+_JUMP_PREFIXES = (
+    "POP_JUMP_IF_",
+    "POP_JUMP_FORWARD_IF_",
+    "POP_JUMP_BACKWARD_IF_",
+    "JUMP_IF_",
+)
+_UNTRACED_OPS = {"CACHE", "END_FOR", "EXTENDED_ARG", "RESUME"}
+
+
+def _conditional(opname):
+    return opname == "FOR_ITER" or opname.startswith(_JUMP_PREFIXES)
+
+
+def _qual(code):
+    return f"{code.co_firstlineno}:{code.co_qualname}"
+
+
+def _hook(frame, event, arg):
+    if os.path.realpath(frame.f_code.co_filename) != _TARGET:
+        return None
+    frame.f_trace_opcodes = True
+    if event == "line":
+        _SEEN_LINES.add(frame.f_lineno)
+    elif event == "opcode":
+        code = frame.f_code
+        key = id(frame)
+        offset = frame.f_lasti
+        pending = _PENDING.get(key)
+        if pending is not None:
+            _SEEN_ARCS.add((pending[0], pending[1], offset))
+            del _PENDING[key]
+        real = offset
+        name = dis.opname[code.co_code[real]]
+        while name == "EXTENDED_ARG":
+            real += 2
+            name = dis.opname[code.co_code[real]]
+        if _conditional(name):
+            _PENDING[key] = (_qual(code), real)
+    elif event == "return":
+        _PENDING.pop(id(frame), None)
+    return _hook
+
+
+sys.settrace(_hook)
 from examples.sibling_format import (  # noqa: E402
-    SCHEMA, TOL_COMMIT, TOO_COMMIT, classification, counts_agree, export_graph, main, project,
-    relation_groups, render_relations_page, source_graph, write_relations_site,
+    SCHEMA, SCHEMA_V1, SCHEMA_V2, TOL_COMMIT, TOO_COMMIT, classification, counts_agree, export_graph, main,
+    project, relation_groups, render_relations_page, source_graph, write_relations_site,
 )
 from gh_audit import gh_audit as ga  # noqa: E402
 
-# TOO main 30c5ed689cb931bce3787e37056082ce8cb52b3d の弾ごとの対応。
+# TOO main 8621f2261d694af0de35e103ad2387872ca10b99 の弾ごとの対応。
 # direction と excluded は taxontoy coverage が見る。holds false は表に無い。
 ASSUMED = {
     "audit": {"dependsOn": "dependency", "duplicates": "overlap"},
@@ -264,6 +316,20 @@ class ProjectionTests(unittest.TestCase):
         self.assertIn("（なし）", html)
         self.assertIn("不定<", html)
         self.assertEqual(render_relations_page({"waves": {}, "taxontoy": []}), render_relations_page({"waves": {}}))
+        bare = render_relations_page({
+            "waves": {"audit": {
+                "provenance": {"graph": {"sha256": "ab"}, "classification": {"sha256": "cd"}},
+                "unclassified_edges": 0,
+                "classes": {"dependency": {
+                    "edges": 1, "incident_nodes": 1, "multiple_sources": [], "sample_cycles": [],
+                    "weakly_connected_components": {"sizes": [1]},
+                }},
+            }},
+            "taxontoy": {"version": "0.2.0"},
+        })
+        self.assertIn(">ab<", bare)
+        self.assertIn(">—<", bare)
+        self.assertNotIn("TOO の被覆", bare)
 
         payload = {"schema": "ontautology/1", "nodes": [{"id": "a", "type": "T", "name": "n"}],
                    "edges": [{"source": "a", "target": "b", "relation": "dependsOn"}]}
@@ -295,6 +361,418 @@ class ProjectionTests(unittest.TestCase):
                         exec(compile(program.read_text(encoding="utf-8"), str(program), "exec"),
                              {"__name__": "__main__", "__file__": str(program)})
                 self.assertEqual(caught.exception.code, 0)
+
+
+def _stamp(since="2026-11-14", reason="recorded", relation=None):
+    body = {"since": since, "reason": reason}
+    if relation is not None:
+        body["relation"] = relation
+    return body
+
+
+def _version(schema):
+    document = {
+        "schema": schema,
+        "audit": {"dependsOn": "dependency", "duplicates": "overlap"},
+        "concepts": {"narrower": "hierarchy", "similarTo": "similarity"},
+        "cases": {"candidate": "hypothesis", "holds true": "affirmation"},
+        "direction": {
+            "candidate": "forward", "dependsOn": "forward", "duplicates": "undirected",
+            "holds true": "forward", "narrower": "forward", "similarTo": "mutual",
+        },
+        "excluded": {"audit": ["blocks"], "concepts": [], "cases": []},
+    }
+    if schema == SCHEMA_V2:
+        document["properties"] = {
+            "classes": {
+                "dependency": {"acyclic": _stamp(since="2024-02-29")},
+                "negation": {"acyclic": _stamp(since="2000-02-29", reason="leap")},
+                "hierarchy": {
+                    "acyclic": _stamp(since="2026-11-15", reason="no cycle"),
+                    "transitive": _stamp(since="2026-01-31", reason="narrows"),
+                },
+                "overlap": {},
+                "similarity": {"symmetric": _stamp(since="2026-11-15", reason="both ways")},
+            },
+            "relations": {
+                "blocks": {"inverse_of": _stamp(relation="dependsOn")},
+                "candidate": {"acyclic": _stamp(reason="open")},
+                "dependsOn": {"inverse_of": _stamp(relation="blocks")},
+                "duplicates": {"symmetric": _stamp(reason="either way")},
+                "narrower": {"disjoint_with": [
+                    _stamp(relation="blocks", since="2026-11-15"),
+                    _stamp(relation="similarTo", since="2026-11-15", reason="distinct"),
+                ]},
+                "similarTo": {"transitive": _stamp(since="2026-11-15", reason="shared")},
+            },
+        }
+    return document
+
+
+class RelationTableV2Tests(unittest.TestCase):
+    def test_version_2_keeps_profiles_and_reads_declarations(self):
+        found = classification(_version(SCHEMA_V2))
+        self.assertEqual(set(found), {"audit", "concepts", "cases"})
+        self.assertEqual(found["audit"]["dependsOn"], "dependency")
+        self.assertNotIn("properties", found)
+        self.assertEqual(classification(_version(SCHEMA_V1))["concepts"]["narrower"], "hierarchy")
+        empty = _version(SCHEMA_V2)
+        empty["properties"] = {"classes": {}, "relations": {}}
+        self.assertEqual(set(classification(empty)), {"audit", "concepts", "cases"})
+
+    def test_each_version_rejects_a_different_key_set(self):
+        extra_v1 = _version(SCHEMA_V1)
+        extra_v1["properties"] = {"classes": {}, "relations": {}}
+        missing_v2 = _version(SCHEMA_V2)
+        del missing_v2["properties"]
+        extra_v2 = _version(SCHEMA_V2)
+        extra_v2["note"] = "no"
+        for document, message in (
+            (extra_v1, "taxontoy-relations/1 has unexpected keys"),
+            (missing_v2, "taxontoy-relations/2 has unexpected keys"),
+            (extra_v2, "taxontoy-relations/2 has unexpected keys"),
+        ):
+            with self.subTest(message=message):
+                with self.assertRaises(ValueError) as caught:
+                    classification(document)
+                self.assertEqual(str(caught.exception), message)
+                self.assertNotIn("\n", message)
+
+    def test_unknown_schema_is_one_line(self):
+        samples = {
+            "taxontoy-relations/9": "unsupported table schema: taxontoy-relations/9",
+            "a\nb": "unsupported table schema: a b",
+            "": "unsupported table schema: empty",
+            "   ": "unsupported table schema: empty",
+            None: "unsupported table schema: NoneType",
+        }
+        for schema, message in samples.items():
+            document = _version(SCHEMA_V1)
+            document["schema"] = schema
+            with self.subTest(schema=schema):
+                with self.assertRaises(ValueError) as caught:
+                    classification(document)
+                self.assertEqual(str(caught.exception), message)
+                self.assertEqual(str(caught.exception).splitlines(), [message])
+
+    def test_bad_declarations_name_the_field(self):
+        samples = []
+
+        def add(message, mutate):
+            document = _version(SCHEMA_V2)
+            mutate(document)
+            samples.append((message, document))
+
+        add("properties must be an object", lambda doc: doc.__setitem__("properties", []))
+        add("properties has unexpected keys", lambda doc: doc["properties"].__setitem__("extra", {}))
+        add("properties.classes must be an object", lambda doc: doc["properties"].__setitem__("classes", []))
+        add("properties.relations must be an object", lambda doc: doc["properties"].__setitem__("relations", []))
+        add("properties.classes.nope unknown class", lambda doc: doc["properties"]["classes"].__setitem__("nope", {}))
+        add("properties.classes.hierarchy must be an object",
+            lambda doc: doc["properties"]["classes"].__setitem__("hierarchy", []))
+        add("properties.classes.hierarchy unknown property reflexive",
+            lambda doc: doc["properties"]["classes"]["hierarchy"].__setitem__("reflexive", _stamp()))
+        add("class hierarchy symmetric and acyclic contradict",
+            lambda doc: doc["properties"]["classes"]["hierarchy"].__setitem__("symmetric", _stamp()))
+        add("properties.relations.ghost unknown relation",
+            lambda doc: doc["properties"]["relations"].__setitem__("ghost", {}))
+        add("properties.relations.dependsOn must be an object",
+            lambda doc: doc["properties"]["relations"].__setitem__("dependsOn", []))
+        add("properties.relations.dependsOn unknown property reflexive",
+            lambda doc: doc["properties"]["relations"]["dependsOn"].__setitem__("reflexive", _stamp()))
+        add("properties.relations.dependsOn.inverse_of unknown relation",
+            lambda doc: doc["properties"]["relations"]["dependsOn"]["inverse_of"].__setitem__("relation", "ghost"))
+        add("inverse pairs not mutually declared: blocks dependsOn",
+            lambda doc: doc["properties"]["relations"].__delitem__("blocks"))
+        add("properties.relations.narrower.disjoint_with must be a non-empty array",
+            lambda doc: doc["properties"]["relations"]["narrower"].__setitem__("disjoint_with", "similarTo"))
+        add("properties.relations.narrower.disjoint_with must be a non-empty array",
+            lambda doc: doc["properties"]["relations"]["narrower"].__setitem__("disjoint_with", []))
+        add("properties.relations.dependsOn.disjoint_with disjoint with itself",
+            lambda doc: doc["properties"]["relations"]["dependsOn"].__setitem__(
+                "disjoint_with", [_stamp(relation="dependsOn")]))
+        add("properties.relations.dependsOn.disjoint_with unknown relation",
+            lambda doc: doc["properties"]["relations"]["dependsOn"].__setitem__(
+                "disjoint_with", [_stamp(relation="ghost")]))
+        add("properties.relations.narrower.disjoint_with must be sorted and unique",
+            lambda doc: doc["properties"]["relations"]["narrower"].__setitem__("disjoint_with", [
+                _stamp(relation="similarTo"), _stamp(relation="blocks")]))
+        add("properties.relations.narrower.disjoint_with must be sorted and unique",
+            lambda doc: doc["properties"]["relations"]["narrower"].__setitem__("disjoint_with", [
+                _stamp(relation="blocks"), _stamp(relation="blocks")]))
+        add("relation duplicates symmetric and acyclic contradict",
+            lambda doc: doc["properties"]["relations"]["duplicates"].__setitem__("acyclic", _stamp()))
+        add("similarTo symmetric and acyclic contradict",
+            lambda doc: doc["properties"]["relations"]["similarTo"].__setitem__("acyclic", _stamp()))
+        add("properties.classes.dependency.acyclic missing since",
+            lambda doc: doc["properties"]["classes"]["dependency"]["acyclic"].__delitem__("since"))
+        add("properties.classes.dependency.acyclic invalid since",
+            lambda doc: doc["properties"]["classes"]["dependency"]["acyclic"].__setitem__("since", "2026-02-31"))
+        add("properties.classes.dependency.acyclic invalid since",
+            lambda doc: doc["properties"]["classes"]["dependency"]["acyclic"].__setitem__("since", 20261114))
+        add("properties.classes.dependency.acyclic invalid since",
+            lambda doc: doc["properties"]["classes"]["dependency"]["acyclic"].__setitem__("since", "2026/11/14"))
+        for bad_day in ("2026-00-10", "2026-13-01", "2026-11-00", "2023-02-29", "1900-02-29", "2026-04-31", "2026-11-31"):
+            add("properties.classes.dependency.acyclic invalid since",
+                lambda doc, day=bad_day: doc["properties"]["classes"]["dependency"]["acyclic"].__setitem__("since", day))
+        add("properties.classes.dependency.acyclic missing reason",
+            lambda doc: doc["properties"]["classes"]["dependency"]["acyclic"].__delitem__("reason"))
+        add("properties.classes.dependency.acyclic missing reason",
+            lambda doc: doc["properties"]["classes"]["dependency"]["acyclic"].__setitem__("reason", ""))
+        add("properties.classes.dependency.acyclic missing reason",
+            lambda doc: doc["properties"]["classes"]["dependency"]["acyclic"].__setitem__("reason", " padded "))
+        add("properties.classes.dependency.acyclic missing reason",
+            lambda doc: doc["properties"]["classes"]["dependency"]["acyclic"].__setitem__("reason", 1))
+        add("properties.classes.dependency.acyclic has unexpected field note",
+            lambda doc: doc["properties"]["classes"]["dependency"]["acyclic"].__setitem__("note", "x"))
+        add("properties.relations.dependsOn.inverse_of must be an object",
+            lambda doc: doc["properties"]["relations"]["dependsOn"].__setitem__("inverse_of", []))
+        add("properties.relations.dependsOn.inverse_of missing relation",
+            lambda doc: doc["properties"]["relations"]["dependsOn"]["inverse_of"].__delitem__("relation"))
+        add("properties.relations.dependsOn.inverse_of missing relation",
+            lambda doc: doc["properties"]["relations"]["dependsOn"]["inverse_of"].__setitem__("relation", ""))
+        add("properties.relations.dependsOn.inverse_of missing relation",
+            lambda doc: doc["properties"]["relations"]["dependsOn"]["inverse_of"].__setitem__("relation", " blocks "))
+        add("properties.relations.dependsOn.inverse_of has unexpected field note",
+            lambda doc: doc["properties"]["relations"]["dependsOn"]["inverse_of"].__setitem__("note", "x"))
+        for message, document in samples:
+            with self.subTest(message=message):
+                with self.assertRaises(ValueError) as caught:
+                    classification(document)
+                self.assertEqual(str(caught.exception), message)
+                self.assertNotIn("\n", message)
+
+    def test_cli_accepts_version_2_and_rejects_unknown_schema(self):
+        script = str(ROOT / "examples" / "sibling_format.py")
+        graph = {"edges": [{"source": "a", "target": "b", "kind": "dependsOn"}]}
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            (folder / "graph.json").write_text(json.dumps(graph), encoding="utf-8")
+            table = folder / "table.json"
+            table.write_text(json.dumps(_version(SCHEMA_V2)), encoding="utf-8")
+            checked = subprocess.run(
+                [sys.executable, "-S", script, "check", str(folder / "graph.json"), str(table), "audit"],
+                cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+            )
+            self.assertEqual(checked.returncode, 0, checked.stderr)
+            self.assertEqual(json.loads(checked.stdout)["classes"]["dependency"], 1)
+            table.write_text(json.dumps(_version("taxontoy-relations/9")), encoding="utf-8")
+            rejected = subprocess.run(
+                [sys.executable, "-S", script, "check", str(folder / "graph.json"), str(table), "audit"],
+                cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+            )
+        self.assertEqual(rejected.returncode, 1)
+        self.assertEqual(rejected.stderr.splitlines(), ["unsupported table schema: taxontoy-relations/9"])
+
+    def test_mutations_of_the_real_source_are_killed(self):
+        source = (ROOT / "examples" / "sibling_format.py").read_text(encoding="utf-8")
+
+        def load(text):
+            namespace = {
+                "__name__": "sibling_format_mutant",
+                "__file__": str(ROOT / "examples" / "sibling_format.py"),
+            }
+            exec(compile(text, "<sibling-format-mutant>", "exec"), namespace)  # noqa: S102
+            return namespace["classification"]
+
+        def killed(text, check):
+            try:
+                check(load(text))
+            except Exception:
+                return True
+            return False
+
+        drop = 'SCHEMA_V2 = "taxontoy-relations/2"\n'
+        self.assertEqual(source.count(drop), 1)
+
+        def accepts_v2(classify):
+            found = classify(_version(SCHEMA_V2))
+            if set(found) != {"audit", "concepts", "cases"} or found["cases"]["holds true"] != "affirmation":
+                raise AssertionError(found)
+
+        self.assertTrue(killed(source.replace(drop, 'SCHEMA_V2 = "taxontoy-relations/dropped"\n', 1), accepts_v2))
+        accepts_v2(classification)
+
+        since = "    return day <= last\n"
+        self.assertEqual(source.count(since), 1)
+
+        def rejects_bad_since(classify):
+            bad = _version(SCHEMA_V2)
+            bad["properties"]["classes"]["dependency"]["acyclic"]["since"] = "2026-02-31"
+            try:
+                classify(bad)
+            except ValueError as error:
+                if str(error) == "properties.classes.dependency.acyclic invalid since":
+                    return
+            raise AssertionError("bad since was accepted")
+
+        self.assertTrue(killed(source.replace(since, "    return True\n", 1), rejects_bad_since))
+        rejects_bad_since(classification)
+
+        unknown = "        _unsupported(schema)\n"
+        self.assertEqual(source.count(unknown), 1)
+
+        def rejects_unknown(classify):
+            document = _version(SCHEMA_V1)
+            document["schema"] = "taxontoy-relations/9"
+            try:
+                classify(document)
+            except ValueError as error:
+                if str(error) == "unsupported table schema: taxontoy-relations/9":
+                    return
+            raise AssertionError("unknown schema was accepted")
+
+        swapped = source.replace(unknown, "        return _read_version(document, SCHEMA_V1)\n", 1)
+        self.assertTrue(killed(swapped, rejects_unknown))
+        rejects_unknown(classification)
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            graph = folder / "graph.json"
+            table = folder / "table.json"
+            graph.write_text('{"edges": []}', encoding="utf-8")
+            table.write_text(json.dumps(_version(SCHEMA_V1)), encoding="utf-8")
+            with patch("examples.sibling_format.classification", side_effect=TypeError("boom")):
+                with self.assertRaises(TypeError):
+                    main(["check", str(graph), str(table), "audit"])
+
+
+_WRAPPER = r"""
+import dis, os, runpy, sys
+from pathlib import Path
+script, dest = sys.argv[1], sys.argv[2]
+sys.argv = [script, *sys.argv[3:]]
+target = os.path.realpath(script)
+lines, arcs, pending = set(), set(), {}
+prefixes = ("POP_JUMP_IF_", "POP_JUMP_FORWARD_IF_", "POP_JUMP_BACKWARD_IF_", "JUMP_IF_")
+
+def conditional(opname):
+    return opname == "FOR_ITER" or opname.startswith(prefixes)
+
+def qual(code):
+    return f"{code.co_firstlineno}:{code.co_qualname}"
+
+def hook(frame, event, arg):
+    if os.path.realpath(frame.f_code.co_filename) != target:
+        return None
+    frame.f_trace_opcodes = True
+    if event == "line":
+        lines.add(frame.f_lineno)
+    elif event == "opcode":
+        code = frame.f_code
+        key = id(frame)
+        offset = frame.f_lasti
+        prev = pending.get(key)
+        if prev is not None:
+            arcs.add((prev[0], prev[1], offset))
+            del pending[key]
+        real = offset
+        name = dis.opname[code.co_code[real]]
+        while name == "EXTENDED_ARG":
+            real += 2
+            name = dis.opname[code.co_code[real]]
+        if conditional(name):
+            pending[key] = (qual(code), real)
+    elif event == "return":
+        pending.pop(id(frame), None)
+    return hook
+
+sys.settrace(hook)
+status = 0
+try:
+    runpy.run_path(script, run_name="__main__")
+except SystemExit as exc:
+    status = exc.code if isinstance(exc.code, int) else (0 if exc.code is None else 1)
+finally:
+    sys.settrace(None)
+    body = ["LINES", *(str(number) for number in sorted(lines)), "ARCS"]
+    body.extend(f"{ident}\t{src}\t{dst}" for ident, src, dst in sorted(arcs))
+    Path(dest).write_text("\n".join(body) + "\n", encoding="utf-8")
+raise SystemExit(status)
+"""
+
+
+def _static_arcs(code):
+    arcs = set()
+    blocks = []
+
+    def walk(block):
+        blocks.append(block)
+        for const in block.co_consts:
+            if hasattr(const, "co_code"):
+                walk(const)
+
+    walk(code)
+    for block in blocks:
+        insns = [ins for ins in dis.get_instructions(block) if ins.opname not in {"CACHE", "EXTENDED_ARG"}]
+        ident = _qual(block)
+        for index, ins in enumerate(insns):
+            if not _conditional(ins.opname):
+                continue
+            fall = next(item.offset for item in insns[index + 1:] if item.opname not in _UNTRACED_OPS)
+            target = next(item.offset for item in insns if item.offset >= ins.argval and item.opname not in _UNTRACED_OPS)
+            arcs.add((ident, ins.offset, fall))
+            arcs.add((ident, ins.offset, target))
+    return arcs
+
+
+class ZCoverageTests(unittest.TestCase):
+    def test_statements_and_branches_are_fully_executed(self):
+        dest = _COVER_DIR / "cli.txt"
+        cli = subprocess.run(
+            [sys.executable, "-S", "-c", _WRAPPER, _TARGET, str(dest),
+             "export", "cases", str(ROOT / "examples" / "concepts-20261115.json")],
+            cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+        )
+        self.assertEqual(cli.returncode, 0, cli.stderr)
+        child_lines, child_arcs, section = set(), set(), None
+        for line in dest.read_text(encoding="utf-8").splitlines():
+            if line in {"LINES", "ARCS"}:
+                section = line
+                continue
+            if section == "LINES":
+                child_lines.add(int(line))
+            elif section == "ARCS":
+                ident, src, dst = line.split("\t")
+                child_arcs.add((ident, int(src), int(dst)))
+        self.assertTrue(child_lines, "CLI subprocesses did not record executed lines")
+        source = Path(_TARGET).read_text(encoding="utf-8")
+        total = len(source.splitlines())
+        compiled = compile(source, _TARGET, "exec")
+        executable = set()
+
+        def walk(block):
+            for _start, _end, lineno in block.co_lines():
+                if lineno:
+                    executable.add(lineno)
+            for const in block.co_consts:
+                if hasattr(const, "co_lines"):
+                    walk(const)
+
+        walk(compiled)
+        seen_lines = set(_SEEN_LINES) | child_lines
+        executed = executable & seen_lines
+        excluded = set(range(1, total + 1)) - executable
+        unexecuted = executable - seen_lines
+        self.assertEqual(len(executed) + len(excluded) + len(unexecuted), total)
+        arcs = _static_arcs(compiled)
+        seen_arcs = set(_SEEN_ARCS) | child_arcs
+        executed_arcs = arcs & seen_arcs
+        excluded_arcs = set()
+        unexecuted_arcs = arcs - seen_arcs
+        self.assertEqual(len(executed_arcs) + len(excluded_arcs) + len(unexecuted_arcs), len(arcs))
+        guard = next(number for number, line in enumerate(source.splitlines(), start=1) if line.startswith("if __name__"))
+        self.assertIn(guard, child_lines)
+        sys.stderr.write(
+            f"statements executed={len(executed)} excluded={len(excluded)} "
+            f"unexecuted={len(unexecuted)} total={total}\n"
+            f"branches executed={len(executed_arcs)} excluded={len(excluded_arcs)} "
+            f"unexecuted={len(unexecuted_arcs)} total={len(arcs)}\n"
+        )
+        if unexecuted or unexecuted_arcs:
+            lines = source.splitlines()
+            preview = "\n".join(f"{number}: {lines[number - 1]}" for number in sorted(unexecuted))
+            arc_preview = "\n".join(repr(item) for item in sorted(unexecuted_arcs)[:40])
+            self.fail(f"unexecuted lines {len(unexecuted)}\n{preview}\nunexecuted branches {len(unexecuted_arcs)}\n{arc_preview}")
 
 
 if __name__ == "__main__":

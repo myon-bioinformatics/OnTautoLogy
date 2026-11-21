@@ -2,13 +2,19 @@
 
 想定する版は両リポジトリの main のマージコミットです。
 
-- TOO ``30c5ed689cb931bce3787e37056082ce8cb52b3d``（親は ``5c138352`` と ``2e7002f8``）の
-  ``taxontoy.py``。``taxonomy.py`` は無い。表は ``taxontoy-relations/1`` で、
-  ``audit`` / ``concepts`` / ``cases`` が「関係名 → 分類名」、``direction`` が向き、
-  ``excluded`` がその弾では数えない関係名です。``holds false`` は固定例に辺が無いので
-  表に無く、現れたら被覆の未分類になります。
+- TOO ``8621f2261d694af0de35e103ad2387872ca10b99``（親は ``30c5ed689cb931bce3787e37056082ce8cb52b3d``
+  と ``8cfb0cab3a917ffe9b945fc0c6d4ee0e8edc7f04``、版 0.2.0）の ``taxontoy.py``。
+  ``taxonomy.py`` は無い。表は ``taxontoy-relations/2`` で、``taxontoy-relations/1`` も読む。
+  どちらも ``audit`` / ``concepts`` / ``cases`` が「関係名 → 分類名」、``direction`` が向き、
+  ``excluded`` がその弾では数えない関係名です。``/2`` はそれに ``properties`` を足す。
+  ``properties.classes`` は ``transitive`` / ``symmetric`` / ``acyclic``、
+  ``properties.relations`` はそれらに ``inverse_of`` と ``disjoint_with`` を足した宣言です。
+  各宣言は ``since``（ASCII の YYYY-MM-DD）と ``reason`` を持ち、相手を指す宣言は ``relation`` も持つ。
+  版ごとのトップレベルキーは過不足なく一致しなければならない。未知の schema は一行で失敗する。
+  ``holds false`` は固定例に辺が無いので表に無く、現れたら被覆の未分類になります。
   ``taxontoy coverage`` は分類済み・除外・未分類・表にあってグラフに無い名前が
-  重ならず全体を覆うことを見ます。CLI の JSON には版と入力の sha256 が入ります。
+  重ならず全体を覆うことを見ます。``taxontoy candidates`` は畳まずに候補を出します。
+  CLI の JSON には版と入力の sha256 が入ります。
 - TOL ``d8880c9e55a0ce502dbf54a128bcaf471f0efc0e``（親は ``7bd70a45`` と ``3184b725``）の
   ``topontology.py``。``from topology import summarize`` は互換のために残っている。
   ``graph["edges"]`` の各要素は ``source`` と ``target`` を持つ。
@@ -28,6 +34,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from html import escape
 from pathlib import Path
@@ -37,9 +44,21 @@ sys.path.insert(0, str(ROOT))
 
 SCHEMA = "otl-tol-graph/1"
 PROFILES = ("audit", "concepts", "cases")
-TOO_COMMIT = "30c5ed689cb931bce3787e37056082ce8cb52b3d"
-TABLE_SCHEMA = "taxontoy-relations/1"
+TOO_COMMIT = "8621f2261d694af0de35e103ad2387872ca10b99"
+SCHEMA_V1 = "taxontoy-relations/1"
+SCHEMA_V2 = "taxontoy-relations/2"
 TOL_COMMIT = "d8880c9e55a0ce502dbf54a128bcaf471f0efc0e"
+_VERSION_KEYS = {
+    SCHEMA_V1: frozenset({"schema", *PROFILES, "direction", "excluded"}),
+    SCHEMA_V2: frozenset({"schema", *PROFILES, "direction", "excluded", "properties"}),
+}
+_CLASS_NAMES = frozenset({
+    "affirmation", "dependency", "hierarchy", "hypothesis", "judgment-record",
+    "negation", "overlap", "similarity", "unknown-element",
+})
+_CLASS_FLAGS = frozenset({"acyclic", "symmetric", "transitive"})
+_RELATION_FLAGS = frozenset({"acyclic", "disjoint_with", "inverse_of", "symmetric", "transitive"})
+_DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 WAVE_TITLES = {
     "audit": "第一弾　監査の依存と重複",
     "concepts": "第二弾　階層と類似",
@@ -68,41 +87,186 @@ def _profile_map(profile, classes):
     return mapped
 
 
-def classification(document):
-    """TOO の分類表から、弾ごとの「関係名 → 分類名」だけを取り出す。
+def _unsupported(schema):
+    if isinstance(schema, str):
+        shown = " ".join(schema.split())
+    else:
+        shown = type(schema).__name__
+    if not shown:
+        shown = "empty"
+    raise ValueError(f"unsupported table schema: {shown}")
 
-    ``taxontoy-relations/1`` の ``direction`` と ``excluded`` はプロファイルにしない。
-    被覆が閉じているかは ``taxontoy coverage`` が見る。スキーマの無いオブジェクトは、
-    テストが渡す弾だけの表として読む。
-    """
-    if not isinstance(document, dict) or not document:
-        raise ValueError("classification must be a non-empty object of profiles")
-    if document.get("schema") == TABLE_SCHEMA:
-        if set(document) != {"schema", *PROFILES, "direction", "excluded"}:
-            raise ValueError("taxontoy-relations/1 has unexpected keys")
-        direction = document["direction"]
-        excluded = document["excluded"]
-        if not isinstance(direction, dict) or not isinstance(excluded, dict):
-            raise ValueError("taxontoy-relations/1 needs direction and excluded")
-        table = {}
-        for profile in PROFILES:
-            mapped = _profile_map(profile, document.get(profile))
-            names = excluded.get(profile)
-            if not isinstance(names, list):
-                raise ValueError(f"excluded.{profile} must be an array")
-            for name in names:
-                _text(name, f"excluded.{profile}")
-                if name in mapped:
-                    raise ValueError(f"{profile}: {name} is both classified and excluded")
-            missing = [relation for relation in mapped if relation not in direction]
-            if missing:
-                raise ValueError("direction: missing " + ", ".join(missing))
-            table[profile] = mapped
-        return table
+
+def _since_ok(value):
+    if not isinstance(value, str) or _DATE.fullmatch(value) is None:
+        return False
+    year_text, month_text, day_text = value.split("-")
+    year, month, day = int(year_text), int(month_text), int(day_text)
+    if month < 1 or month > 12 or day < 1:
+        return False
+    if month == 2:
+        leap = year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
+        last = 29 if leap else 28
+    elif month in (4, 6, 9, 11):
+        last = 30
+    else:
+        last = 31
+    return day <= last
+
+
+def _declaration(body, where, partner):
+    """``since`` と ``reason``、相手を指すときは ``relation`` を読む。"""
+    if not isinstance(body, dict):
+        raise ValueError(f"{where} must be an object")
+    allowed = {"reason", "relation", "since"} if partner else {"reason", "since"}
+    unexpected = sorted(set(body) - allowed)
+    if unexpected:
+        raise ValueError(f"{where} has unexpected field {unexpected[0]}")
+    if "since" not in body:
+        raise ValueError(f"{where} missing since")
+    if not _since_ok(body["since"]):
+        raise ValueError(f"{where} invalid since")
+    reason = body.get("reason")
+    if not isinstance(reason, str) or reason == "" or reason != reason.strip():
+        raise ValueError(f"{where} missing reason")
+    if not partner:
+        return ""
+    relation = body.get("relation")
+    if not isinstance(relation, str) or relation == "" or relation != relation.strip():
+        raise ValueError(f"{where} missing relation")
+    return relation
+
+
+def _properties(document, table):
+    props = document["properties"]
+    if not isinstance(props, dict):
+        raise ValueError("properties must be an object")
+    if set(props) != {"classes", "relations"}:
+        raise ValueError("properties has unexpected keys")
+    classes = props["classes"]
+    relations = props["relations"]
+    if not isinstance(classes, dict):
+        raise ValueError("properties.classes must be an object")
+    if not isinstance(relations, dict):
+        raise ValueError("properties.relations must be an object")
+    known = set()
+    for profile in PROFILES:
+        known.update(table[profile])
+        known.update(document["excluded"][profile])
+    class_flags = {}
+    for name in sorted(classes):
+        body = classes[name]
+        where = f"properties.classes.{name}"
+        if name not in _CLASS_NAMES:
+            raise ValueError(f"{where} unknown class")
+        if not isinstance(body, dict):
+            raise ValueError(f"{where} must be an object")
+        flags = set()
+        for key in sorted(body):
+            if key not in _CLASS_FLAGS:
+                raise ValueError(f"{where} unknown property {key}")
+            _declaration(body[key], f"{where}.{key}", False)
+            flags.add(key)
+        if "symmetric" in flags and "acyclic" in flags:
+            raise ValueError(f"class {name} symmetric and acyclic contradict")
+        class_flags[name] = flags
+    relation_flags = {}
+    inverses = {}
+    for name in sorted(relations):
+        body = relations[name]
+        where = f"properties.relations.{name}"
+        if name not in known:
+            raise ValueError(f"{where} unknown relation")
+        if not isinstance(body, dict):
+            raise ValueError(f"{where} must be an object")
+        flags = set()
+        for key in sorted(body):
+            if key not in _RELATION_FLAGS:
+                raise ValueError(f"{where} unknown property {key}")
+            if key == "inverse_of":
+                partner = _declaration(body[key], f"{where}.inverse_of", True)
+                if partner not in known:
+                    raise ValueError(f"{where}.inverse_of unknown relation")
+                inverses[name] = partner
+            elif key == "disjoint_with":
+                items = body[key]
+                if not isinstance(items, list) or not items:
+                    raise ValueError(f"{where}.disjoint_with must be a non-empty array")
+                partners = []
+                for index, item in enumerate(items):
+                    partner = _declaration(item, f"{where}.disjoint_with[{index}]", True)
+                    if partner == name:
+                        raise ValueError(f"{where}.disjoint_with disjoint with itself")
+                    if partner not in known:
+                        raise ValueError(f"{where}.disjoint_with unknown relation")
+                    partners.append(partner)
+                if partners != sorted(set(partners)):
+                    raise ValueError(f"{where}.disjoint_with must be sorted and unique")
+            else:
+                _declaration(body[key], f"{where}.{key}", False)
+            flags.add(key)
+        if "symmetric" in flags and "acyclic" in flags:
+            raise ValueError(f"relation {name} symmetric and acyclic contradict")
+        relation_flags[name] = flags
+    for name, partner in sorted(inverses.items()):
+        if inverses.get(partner) != name:
+            pair = " ".join(sorted((name, partner)))
+            raise ValueError(f"inverse pairs not mutually declared: {pair}")
+    for profile in PROFILES:
+        for relation, category in table[profile].items():
+            combined = class_flags.get(category, set()) | relation_flags.get(relation, set())
+            if "symmetric" in combined and "acyclic" in combined:
+                raise ValueError(f"{relation} symmetric and acyclic contradict")
+
+
+def _read_version(document, schema):
+    if set(document) != _VERSION_KEYS[schema]:
+        raise ValueError(f"{schema} has unexpected keys")
+    direction = document["direction"]
+    excluded = document["excluded"]
+    if not isinstance(direction, dict) or not isinstance(excluded, dict):
+        raise ValueError(f"{schema} needs direction and excluded")
+    table = {}
+    for profile in PROFILES:
+        mapped = _profile_map(profile, document.get(profile))
+        names = excluded.get(profile)
+        if not isinstance(names, list):
+            raise ValueError(f"excluded.{profile} must be an array")
+        for name in names:
+            _text(name, f"excluded.{profile}")
+            if name in mapped:
+                raise ValueError(f"{profile}: {name} is both classified and excluded")
+        missing = [relation for relation in mapped if relation not in direction]
+        if missing:
+            raise ValueError("direction: missing " + ", ".join(missing))
+        table[profile] = mapped
+    if schema == SCHEMA_V2:
+        _properties(document, table)
+    return table
+
+
+def _schemaless(document):
     table = {}
     for profile, classes in document.items():
         table[_text(profile, "profile name")] = _profile_map(profile, classes)
     return table
+
+
+def classification(document):
+    """TOO の分類表から、弾ごとの「関係名 → 分類名」だけを取り出す。
+
+    ``direction``、``excluded``、``/2`` の ``properties`` はプロファイルにしない。
+    性質の宣言はここで読み、被覆が閉じているかは ``taxontoy coverage`` が見る。
+    スキーマの無いオブジェクトは、テストが渡す弾だけの表として読む。
+    """
+    if not isinstance(document, dict) or not document:
+        raise ValueError("classification must be a non-empty object of profiles")
+    if "schema" not in document:
+        return _schemaless(document)
+    schema = document["schema"]
+    if not isinstance(schema, str) or schema not in _VERSION_KEYS:
+        _unsupported(schema)
+    return _read_version(document, schema)
 
 
 def project(graph):
@@ -189,7 +353,10 @@ def counts_agree(groups, summary):
     found = summary.get("classes", {})
     if set(groups["classes"]) != set(found) or groups["unclassified"] != summary.get("unclassified_edges"):
         return False
-    return all(groups["classes"][name] == found[name]["edges"] for name in groups["classes"])
+    for name in groups["classes"]:
+        if groups["classes"][name] != found[name]["edges"]:
+            return False
+    return True
 
 
 def _items(values, cycle):
