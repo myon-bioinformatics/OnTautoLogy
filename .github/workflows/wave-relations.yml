@@ -12,13 +12,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: myon-bioinformatics/TaxOntOy
-          ref: 78ed91aee522e9a7305e2bf964dab9be2bd3fff0 # main
+          ref: 30c5ed689cb931bce3787e37056082ce8cb52b3d # main
           path: too
           persist-credentials: false
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: myon-bioinformatics/TopOntoLogy
-          ref: 7bd70a45585e94522a1e87c362ee35b1316118d9 # main
+          ref: d8880c9e55a0ce502dbf54a128bcaf471f0efc0e # main
           path: tol
           persist-credentials: false
       - run: |

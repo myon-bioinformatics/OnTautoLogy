@@ -1,17 +1,23 @@
 """OTL のグラフを TaxOntOy の分類表と TopOntoLogy の集計へ渡す境界。
 
-想定する版は、調査時点で開いている PR が無かった両リポジトリの main です。
+想定する版は両リポジトリの main のマージコミットです。
 
-- TOO ``78ed91aee522e9a7305e2bf964dab9be2bd3fff0`` の ``otl-relations.json``。
-  トップレベルはプロファイル名（``audit`` / ``concepts`` / ``cases``）から
-  「OTL の関係名 → 分類名」へのオブジェクト。名前はどちらも空でない文字列。
-  表に無い関係はグラフに残り、TOL が ``unclassified_edges`` として数える。
-- TOL ``7bd70a45585e94522a1e87c362ee35b1316118d9`` の ``topology.summarize(graph, classes)``。
+- TOO ``30c5ed689cb931bce3787e37056082ce8cb52b3d``（親は ``5c138352`` と ``2e7002f8``）の
+  ``taxontoy.py``。``taxonomy.py`` は無い。表は ``taxontoy-relations/1`` で、
+  ``audit`` / ``concepts`` / ``cases`` が「関係名 → 分類名」、``direction`` が向き、
+  ``excluded`` がその弾では数えない関係名です。``holds false`` は固定例に辺が無いので
+  表に無く、現れたら被覆の未分類になります。
+  ``taxontoy coverage`` は分類済み・除外・未分類・表にあってグラフに無い名前が
+  重ならず全体を覆うことを見ます。CLI の JSON には版と入力の sha256 が入ります。
+- TOL ``d8880c9e55a0ce502dbf54a128bcaf471f0efc0e``（親は ``7bd70a45`` と ``3184b725``）の
+  ``topontology.py``。``from topology import summarize`` は互換のために残っている。
   ``graph["edges"]`` の各要素は ``source`` と ``target`` を持つ。
   関係名は ``kind`` があればそれ、無ければ ``relation``。
-  戻り値は ``classes``（分類名 → ``edges`` / ``incident_nodes`` /
-  ``multiple_sources`` / ``sample_cycles``）と ``unclassified_edges``。
-  ``nodes`` は読まない。閉路は ONTO の ``relation_cycles``（最大 5 件）。
+  分類ごとの値は従来の ``edges`` / ``incident_nodes`` / ``multiple_sources`` /
+  ``sample_cycles`` に加え、``degree`` / ``weakly_connected_components`` /
+  ``independent_cycles`` / ``depth`` / ``order_cycle`` を持つ。
+  CLI の JSON はそれらに ``tool``（名前と版）と ``provenance``（入力パスと sha256）を足す。
+  ``nodes`` は集計には使わない。閉路は ONTO の ``relation_cycles``（既定は最大 5 件）。
 
 書き出す ``otl-tol-graph/1`` は ``nodes``（``id`` と、あれば ``type``・``name``）と
 ``edges``（``source`` / ``target`` / ``kind``）だけを持つ。監査グラフの ``relation`` は
@@ -31,8 +37,9 @@ sys.path.insert(0, str(ROOT))
 
 SCHEMA = "otl-tol-graph/1"
 PROFILES = ("audit", "concepts", "cases")
-TOO_COMMIT = "78ed91aee522e9a7305e2bf964dab9be2bd3fff0"
-TOL_COMMIT = "7bd70a45585e94522a1e87c362ee35b1316118d9"
+TOO_COMMIT = "30c5ed689cb931bce3787e37056082ce8cb52b3d"
+TABLE_SCHEMA = "taxontoy-relations/1"
+TOL_COMMIT = "d8880c9e55a0ce502dbf54a128bcaf471f0efc0e"
 WAVE_TITLES = {
     "audit": "第一弾　監査の依存と重複",
     "concepts": "第二弾　階層と類似",
@@ -52,19 +59,49 @@ def _text(value, where):
     return value
 
 
+def _profile_map(profile, classes):
+    if not isinstance(classes, dict) or not classes:
+        raise ValueError(f"{profile}: profile needs a non-empty relation map")
+    mapped = {}
+    for relation, category in classes.items():
+        mapped[_text(relation, f"{profile} relation")] = _text(category, f"{profile} class")
+    return mapped
+
+
 def classification(document):
-    """TOO の分類表。プロファイル名から関係名、関係名から分類名。"""
+    """TOO の分類表から、弾ごとの「関係名 → 分類名」だけを取り出す。
+
+    ``taxontoy-relations/1`` の ``direction`` と ``excluded`` はプロファイルにしない。
+    被覆が閉じているかは ``taxontoy coverage`` が見る。スキーマの無いオブジェクトは、
+    テストが渡す弾だけの表として読む。
+    """
     if not isinstance(document, dict) or not document:
         raise ValueError("classification must be a non-empty object of profiles")
+    if document.get("schema") == TABLE_SCHEMA:
+        if set(document) != {"schema", *PROFILES, "direction", "excluded"}:
+            raise ValueError("taxontoy-relations/1 has unexpected keys")
+        direction = document["direction"]
+        excluded = document["excluded"]
+        if not isinstance(direction, dict) or not isinstance(excluded, dict):
+            raise ValueError("taxontoy-relations/1 needs direction and excluded")
+        table = {}
+        for profile in PROFILES:
+            mapped = _profile_map(profile, document.get(profile))
+            names = excluded.get(profile)
+            if not isinstance(names, list):
+                raise ValueError(f"excluded.{profile} must be an array")
+            for name in names:
+                _text(name, f"excluded.{profile}")
+                if name in mapped:
+                    raise ValueError(f"{profile}: {name} is both classified and excluded")
+            missing = [relation for relation in mapped if relation not in direction]
+            if missing:
+                raise ValueError("direction: missing " + ", ".join(missing))
+            table[profile] = mapped
+        return table
     table = {}
     for profile, classes in document.items():
-        name = _text(profile, "profile name")
-        if not isinstance(classes, dict) or not classes:
-            raise ValueError(f"{name}: profile needs a non-empty relation map")
-        mapped = {}
-        for relation, category in classes.items():
-            mapped[_text(relation, f"{name} relation")] = _text(category, f"{name} class")
-        table[name] = mapped
+        table[_text(profile, "profile name")] = _profile_map(profile, classes)
     return table
 
 
@@ -165,12 +202,92 @@ def _items(values, cycle):
     return "<br>".join(escape(line) for line in lines)
 
 
+def _degree(degree):
+    if not isinstance(degree, dict):
+        return "—"
+    return (
+        f"入 {degree.get('max_in', '—')}・出 {degree.get('max_out', '—')}"
+        f"・合計 {degree.get('max_total', '—')}・始点 {degree.get('sources', '—')}"
+        f"・終点 {degree.get('sinks', '—')}"
+    )
+
+
+def _components(components):
+    if not isinstance(components, dict) or "count" not in components:
+        return "—"
+    sizes = ", ".join(str(size) for size in components.get("sizes") or [])
+    return f"{components['count']}（{sizes or 'なし'}）"
+
+
+def _depth(row):
+    if "depth" not in row:
+        return "—"
+    if row["depth"] is None:
+        cycle = " → ".join(str(part) for part in row.get("order_cycle") or [])
+        return "不定" + (f"（{cycle}）" if cycle else "")
+    return str(row["depth"])
+
+
+def _provenance(wave):
+    tool = wave.get("tool") or {}
+    provenance = wave.get("provenance") or {}
+    if not tool and not provenance:
+        return ""
+    graph = provenance.get("graph") or {}
+    table = provenance.get("classification") or {}
+    name = escape(str(tool.get("name", "")))
+    version = escape(str(tool.get("version", "")))
+    return (
+        f"<p><code>{name} {version}</code>。"
+        f"グラフ sha256 <code>{escape(str(graph.get('sha256', '')))}</code>、"
+        f"分類表 sha256 <code>{escape(str(table.get('sha256', '')))}</code>。</p>"
+    )
+
+
+def _coverage_section(report):
+    document = report.get("taxontoy")
+    if not isinstance(document, dict) or "waves" not in document:
+        return ""
+    rows = []
+    for name, wave in document["waves"].items():
+        part = wave.get("partition") or {}
+        rows.append(
+            "<tr><th scope=\"row\">"
+            + escape(str(name))
+            + f"</th><td>{part.get('total', '—')}</td><td>{part.get('classified', '—')}</td>"
+            + f"<td>{part.get('excluded', '—')}</td><td>{part.get('unclassified', '—')}</td>"
+            + f"<td>{part.get('stale', '—')}</td><td>"
+            + ("閉じている" if part.get("holds") else "開いている")
+            + "</td></tr>"
+        )
+    inputs = "<br>".join(
+        escape(f"{item.get('path', '')} {item.get('sha256', '')}") for item in document.get("inputs") or [])
+    onto = document.get("onto") or {}
+    return (
+        "<section id=\"coverage\"><h2>TOO の被覆</h2>"
+        f"<p><code>taxontoy {escape(str(document.get('version', '')))}</code>。"
+        f"ONTO sha256 <code>{escape(str(onto.get('sha256', '')))}</code>。</p>"
+        f"<p>{inputs}</p>"
+        "<table><caption>分類済み・除外・未分類・表にあってグラフに無い名前</caption><thead><tr>"
+        "<th scope=\"col\">弾</th><th scope=\"col\">関係名</th><th scope=\"col\">分類済み</th>"
+        "<th scope=\"col\">除外</th><th scope=\"col\">未分類</th><th scope=\"col\">未使用</th>"
+        "<th scope=\"col\">分割</th></tr></thead><tbody>"
+        + "".join(rows)
+        + "</tbody></table></section>"
+    )
+
+
 def render_relations_page(report):
-    """``wave-profiles.json`` と同じ形の集計を、Pages に置く HTML にする。"""
-    sections = []
+    """``wave-profiles.json`` と同じ形の集計を、Pages に置く HTML にする。
+
+    従来の辺数・端点・閉路に加え、TOL が増やした次数・弱連結成分・独立閉路・深さを出す。
+    それらのキーが無い古い文書でも、あるキーだけを表示する。
+    """
+    sections = [_coverage_section(report)]
     for name, wave in report["waves"].items():
         rows = []
         for category, row in wave["classes"].items():
+            cycles = row.get("independent_cycles")
             rows.append(
                 "<tr><th scope=\"row\">"
                 + escape(category)
@@ -178,14 +295,23 @@ def render_relations_page(report):
                 + _items(row.get("multiple_sources") or [], False)
                 + "</td><td>"
                 + _items(row.get("sample_cycles") or [], True)
+                + "</td><td>"
+                + escape(_degree(row.get("degree")))
+                + "</td><td>"
+                + escape(_components(row.get("weakly_connected_components")))
+                + f"</td><td>{'—' if cycles is None else cycles}</td><td>"
+                + escape(_depth(row))
                 + "</td></tr>"
             )
         sections.append(
             f"<section id=\"{escape(name)}\"><h2>{escape(WAVE_TITLES.get(name, name))}</h2>"
-            f"<p>分類表に無い辺は {wave['unclassified_edges']:,} 本です。</p>"
+            + _provenance(wave)
+            + f"<p>分類表に無い辺は {wave['unclassified_edges']:,} 本です。</p>"
             "<table><caption>TOL が返した分類ごとの構造</caption><thead><tr>"
             "<th scope=\"col\">分類</th><th scope=\"col\">辺</th><th scope=\"col\">端点</th>"
             "<th scope=\"col\">複数の始点を持つ終点</th><th scope=\"col\">代表閉路</th>"
+            "<th scope=\"col\">次数</th><th scope=\"col\">弱連結成分</th>"
+            "<th scope=\"col\">独立閉路</th><th scope=\"col\">深さ</th>"
             "</tr></thead><tbody>"
             + "".join(rows)
             + "</tbody></table></section>"
@@ -229,8 +355,8 @@ caption {{ text-align: left; font-weight: 600; margin-bottom: .4rem; }}
 <nav><a href="../">OnTautoLogy</a> · <a href="../atlas/">知識グラフ</a></nav>
 <h1>TOO の分類で見た構造集計</h1>
 <p>第一弾から第三弾の固定例を <code>otl-tol-graph/1</code> に写し、
-<a href="{too}">TOO {TOO_COMMIT[:12]}</a> の分類表で関係を選び、
-<a href="{tol}">TOL {TOL_COMMIT[:12]}</a> の <code>topology.summarize</code> が数えた結果です。
+<a href="{too}">TOO {TOO_COMMIT[:12]}</a> の <code>taxontoy.py</code> で被覆を確かめ、
+<a href="{tol}">TOL {TOL_COMMIT[:12]}</a> の <code>topontology.py</code> が数えた結果です。
 数値の正本は <a href="profiles.json">profiles.json</a>（リポジトリの <code>examples/wave-profiles.json</code>）です。</p>
 {body}
 {status_section}

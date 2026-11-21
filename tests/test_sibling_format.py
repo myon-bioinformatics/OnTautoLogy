@@ -14,13 +14,14 @@ from examples.sibling_format import (  # noqa: E402
 )
 from gh_audit import gh_audit as ga  # noqa: E402
 
-# TOO main 78ed91aee522e9a7305e2bf964dab9be2bd3fff0 の otl-relations.json。
+# TOO main 30c5ed689cb931bce3787e37056082ce8cb52b3d の弾ごとの対応。
+# direction と excluded は taxontoy coverage が見る。holds false は表に無い。
 ASSUMED = {
     "audit": {"dependsOn": "dependency", "duplicates": "overlap"},
     "concepts": {"narrower": "hierarchy", "similarTo": "similarity"},
     "cases": {
         "to_model": "unknown-element", "candidate": "hypothesis", "judgment": "judgment-record",
-        "holds true": "affirmation", "holds false": "negation",
+        "holds true": "affirmation",
     },
 }
 
@@ -85,6 +86,49 @@ class ProjectionTests(unittest.TestCase):
         summary["classes"]["chosen"]["edges"] = 2
         self.assertFalse(counts_agree(groups, summary))
 
+    def test_taxontoy_table_does_not_treat_direction_as_a_profile(self):
+        document = {
+            "schema": "taxontoy-relations/1",
+            "audit": {"dependsOn": "dependency"},
+            "concepts": {"narrower": "hierarchy"},
+            "cases": {"candidate": "hypothesis"},
+            "direction": {"dependsOn": "forward", "narrower": "forward", "candidate": "forward"},
+            "excluded": {"audit": ["observes"], "concepts": [], "cases": []},
+        }
+        self.assertEqual(set(classification(document)), {"audit", "concepts", "cases"})
+        overlap = {**document, "excluded": {"audit": ["dependsOn"], "concepts": [], "cases": []}}
+        with self.assertRaises(ValueError):
+            classification(overlap)
+
+    def test_page_keeps_old_columns_and_shows_added_metrics(self):
+        added = {
+            "edges": 2, "incident_nodes": 3, "multiple_sources": [], "sample_cycles": [],
+            "degree": {"max_in": 1, "max_out": 1, "max_total": 2, "sources": 1, "sinks": 1},
+            "weakly_connected_components": {"count": 1, "sizes": [3]},
+            "independent_cycles": 0, "depth": None, "order_cycle": ["a", "b", "a"],
+        }
+        report = {"waves": {"audit": {
+            "tool": {"name": "topontology", "version": "0.1.0"},
+            "provenance": {
+                "graph": {"path": "examples/tol-export/audit.json", "sha256": "ab" * 32},
+                "classification": {"path": "too/otl-relations.json", "sha256": "cd" * 32},
+                "profile": "audit",
+            },
+            "unclassified_edges": 4,
+            "classes": {"dependency": added},
+        }}}
+        html = render_relations_page(report)
+        self.assertIn("topontology 0.1.0", html)
+        self.assertIn("ab" * 32, html)
+        self.assertIn("不定（a → b → a）", html)
+        self.assertIn(">0<", html)
+        old = {"waves": {"audit": {"unclassified_edges": 0, "classes": {
+            "dependency": {"edges": 1, "incident_nodes": 2, "multiple_sources": ["x"], "sample_cycles": []},
+        }}}}
+        previous = render_relations_page(old)
+        self.assertIn(">1<", previous)
+        self.assertIn(">—<", previous)
+
     def test_published_page_is_the_profile_table(self):
         html = render_relations_page(self.published)
         self.assertEqual((ROOT / "site/relations/index.html").read_text(encoding="utf-8"), html)
@@ -92,6 +136,8 @@ class ProjectionTests(unittest.TestCase):
                          (ROOT / "examples/wave-profiles.json").read_bytes())
         self.assertIn(TOO_COMMIT, html)
         self.assertIn(TOL_COMMIT, html)
+        self.assertIn("topontology", html)
+        self.assertIn("独立閉路", html)
         self.assertIn("2,304", html)
         self.assertIn("K002-share-only", html)
         self.assertIn("食い違い", html)
@@ -105,6 +151,8 @@ class ProjectionTests(unittest.TestCase):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
         self.assertIn(TOO_COMMIT, workflow)
         self.assertIn(TOL_COMMIT, workflow)
+        self.assertNotIn("5c138352", workflow)
+        self.assertNotIn("1d5ad6c", workflow)
         self.assertNotIn("workflow_dispatch", workflow)
         self.assertIn("examples/sibling_format.py page", pages)
         self.assertIn(TOO_COMMIT, readme)
@@ -129,7 +177,8 @@ class ProjectionTests(unittest.TestCase):
                 cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
             )
             self.assertEqual(checked.returncode, 0, checked.stderr)
-            self.assertEqual(json.loads(checked.stdout)["classes"]["negation"], 0)
+            self.assertEqual(json.loads(checked.stdout)["classes"]["affirmation"], 3)
+            self.assertNotIn("negation", json.loads(checked.stdout)["classes"])
             broken = subprocess.run(
                 [sys.executable, "-S", script, "check", str(folder / "table.json"), str(folder / "table.json"), "cases"],
                 cwd=ROOT, capture_output=True, text=True, encoding="utf-8",

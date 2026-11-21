@@ -1,31 +1,398 @@
 {
+  "taxontoy": {
+    "command": "coverage",
+    "errors": [],
+    "inputs": [
+      {
+        "path": "examples/tol-export/audit.json",
+        "sha256": "0c4ed54313f7b31e8d6d75f8c26f70c8d0762574d1fec9f09f0dfc03264642e8"
+      },
+      {
+        "path": "examples/tol-export/cases.json",
+        "sha256": "70065049a442c455a03f62fe063d8ae0d6feec780f0d5bb27d5691aef2b62c66"
+      },
+      {
+        "path": "examples/tol-export/concepts.json",
+        "sha256": "fad9fd6d9dad657ecff1a64428e1f68048a6be0206b1157f5e43a6d202abfcab"
+      },
+      {
+        "path": "too/otl-relations.json",
+        "sha256": "011c845dc366bf6e5913cfdce7b87651276acb2a381f8cb36f7d7db755dc65aa"
+      }
+    ],
+    "ok": true,
+    "onto": {
+      "path": "ontautology_shared/_onto/knowledgegraph.py",
+      "sha256": "3f9a7540d8bfb4917dd521b7d19a56a68699146e60af759cf67b0f7a3263683f"
+    },
+    "tool": "taxontoy",
+    "version": "0.1.0",
+    "waves": {
+      "audit": {
+        "alias_candidates": [
+          {
+            "detection": "inverse-pair",
+            "folded": false,
+            "relations": [
+              "blocks",
+              "dependsOn"
+            ]
+          },
+          {
+            "detection": "inverse-pair",
+            "folded": false,
+            "relations": [
+              "blocks",
+              "depends_on"
+            ]
+          },
+          {
+            "detection": "inverse-pair",
+            "folded": false,
+            "relations": [
+              "has_status",
+              "observes"
+            ]
+          },
+          {
+            "detection": "inverse-pair",
+            "folded": false,
+            "relations": [
+              "has_status",
+              "targets"
+            ]
+          },
+          {
+            "detection": "same-pairs",
+            "folded": false,
+            "relations": [
+              "changesFile",
+              "updates"
+            ]
+          },
+          {
+            "detection": "same-pairs",
+            "folded": false,
+            "relations": [
+              "dependsOn",
+              "depends_on"
+            ]
+          },
+          {
+            "detection": "same-pairs",
+            "folded": false,
+            "relations": [
+              "duplicates",
+              "overlapsWith"
+            ]
+          },
+          {
+            "detection": "same-pairs",
+            "folded": false,
+            "relations": [
+              "observes",
+              "targets"
+            ]
+          },
+          {
+            "detection": "separator",
+            "folded": false,
+            "relations": [
+              "dependsOn",
+              "depends_on"
+            ]
+          }
+        ],
+        "class_edges": {
+          "dependency": 13,
+          "overlap": 25
+        },
+        "excluded_edges": {
+          "belongsTo": 691,
+          "blocks": 13,
+          "changesFile": 564,
+          "depends_on": 13,
+          "derived_from": 14,
+          "hasBase": 14,
+          "hasHead": 14,
+          "hasMain": 14,
+          "hasRun": 209,
+          "has_status": 14,
+          "integrates_into": 14,
+          "missingFromMain": 6,
+          "observes": 14,
+          "overlapsWith": 25,
+          "runsAt": 93,
+          "targets": 14,
+          "targetsBranch": 14,
+          "updates": 564
+        },
+        "names": {
+          "classified": [
+            "dependsOn",
+            "duplicates"
+          ],
+          "excluded": [
+            "belongsTo",
+            "blocks",
+            "changesFile",
+            "depends_on",
+            "derived_from",
+            "hasBase",
+            "hasHead",
+            "hasMain",
+            "hasRun",
+            "has_status",
+            "integrates_into",
+            "missingFromMain",
+            "observes",
+            "overlapsWith",
+            "runsAt",
+            "targets",
+            "targetsBranch",
+            "updates"
+          ],
+          "stale": [],
+          "unclassified": []
+        },
+        "partition": {
+          "classified": 2,
+          "excluded": 18,
+          "holds": true,
+          "stale": 0,
+          "total": 20,
+          "unclassified": 0
+        },
+        "relations": {
+          "dependsOn": {
+            "acyclic": true,
+            "class": "dependency",
+            "cycle_samples": 0,
+            "direction": "forward",
+            "edges": 13,
+            "symmetric": false
+          },
+          "duplicates": {
+            "acyclic": true,
+            "class": "overlap",
+            "cycle_samples": 0,
+            "direction": "undirected",
+            "edges": 25,
+            "symmetric": false
+          }
+        },
+        "unclassified_edges": {}
+      },
+      "cases": {
+        "alias_candidates": [],
+        "class_edges": {
+          "affirmation": 3,
+          "hypothesis": 3,
+          "judgment-record": 3,
+          "unknown-element": 1
+        },
+        "excluded_edges": {},
+        "names": {
+          "classified": [
+            "candidate",
+            "holds true",
+            "judgment",
+            "to_model"
+          ],
+          "excluded": [],
+          "stale": [],
+          "unclassified": []
+        },
+        "partition": {
+          "classified": 4,
+          "excluded": 0,
+          "holds": true,
+          "stale": 0,
+          "total": 4,
+          "unclassified": 0
+        },
+        "relations": {
+          "candidate": {
+            "acyclic": true,
+            "class": "hypothesis",
+            "cycle_samples": 0,
+            "direction": "forward",
+            "edges": 3,
+            "symmetric": false
+          },
+          "holds true": {
+            "acyclic": true,
+            "class": "affirmation",
+            "cycle_samples": 0,
+            "direction": "forward",
+            "edges": 3,
+            "symmetric": false
+          },
+          "judgment": {
+            "acyclic": true,
+            "class": "judgment-record",
+            "cycle_samples": 0,
+            "direction": "forward",
+            "edges": 3,
+            "symmetric": false
+          },
+          "to_model": {
+            "acyclic": true,
+            "class": "unknown-element",
+            "cycle_samples": 0,
+            "direction": "forward",
+            "edges": 1,
+            "symmetric": false
+          }
+        },
+        "unclassified_edges": {}
+      },
+      "concepts": {
+        "alias_candidates": [],
+        "class_edges": {
+          "hierarchy": 29,
+          "similarity": 62
+        },
+        "excluded_edges": {
+          "derived_from": 43,
+          "differentiaElement": 43,
+          "genusElement": 114,
+          "hasElement": 408,
+          "hasName": 84,
+          "observes": 43
+        },
+        "names": {
+          "classified": [
+            "narrower",
+            "similarTo"
+          ],
+          "excluded": [
+            "derived_from",
+            "differentiaElement",
+            "genusElement",
+            "hasElement",
+            "hasName",
+            "observes"
+          ],
+          "stale": [],
+          "unclassified": []
+        },
+        "partition": {
+          "classified": 2,
+          "excluded": 6,
+          "holds": true,
+          "stale": 0,
+          "total": 8,
+          "unclassified": 0
+        },
+        "relations": {
+          "narrower": {
+            "acyclic": true,
+            "class": "hierarchy",
+            "cycle_samples": 0,
+            "direction": "forward",
+            "edges": 29,
+            "symmetric": false
+          },
+          "similarTo": {
+            "acyclic": false,
+            "class": "similarity",
+            "cycle_samples": 5,
+            "direction": "mutual",
+            "edges": 62,
+            "symmetric": true
+          }
+        },
+        "unclassified_edges": {}
+      }
+    }
+  },
   "waves": {
     "audit": {
       "classes": {
         "dependency": {
+          "degree": {
+            "max_in": 7,
+            "max_out": 2,
+            "max_total": 8,
+            "sinks": 4,
+            "sources": 8
+          },
+          "depth": 4,
           "edges": 13,
           "incident_nodes": 15,
+          "independent_cycles": 0,
           "multiple_sources": [
             "pr:myon-bioinformatics/Aoi#210"
           ],
-          "sample_cycles": []
+          "order_cycle": null,
+          "sample_cycles": [],
+          "weakly_connected_components": {
+            "count": 2,
+            "sizes": [
+              13,
+              2
+            ]
+          }
         },
         "overlap": {
+          "degree": {
+            "max_in": 14,
+            "max_out": 10,
+            "max_total": 14,
+            "sinks": 4,
+            "sources": 3
+          },
+          "depth": 2,
           "edges": 25,
           "incident_nodes": 8,
+          "independent_cycles": 20,
           "multiple_sources": [
             "pr:myon-bioinformatics/Aoi#210"
           ],
-          "sample_cycles": []
+          "order_cycle": null,
+          "sample_cycles": [],
+          "weakly_connected_components": {
+            "count": 3,
+            "sizes": [
+              4,
+              2,
+              2
+            ]
+          }
         }
+      },
+      "provenance": {
+        "classification": {
+          "path": "too/otl-relations.json",
+          "sha256": "011c845dc366bf6e5913cfdce7b87651276acb2a381f8cb36f7d7db755dc65aa"
+        },
+        "graph": {
+          "path": "examples/tol-export/audit.json",
+          "sha256": "0c4ed54313f7b31e8d6d75f8c26f70c8d0762574d1fec9f09f0dfc03264642e8"
+        },
+        "profile": "audit"
+      },
+      "tool": {
+        "name": "topontology",
+        "version": "0.1.0"
       },
       "unclassified_edges": 2304
     },
     "concepts": {
       "classes": {
         "hierarchy": {
+          "degree": {
+            "max_in": 2,
+            "max_out": 7,
+            "max_total": 7,
+            "sinks": 11,
+            "sources": 4
+          },
+          "depth": 2,
           "edges": 29,
           "incident_nodes": 24,
+          "independent_cycles": 6,
           "multiple_sources": [
             "elem:区分:仕組み",
             "elem:区分:出来事",
@@ -37,11 +404,27 @@
             "elem:区分:道具",
             "elem:区分:飲食物"
           ],
-          "sample_cycles": []
+          "order_cycle": null,
+          "sample_cycles": [],
+          "weakly_connected_components": {
+            "count": 1,
+            "sizes": [
+              24
+            ]
+          }
         },
         "similarity": {
+          "degree": {
+            "max_in": 8,
+            "max_out": 8,
+            "max_total": 16,
+            "sinks": 0,
+            "sources": 0
+          },
+          "depth": null,
           "edges": 62,
           "incident_nodes": 42,
+          "independent_cycles": 31,
           "multiple_sources": [
             "concept:C001-iphone",
             "concept:C002-luigi",
@@ -54,6 +437,11 @@
             "concept:C009-incident",
             "concept:C010-anxiety",
             "concept:C011-escalation"
+          ],
+          "order_cycle": [
+            "concept:Android",
+            "concept:C001-iphone",
+            "concept:Android"
           ],
           "sample_cycles": [
             [
@@ -81,45 +469,154 @@
               "concept:ワルイージ",
               "concept:C002-luigi"
             ]
-          ]
+          ],
+          "weakly_connected_components": {
+            "count": 11,
+            "sizes": [
+              9,
+              5,
+              4,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3
+            ]
+          }
         }
+      },
+      "provenance": {
+        "classification": {
+          "path": "too/otl-relations.json",
+          "sha256": "011c845dc366bf6e5913cfdce7b87651276acb2a381f8cb36f7d7db755dc65aa"
+        },
+        "graph": {
+          "path": "examples/tol-export/concepts.json",
+          "sha256": "fad9fd6d9dad657ecff1a64428e1f68048a6be0206b1157f5e43a6d202abfcab"
+        },
+        "profile": "concepts"
+      },
+      "tool": {
+        "name": "topontology",
+        "version": "0.1.0"
       },
       "unclassified_edges": 735
     },
     "cases": {
       "classes": {
         "affirmation": {
+          "degree": {
+            "max_in": 2,
+            "max_out": 1,
+            "max_total": 2,
+            "sinks": 2,
+            "sources": 3
+          },
+          "depth": 1,
           "edges": 3,
           "incident_nodes": 5,
+          "independent_cycles": 0,
           "multiple_sources": [
             "concept:C011-escalation"
           ],
-          "sample_cycles": []
+          "order_cycle": null,
+          "sample_cycles": [],
+          "weakly_connected_components": {
+            "count": 2,
+            "sizes": [
+              3,
+              2
+            ]
+          }
         },
         "hypothesis": {
+          "degree": {
+            "max_in": 1,
+            "max_out": 1,
+            "max_total": 1,
+            "sinks": 3,
+            "sources": 3
+          },
+          "depth": 1,
           "edges": 3,
           "incident_nodes": 6,
+          "independent_cycles": 0,
           "multiple_sources": [],
-          "sample_cycles": []
+          "order_cycle": null,
+          "sample_cycles": [],
+          "weakly_connected_components": {
+            "count": 3,
+            "sizes": [
+              2,
+              2,
+              2
+            ]
+          }
         },
         "judgment-record": {
+          "degree": {
+            "max_in": 1,
+            "max_out": 1,
+            "max_total": 1,
+            "sinks": 3,
+            "sources": 3
+          },
+          "depth": 1,
           "edges": 3,
           "incident_nodes": 6,
+          "independent_cycles": 0,
           "multiple_sources": [],
-          "sample_cycles": []
-        },
-        "negation": {
-          "edges": 0,
-          "incident_nodes": 0,
-          "multiple_sources": [],
-          "sample_cycles": []
+          "order_cycle": null,
+          "sample_cycles": [],
+          "weakly_connected_components": {
+            "count": 3,
+            "sizes": [
+              2,
+              2,
+              2
+            ]
+          }
         },
         "unknown-element": {
+          "degree": {
+            "max_in": 1,
+            "max_out": 1,
+            "max_total": 1,
+            "sinks": 1,
+            "sources": 1
+          },
+          "depth": 1,
           "edges": 1,
           "incident_nodes": 2,
+          "independent_cycles": 0,
           "multiple_sources": [],
-          "sample_cycles": []
+          "order_cycle": null,
+          "sample_cycles": [],
+          "weakly_connected_components": {
+            "count": 1,
+            "sizes": [
+              2
+            ]
+          }
         }
+      },
+      "provenance": {
+        "classification": {
+          "path": "too/otl-relations.json",
+          "sha256": "011c845dc366bf6e5913cfdce7b87651276acb2a381f8cb36f7d7db755dc65aa"
+        },
+        "graph": {
+          "path": "examples/tol-export/cases.json",
+          "sha256": "70065049a442c455a03f62fe063d8ae0d6feec780f0d5bb27d5691aef2b62c66"
+        },
+        "profile": "cases"
+      },
+      "tool": {
+        "name": "topontology",
+        "version": "0.1.0"
       },
       "unclassified_edges": 0
     }
