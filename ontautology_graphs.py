@@ -76,11 +76,15 @@ def _graph_edges(graph):
 
 
 def collapse_reciprocal(edges, directions):
-    """Fold mutual or undirected ``a→b`` plus ``b→a`` into the ``a≤b`` edge.
+    """Fold mutual or undirected ``a→b`` plus ``b→a`` into the ``a≤b`` edges.
 
+    When both directions are present, every edge from the higher endpoint to the
+    lower one is dropped, including extras. ``a→b`` once and ``b→a`` twice
+    therefore leave the single ``a→b``. Edges that already run lower to higher
+    are all kept, so that direction's multi-edges do not collapse into one.
     Directed relations are left alone, so a real length-2 cycle stays visible.
     A self-loop is not a pair. ``counts.edges`` is the input length and
-    ``counts.collapsed_edges`` is the length after folding. Nothing else is merged.
+    ``counts.collapsed_edges`` is the length after folding.
     """
     if not isinstance(edges, list):
         raise ValueError("edges must be a list")
@@ -486,10 +490,14 @@ def _greedy_cover(names, sets, target):
 def set_cover_min(universe, candidate_sets, *, limit=None):
     """Minimum set cover for a small instance, otherwise greedy.
 
-    Tie-break is the lexicographically smallest tuple of set names among covers
-    of maximum size and then minimum cardinality. ``limit`` is the largest number
-    of candidate sets solved exactly. Each candidate also lists the universe
-    elements that no other candidate contains.
+    Names are sorted, then ``itertools.combinations`` walks them. A combination
+    that covers the whole universe stops the search, so a full cover is a
+    minimum-size set and ties take the first combination. When nothing covers
+    the universe, the chosen set is the one that covers the most elements; an
+    equal count keeps the earlier combination. The returned ``cover`` list is
+    that choice, sorted. ``limit`` is the largest number of candidate sets
+    solved exactly (default ``EXACT_COVER_LIMIT``). Each candidate also lists
+    the universe elements that no other candidate contains.
     """
     if limit is None:
         limit = EXACT_COVER_LIMIT

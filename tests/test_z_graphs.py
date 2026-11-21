@@ -161,6 +161,42 @@ def naive_articulation(edges):
     return sorted(node for node in nodes if component_count(edges, skip=node) > base)
 
 
+def _cycle_signature(result):
+    return (
+        result["independent_cycles"],
+        result["counts"],
+        [(cycle["labels"], [(edge["kind"], edge["source"], edge["target"]) for edge in cycle["edges"]])
+         for cycle in result["cycles"]],
+    )
+
+
+def assert_closed_walk(cycle):
+    """Each cycle's edges are one undirected closed walk, in order."""
+    edges = cycle["edges"]
+    first = edges[0]
+
+    def follow(here, edge):
+        if edge["source"] == here:
+            return edge["target"]
+        if edge["target"] == here:
+            return edge["source"]
+        return None
+
+    closed = False
+    for start, nxt in ((first["source"], first["target"]), (first["target"], first["source"])):
+        here, ok = nxt, True
+        for edge in edges[1:]:
+            here = follow(here, edge)
+            if here is None:
+                ok = False
+                break
+        if ok and here == start:
+            closed = True
+            break
+    if not closed:
+        raise AssertionError(cycle["indices"])
+
+
 def independent_masks(cycles, width):
     rows = []
     for cycle in cycles:
@@ -216,6 +252,12 @@ class CollapseTests(unittest.TestCase):
         high = graphs.collapse_reciprocal([edge("similarTo", "b", "a")], {"similarTo": "undirected"})
         self.assertEqual(low["counts"]["collapsed_edges"], 1)
         self.assertEqual(high["edges"], [edge("similarTo", "b", "a")])
+        multi = graphs.collapse_reciprocal(
+            [edge("similarTo", "a", "b", note="keep"), edge("similarTo", "b", "a"), edge("similarTo", "b", "a", note="extra")],
+            {"similarTo": "mutual"},
+        )
+        self.assertEqual(multi["counts"], {"collapsed_edges": 1, "edges": 3})
+        self.assertEqual(multi["edges"], [edge("similarTo", "a", "b", note="keep")])
         plain = graphs.collapse_reciprocal(
             [edge("dependsOn", "b", "a"), edge("dependsOn", "a", "b")], {},
         )
@@ -264,13 +306,13 @@ class CycleTests(unittest.TestCase):
         found = graphs.cycle_basis(graph_of(edges, nodes=["a", "lonely"]))
         self.assertEqual(found["counts"], {"components": 2, "edges": 5, "nodes": 5})
         self.assertEqual(found["independent_cycles"], 2)
-        self.assertEqual(len(found["cycles"]), 2)
-        labels = [cycle["labels"] for cycle in found["cycles"]]
-        self.assertIn(["dependsOn"], labels)
-        self.assertTrue(any(set(item) == {"blocks", "dependsOn"} for item in labels))
+        self.assertEqual([cycle["indices"] for cycle in found["cycles"]], [[1, 0, 2], [3]])
+        self.assertEqual([cycle["labels"] for cycle in found["cycles"]], [["blocks", "dependsOn", "dependsOn"], ["dependsOn"]])
+        for cycle in found["cycles"]:
+            assert_closed_walk(cycle)
         self.assertEqual(independent_masks(found["cycles"], 5), 2)
-        shuffled = graphs.cycle_basis(graph_of(list(reversed(edges))))
-        self.assertEqual(shuffled["independent_cycles"], graphs.cycle_basis(graph_of(edges))["independent_cycles"])
+        shuffled = graphs.cycle_basis(graph_of(list(reversed(edges)), nodes=["lonely", "a"]))
+        self.assertEqual(_cycle_signature(shuffled), _cycle_signature(found))
 
     def test_reciprocal_pairs_are_a_2_cycle_until_they_are_collapsed(self):
         edges = [edge("similarTo", "a", "b"), edge("similarTo", "b", "a")]
@@ -291,6 +333,8 @@ class CycleTests(unittest.TestCase):
         self.assertEqual(found["independent_cycles"], 2)
         self.assertEqual(found["counts"]["components"], 2)
         self.assertEqual(independent_masks(found["cycles"], 4), 2)
+        for cycle in found["cycles"]:
+            assert_closed_walk(cycle)
 
     def test_random_graphs_keep_an_independent_basis(self):
         rng = random.Random(20261121)
@@ -318,8 +362,18 @@ class CycleTests(unittest.TestCase):
             formula = len(edges) - len(adjacent) + components
             self.assertEqual(found["independent_cycles"], formula, trial)
             self.assertEqual(len(found["cycles"]), formula, trial)
+            for cycle in found["cycles"]:
+                assert_closed_walk(cycle)
             if found["cycles"]:
                 self.assertEqual(independent_masks(found["cycles"], len(edges)), formula, trial)
+        chord = [
+            edge("k", "a", "b"), edge("k", "b", "c"), edge("k", "c", "a"),
+            edge("k", "a", "d"), edge("k", "d", "c"), edge("k", "b", "d"),
+        ]
+        chord_basis = _cycle_signature(graphs.cycle_basis(graph_of(chord)))
+        for _ in range(8):
+            rng.shuffle(chord)
+            self.assertEqual(_cycle_signature(graphs.cycle_basis(graph_of(chord))), chord_basis)
 
     def test_a_graph_without_edges_is_refused(self):
         with self.assertRaisesRegex(ValueError, "edges list"):
@@ -347,7 +401,13 @@ class FailureTests(unittest.TestCase):
             {"idom": None, "node": "a"}, {"idom": "a", "node": "b"}, {"idom": "b", "node": "c"},
         ])
         self.assertEqual(chain["articulation_points"], ["b"])
-        self.assertEqual(chain["ranked"][0]["node"], "a")
+        self.assertEqual([row["node"] for row in chain["ranked"] if row["node"] != "alone"], ["a", "b", "c"])
+        forward = [edge("k", "a", "b"), edge("k", "b", "c")]
+        backward = [edge("k", "b", "c"), edge("k", "a", "b")]
+        self.assertEqual(
+            graphs.single_points_of_failure(graph_of(forward), ["a"])["ranked"],
+            graphs.single_points_of_failure(graph_of(backward), ["a"])["ranked"],
+        )
         self.assertEqual([row for row in chain["ranked"] if row["node"] == "alone"][0]["unreachable"], 0)
         diamond = self.assert_matches_removal(
             [edge("k", "a", "b"), edge("k", "a", "c"), edge("k", "b", "d"), edge("k", "c", "d")], ["a"],
@@ -423,6 +483,10 @@ class CoverTests(unittest.TestCase):
         self.assertEqual(found["unique"]["z"], [])
         tied = graphs.set_cover_min(["a"], {"m": ["a"], "z": ["a"]})
         self.assertEqual(tied["cover"], ["m"])
+        first = graphs.set_cover_min(["b", "a"], {"s": ["b", "a"]})
+        second = graphs.set_cover_min(["a", "b"], {"s": ["a", "b"]})
+        self.assertEqual(first["unique"], second["unique"])
+        self.assertEqual(first["unique"]["s"], ["a", "b"])
         same = graphs.set_cover_min(["a"], {"m": ["a"], "z": ["a"]}, limit=None)
         self.assertEqual(same, tied)
 
@@ -453,6 +517,17 @@ class CoverTests(unittest.TestCase):
         self.assertEqual(nothing, {
             "complete": True, "cover": [], "method": "exact", "size": 0, "uncovered": [], "unique": {},
         })
+        universe = ["1", "2", "3", "4", "5", "6"]
+        padded = {"A": ["1", "2", "3"], "B": ["4", "5", "6"], "C": ["2", "3", "4", "5"]}
+        for index in range(15):
+            padded[f"e{index:02d}"] = []
+        self.assertEqual(len(padded), 18)
+        at_limit = graphs.set_cover_min(universe, padded)
+        self.assertEqual((at_limit["method"], at_limit["cover"]), ("exact", ["A", "B"]))
+        padded["e15"] = []
+        self.assertEqual(len(padded), 19)
+        past_limit = graphs.set_cover_min(universe, padded)
+        self.assertEqual((past_limit["method"], past_limit["cover"]), ("greedy", ["A", "B", "C"]))
 
     def test_bad_cover_inputs_are_refused(self):
         samples = [
@@ -673,6 +748,27 @@ class CliTests(unittest.TestCase):
                 self.assertEqual(body["command"], command)
                 self.assertEqual(len(body["provenance"]["inputs"][0]["sha256"]), 64)
                 self.assertEqual(raw, json.dumps(body, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+                if command in ("collapse", "basis", "near"):
+                    self.assertNotIn("parameters", body["provenance"])
+                    self.assertNotIn("parameter:", out)
+        code, collapse_text, err = invoke(["collapse", str(graph), str(directions)])
+        self.assertEqual(code, 0, err)
+        self.assertIn("edge: similarTo a b", collapse_text)
+        self.assertIn("edge: dependsOn a c", collapse_text)
+        code, spof_text, err = invoke(["spof", str(graph), "a"])
+        self.assertEqual(code, 0, err)
+        self.assertIn("parameter: roots a", spof_text)
+        self.assertIn("articulation:", spof_text)
+        self.assertIn("rank: a ", spof_text)
+        code, cover_text, err = invoke(["cover", str(cover)])
+        self.assertEqual(code, 0, err)
+        self.assertIn("parameter: limit 18", cover_text)
+        self.assertIn("unique: s a", cover_text)
+        self.assertIn("unique: t b", cover_text)
+        code, spof_raw, err = invoke(["spof", str(graph), "a", "--json"])
+        self.assertEqual(json.loads(spof_raw)["provenance"]["parameters"], {"roots": "a"}, err)
+        code, cover_raw, err = invoke(["cover", str(cover), "--json"])
+        self.assertEqual(json.loads(cover_raw)["provenance"]["parameters"], {"limit": "18"}, err)
         partial = write_json(folder, "partial.json", {"universe": ["a", "b"], "sets": {"only": ["a"]}})
         code, out, err = invoke(["cover", str(partial)])
         self.assertEqual(code, 0, err)
