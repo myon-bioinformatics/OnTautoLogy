@@ -223,9 +223,14 @@ def _adjacency_by_source(edges):
     adjacent = {}
     for index, edge in enumerate(edges):
         adjacent.setdefault(edge["source"], []).append(index)
-    for node in adjacent:
-        adjacent[node].sort(key=lambda index: (_edge_key(edges[index]), index))
     return adjacent
+
+
+def _incoming_by_target(edges):
+    incoming = {}
+    for index, edge in enumerate(edges):
+        incoming.setdefault(edge["target"], []).append(index)
+    return incoming
 
 
 def _shortest_directed_length(edges, adjacent):
@@ -253,48 +258,86 @@ def _shortest_directed_length(edges, adjacent):
     return best
 
 
-def _canonical_directed(indices, edges):
-    """Rotation, not reversal, with the smallest (edge key, index) sequence."""
-    chosen = None
-    size = len(indices)
-    offset = 0
+def _distance_toward(edges, incoming, goal):
+    """Shortest-path distance to ``goal``, by breadth-first search on reversed edges."""
+    dist = {goal: 0}
+    queue = [goal]
+    head = 0
     while True:
-        if offset >= size:
+        if head >= len(queue):
             break
-        rotated = indices[offset:] + indices[:offset]
-        ranked = []
-        for index in rotated:
-            ranked.append((_edge_key(edges[index]), index))
-        if chosen is None or ranked < chosen[0]:
-            chosen = (ranked, rotated)
-        offset += 1
+        node = queue[head]
+        head += 1
+        for index in incoming.get(node, ()):
+            prev = edges[index]["source"]
+            if prev not in dist:
+                dist[prev] = dist[node] + 1
+                queue.append(prev)
+    return dist
+
+
+def _distances_toward_all(edges, incoming):
+    nodes = []
+    seen = set()
+    for edge in edges:
+        for node in (edge["source"], edge["target"]):
+            if node not in seen:
+                seen.add(node)
+                nodes.append(node)
+    toward = {}
+    for node in nodes:
+        toward[node] = _distance_toward(edges, incoming, node)
+    return toward
+
+
+def _girth_edge(edges, toward, length):
+    """Minimum edge that lies on some simple cycle of ``length`` edges."""
+    chosen = None
+    best_rank = None
+    need = length - 1
+    for index, edge in enumerate(edges):
+        back = toward[edge["source"]].get(edge["target"])
+        if back is None or back != need:
+            continue
+        rank = (_edge_key(edges[index]), index)
+        if best_rank is None or rank < best_rank:
+            best_rank = rank
+            chosen = index
     return chosen
 
 
-def _keep_cycle(chosen, indices, edges):
-    ranked, rotated = _canonical_directed(indices, edges)
-    if chosen is None or ranked < chosen[0]:
-        return (ranked, rotated)
-    return chosen
+def _shortest_return(edges, adjacent, toward, origin, length):
+    """Lexicographically smallest shortest path from the far end back to the start."""
+    goal = edges[origin]["source"]
+    node = edges[origin]["target"]
+    indices = [origin]
+    left = length - 1
+    while True:
+        if left == 0:
+            break
+        here = toward[goal][node]
+        picked = None
+        picked_rank = None
+        for index in adjacent.get(node, ()):
+            nxt = edges[index]["target"]
+            dist_nxt = toward[goal].get(nxt)
+            if dist_nxt is None or dist_nxt != here - 1:
+                continue
+            rank = (_edge_key(edges[index]), index)
+            if picked_rank is None or rank < picked_rank:
+                picked_rank = rank
+                picked = index
+        indices.append(picked)
+        node = edges[picked]["target"]
+        left -= 1
+    return indices
 
 
 def _directed_search(edges, adjacent, length):
-    chosen = None
-    for start in sorted(adjacent):
-        stack = [(start, [])]
-        while True:
-            if not stack:
-                break
-            node, indices = stack.pop()
-            for index in adjacent.get(node, ()):
-                nxt = edges[index]["target"]
-                grown = indices + [index]
-                if len(grown) == length:
-                    if nxt == start:
-                        chosen = _keep_cycle(chosen, grown, edges)
-                    continue
-                stack.append((nxt, grown))
-    return chosen
+    incoming = _incoming_by_target(edges)
+    toward = _distances_toward_all(edges, incoming)
+    origin = _girth_edge(edges, toward, length)
+    return _shortest_return(edges, adjacent, toward, origin, length)
 
 
 def directed_cycle_witness(graph):
@@ -307,6 +350,10 @@ def directed_cycle_witness(graph):
     shortest cycles the smallest rotation of ``(edge key, index)`` wins, with the
     same edge key as ``cycle_basis``. ``nodes`` is that closed walk, repeating
     the first node at the end. ``indices`` are positions in ``graph["edges"]``.
+    The witness is that rotation of one shortest cycle: the minimum edge on any
+    shortest cycle, then the lexicographically smallest shortest path back.
+    Edges that do not step one closer to the start are ignored, so the search
+    does not list the other shortest cycles.
 
     ``A→C``, ``B→C``, ``B→A``, ``C→A`` yields ``A→C→A``. The undirected basis
     also contains the triangle, and that triangle is not a directed cycle.
@@ -316,7 +363,7 @@ def directed_cycle_witness(graph):
     length = _shortest_directed_length(edges, adjacent)
     if length is None:
         return None
-    _ranked, indices = _directed_search(edges, adjacent, length)
+    indices = _directed_search(edges, adjacent, length)
     nodes = [edges[indices[0]]["source"]]
     labels = []
     copied = []

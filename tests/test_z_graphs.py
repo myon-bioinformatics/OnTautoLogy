@@ -885,6 +885,31 @@ class CliTests(unittest.TestCase):
             self.assertIn(command, readme)
 
 
+def diamond_chain(depth, b_before_a=False):
+    edges = []
+    for i in range(depth):
+        left, right, nxt = f"n{i}", f"a{i}", f"n{i + 1}"
+        other = f"b{i}"
+        pair = [(left, other), (left, right)] if b_before_a else [(left, right), (left, other)]
+        for source, target in pair:
+            edges.append(edge("r", source, target))
+        edges.append(edge("r", right, nxt))
+        edges.append(edge("r", other, nxt))
+    edges.append(edge("r", f"n{depth}", "n0"))
+    return edges
+
+
+def diamond_nodes(depth):
+    nodes = ["a0"]
+    for i in range(1, depth):
+        nodes.append(f"n{i}")
+        nodes.append(f"a{i}")
+    nodes.append(f"n{depth}")
+    nodes.append("n0")
+    nodes.append("a0")
+    return nodes
+
+
 class WitnessTests(unittest.TestCase):
     def test_the_directed_witness_is_the_2_cycle_not_the_undirected_triangle(self):
         edges = [
@@ -987,6 +1012,63 @@ class WitnessTests(unittest.TestCase):
         lone = [edge("k", "a", "b")]
         self.assertIsNone(graphs.transitivity_witness(lone))
 
+    def test_a_dead_end_does_not_steal_the_cycle(self):
+        found = graphs.directed_cycle_witness(graph_of([
+            edge("a", "n", "z"),
+            edge("r", "p", "q"),
+            edge("a", "q", "x"),
+            edge("r", "q", "p"),
+        ]))
+        self.assertEqual(found["nodes"], ["p", "q", "p"])
+        self.assertEqual(found["indices"], [1, 3])
+
+    def test_diamond_chain_stays_fast_and_picks_the_smaller_side(self):
+        found = graphs.directed_cycle_witness(graph_of(diamond_chain(2)))
+        self.assertEqual(found["nodes"], diamond_nodes(2))
+        self.assertEqual(len(found["indices"]), 5)
+        swapped = graphs.directed_cycle_witness(graph_of(diamond_chain(2, b_before_a=True)))
+        self.assertEqual(swapped["nodes"], diamond_nodes(2))
+        probe = r"""
+import time, sys
+sys.path.insert(0, sys.argv[1])
+import ontautology_graphs as graphs
+
+def chain(depth):
+    edges = []
+    for i in range(depth):
+        left, right, nxt, other = f"n{i}", f"a{i}", f"n{i + 1}", f"b{i}"
+        edges.append({"kind": "r", "source": left, "target": right})
+        edges.append({"kind": "r", "source": left, "target": other})
+        edges.append({"kind": "r", "source": right, "target": nxt})
+        edges.append({"kind": "r", "source": other, "target": nxt})
+    edges.append({"kind": "r", "source": f"n{depth}", "target": "n0"})
+    return edges
+
+def nodes(depth):
+    found = ["a0"]
+    for i in range(1, depth):
+        found.append(f"n{i}")
+        found.append(f"a{i}")
+    found.extend([f"n{depth}", "n0", "a0"])
+    return found
+
+lines = []
+for depth in (8, 12, 30):
+    started = time.perf_counter()
+    witness = graphs.directed_cycle_witness({"edges": chain(depth)})
+    elapsed = time.perf_counter() - started
+    if witness["nodes"] != nodes(depth) or elapsed >= 1.0:
+        raise SystemExit(f"d={depth} {elapsed:.4f}s {witness['nodes'][:8]}")
+    lines.append(f"d={depth} {elapsed:.4f}s")
+print(" ".join(lines))
+"""
+        done = subprocess.run(
+            [sys.executable, "-S", "-c", probe, str(ROOT)],
+            capture_output=True, text=True, encoding="utf-8",
+        )
+        self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+        sys.stderr.write(done.stdout)
+
     def test_cli_prints_the_witness_or_none(self):
         folder = tempfile.TemporaryDirectory()
         self.addCleanup(folder.cleanup)
@@ -1081,6 +1163,21 @@ class MutationTests(unittest.TestCase):
             if found["indices"] != [3]:
                 raise AssertionError(found)
 
+        def check_side(module):
+            found = module["directed_cycle_witness"](graph_of(diamond_chain(2)))
+            if found is None or found["nodes"] != diamond_nodes(2):
+                raise AssertionError(found)
+
+        def check_prune(module):
+            found = module["directed_cycle_witness"](graph_of([
+                edge("a", "n", "z"),
+                edge("r", "p", "q"),
+                edge("a", "q", "x"),
+                edge("r", "q", "p"),
+            ]))
+            if found is None or found["nodes"] != ["p", "q", "p"]:
+                raise AssertionError(found)
+
         def check_cycle_tie(module):
             found = module["directed_cycle_witness"](graph_of([
                 edge("k", "c", "d"), edge("k", "d", "c"),
@@ -1129,14 +1226,24 @@ class MutationTests(unittest.TestCase):
             ('if len(commit["parents"]) > 1:', 'if len(commit["parents"]) >= 1:', check_lag),
             ("if best is None or step < best:", "if best is None or step > best:", check_cycle),
             (
-                "if chosen is None or ranked < chosen[0]:\n        return (ranked, rotated)",
-                "if chosen is None or ranked > chosen[0]:\n        return (ranked, rotated)",
+                "if best_rank is None or rank < best_rank:",
+                "if best_rank is None or rank > best_rank:",
                 check_cycle_tie,
             ),
             (
-                "        if chosen is None or ranked < chosen[0]:\n            chosen = (ranked, rotated)",
-                "        if chosen is None or ranked > chosen[0]:\n            chosen = (ranked, rotated)",
-                check_cycle_tie,
+                "if picked_rank is None or rank < picked_rank:",
+                "if picked_rank is None or rank > picked_rank:",
+                check_side,
+            ),
+            (
+                "if back is None or back != need:",
+                "if False and (back is None or back != need):",
+                check_prune,
+            ),
+            (
+                "if dist_nxt is None or dist_nxt != here - 1:",
+                "if False and (dist_nxt is None or dist_nxt != here - 1):",
+                check_prune,
             ),
             ("if source == nxt:\n                continue", "if False and source == nxt:\n                continue", check_transitive),
             ("if winner is None or key < winner[0]:", "if winner is None or key > winner[0]:", check_transitive),
