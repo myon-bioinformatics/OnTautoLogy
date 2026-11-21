@@ -17,7 +17,7 @@ exchange = ["rdflib>=7", "neo4j>=5"]
 ontautology = "ontautology:main"
 
 [tool.setuptools]
-py-modules = ["ontautology"]
+py-modules = ["ontautology", "ontautology_graphs"]
 packages = ["ontautology_shared", "ontautology_shared._onto"]
 
 [tool.setuptools.package-data]
