@@ -1022,6 +1022,20 @@ class WitnessTests(unittest.TestCase):
         self.assertEqual(found["nodes"], ["p", "q", "p"])
         self.assertEqual(found["indices"], [1, 3])
 
+    def test_a_reachable_detour_does_not_replace_the_step_closer(self):
+        # T→Y is reachable and has the smaller relation, but it does not step
+        # one closer to S. The shortest cycle stays S→T→X→S.
+        found = graphs.directed_cycle_witness(graph_of([
+            edge("r", "S", "T"),
+            edge("z", "T", "X"),
+            edge("a", "T", "Y"),
+            edge("r", "X", "S"),
+            edge("r", "Y", "Z"),
+            edge("r", "Z", "S"),
+        ]))
+        self.assertEqual(found["nodes"], ["S", "T", "X", "S"])
+        self.assertEqual(found["indices"], [0, 1, 3])
+
     def test_diamond_chain_stays_fast_and_picks_the_smaller_side(self):
         found = graphs.directed_cycle_witness(graph_of(diamond_chain(2)))
         self.assertEqual(found["nodes"], diamond_nodes(2))
@@ -1168,6 +1182,18 @@ class MutationTests(unittest.TestCase):
             if found is None or found["nodes"] != diamond_nodes(2):
                 raise AssertionError(found)
 
+        def check_closer(module):
+            found = module["directed_cycle_witness"](graph_of([
+                edge("r", "S", "T"),
+                edge("z", "T", "X"),
+                edge("a", "T", "Y"),
+                edge("r", "X", "S"),
+                edge("r", "Y", "Z"),
+                edge("r", "Z", "S"),
+            ]))
+            if found is None or found["nodes"] != ["S", "T", "X", "S"]:
+                raise AssertionError(found)
+
         def check_prune(module):
             found = module["directed_cycle_witness"](graph_of([
                 edge("a", "n", "z"),
@@ -1244,6 +1270,11 @@ class MutationTests(unittest.TestCase):
                 "if dist_nxt is None or dist_nxt != here - 1:",
                 "if False and (dist_nxt is None or dist_nxt != here - 1):",
                 check_prune,
+            ),
+            (
+                "if dist_nxt is None or dist_nxt != here - 1:",
+                "if dist_nxt is None and dist_nxt != here - 1:",
+                check_closer,
             ),
             ("if source == nxt:\n                continue", "if False and source == nxt:\n                continue", check_transitive),
             ("if winner is None or key < winner[0]:", "if winner is None or key > winner[0]:", check_transitive),
