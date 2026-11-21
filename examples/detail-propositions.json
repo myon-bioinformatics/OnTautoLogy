@@ -11,6 +11,25 @@
       {"id":"berry-projection","text":"焼くことと軟化を知ることが両方成り立てば、焼くことは成り立つか。","rule":["OR",["NOT",["AND","berries","soften"]],"berries"],"expect":{"金":"holds","ヒスイ":"holds"}}
     ]
   },
+  "ピカチュウが働きかける対象と手段": {
+    "observations":{
+      "金":{"concept":"ピカチュウ","edition":"金"},
+      "プラチナ":{"concept":"ピカチュウ","edition":"プラチナ"},
+      "ルビー":{"concept":"ピカチュウ","edition":"ルビー"}
+    },
+    "argument_pattern":{
+      "predicate":"ピカチュウがその対象に指定の手段で働きかけるか",
+      "slots":[
+        {"marker":"@none","role":"対象","values":["硬い木の実","弱った仲間","初めて見る物"]},
+        {"marker":"with","role":"手段","values":["電気","しっぽ",null]}
+      ],
+      "bindings":[
+        {"values":["硬い木の実","電気"],"rule":"berries"},
+        {"values":["弱った仲間","電気"],"rule":"revive"},
+        {"values":["初めて見る物","電気"],"rule":"novelty"}
+      ]
+    }
+  },
   "惑星開発の目的と能力": {
     "observations": {
       "金": {"concept":"ポリゴン2","edition":"金"},
@@ -28,6 +47,17 @@
     "observations": {
       "標準の4弦": {"concept":"ベース","source":"https://hub.yamaha.com/guitars/g-how-to/a-guitarists-guide-to-playing-bass/","facts":{"音名列が一致":true,"実音の高さが一致":false}},
       "オクターブ上に調弦したピッコロ弦": {"concept":"ベース","source":"https://hub.yamaha.com/guitars/bass/alternate-bass-tunings/","facts":{"音名列が一致":true,"実音の高さが一致":true}}
+    },
+    "argument_pattern": {
+      "predicate":"ベースの開放弦を相手と比べて、指定した項目が一致するか",
+      "slots":[
+        {"marker":"with","role":"比較相手","values":["標準調弦の6弦ギターの低音側4本","ウクレレの開放弦"]},
+        {"marker":"in","role":"比較項目","values":["音名の並び","実音の高さ"]}
+      ],
+      "bindings":[
+        {"values":["標準調弦の6弦ギターの低音側4本","音名の並び"],"rule":"音名列が一致"},
+        {"values":["標準調弦の6弦ギターの低音側4本","実音の高さ"],"rule":"実音の高さが一致"}
+      ]
     },
     "questions": [
       {"id":"bass-note-names","text":"標準調弦の6弦ギターの低音側4本と、開放弦の音名の並びが一致するか。","rule":"音名列が一致","expect":{"標準の4弦":"holds","オクターブ上に調弦したピッコロ弦":"holds"}},
