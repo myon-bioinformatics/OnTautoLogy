@@ -21,6 +21,8 @@ import sys
 import unicodedata
 from pathlib import Path
 
+import onto_path
+
 __version__ = "0.1.0"
 TOOL_NAME = "ontautology-graphs"
 EXACT_COVER_LIMIT = 18
@@ -883,9 +885,9 @@ def _cmd_basis(args):
 def _roots_from(args):
     roots = [item for item in args.roots if item]
     if not roots:
-        roots = [item for item in os.environ.get("OTL_ROOTS", "").split(",") if item]
+        roots = [item for item in os.environ.get(onto_path.OTL_ROOTS_ENV, "").split(",") if item]
     if not roots:
-        raise ValueError("roots are required (arguments or OTL_ROOTS)")
+        raise ValueError(f"roots are required (arguments or {onto_path.OTL_ROOTS_ENV})")
     return roots
 
 
@@ -920,9 +922,9 @@ def _from_env(value, env_name):
 
 
 def _cmd_lag(args):
-    repo = _from_env(args.repo, "OTL_GIT_REPO")
-    ref = _from_env(args.ref, "OTL_GIT_REF")
-    pinned = _from_env(args.sha, "OTL_GIT_SHA")
+    repo = _from_env(args.repo, onto_path.OTL_GIT_REPO_ENV)
+    ref = _from_env(args.ref, onto_path.OTL_GIT_REF_ENV)
+    pinned = _from_env(args.sha, onto_path.OTL_GIT_SHA_ENV)
     result, digest = load_first_parent(repo, ref, pinned)
     record = {"path": repo, "role": "git", "sha256": digest}
     return _document("lag", result, [record], {"pinned": result["pinned"], "ref": ref})

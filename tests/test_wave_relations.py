@@ -19,6 +19,72 @@ from examples.sibling_format import classification, relation_groups  # noqa: E40
 
 
 class WaveRelationTests(unittest.TestCase):
+    def test_omitted_table_uses_the_marker_or_the_short_name(self):
+        import io
+        from contextlib import redirect_stderr, redirect_stdout
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            anchor = root / "app" / "tool.py"
+            anchor.parent.mkdir()
+            anchor.write_text("", encoding="utf-8")
+            with patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("TAXONTOY_ROOT", None)
+                self.assertEqual(wr.default_classification(anchor), Path("too") / "otl-relations.json")
+                table = root / "TaxOntOy" / "otl-relations.json"
+                table.parent.mkdir()
+                table.write_text("{}\n", encoding="utf-8")
+                self.assertEqual(wr.default_classification(anchor), table.resolve())
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with patch.object(wr, "report", side_effect=ValueError("分類表がない")):
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                code = wr.main([])
+        self.assertEqual(code, 1)
+        self.assertEqual(stdout.getvalue(), "")
+        self.assertEqual(stderr.getvalue(), "wave_relations: 分類表がない\n")
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with patch.object(wr, "report", return_value={"ok": True}):
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                code = wr.main(["given.json"])
+        self.assertEqual(code, 0)
+        self.assertIn('"ok": true', stdout.getvalue())
+        script = ROOT / "examples" / "wave_relations.py"
+        missing = subprocess.run(
+            [sys.executable, "-S", str(script), "missing-classification.json"],
+            cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+        )
+        self.assertEqual(missing.returncode, 1)
+        self.assertNotIn("Traceback", missing.stderr)
+        self.assertEqual(missing.stderr.count("\n"), 1)
+        self.assertTrue(missing.stderr.startswith("wave_relations: "))
+
+    def test_short_checkout_wins_over_a_sibling(self):
+        with tempfile.TemporaryDirectory() as directory:
+            folder = Path(directory)
+            short = folder / "too" / "taxontoy.py"
+            short.parent.mkdir()
+            short.write_text("", encoding="utf-8")
+            sibling = folder / "TaxOntOy" / "taxontoy.py"
+            sibling.parent.mkdir()
+            sibling.write_text("", encoding="utf-8")
+            _touch_marker = folder / "TaxOntOy" / "otl-relations.json"
+            _touch_marker.write_text("{}\n", encoding="utf-8")
+            with patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("TAXONTOY_ROOT", None)
+                os.environ.pop("TOPONTOLOGY_ROOT", None)
+                self.assertEqual(
+                    wr.checkout_script("too", "TaxOntOy", "taxontoy.py", base=folder),
+                    short,
+                )
+                short.unlink()
+                self.assertEqual(
+                    wr.checkout_script("too", "TaxOntOy", "taxontoy.py", base=folder),
+                    sibling.resolve(),
+                )
+                sibling.unlink()
+                _touch_marker.unlink()
+                with self.assertRaises(wr.onto_path.RootError):
+                    wr.checkout_script("too", "TaxOntOy", "taxontoy.py", base=folder)
+
     def test_paths_stay_relative_inside_the_checkout(self):
         self.assertEqual(wr.as_relative("too/otl-relations.json"), Path("too/otl-relations.json"))
         self.assertEqual(wr.as_relative((ROOT / "README.md").resolve()), Path("README.md"))

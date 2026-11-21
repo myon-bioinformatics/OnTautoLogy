@@ -93,6 +93,7 @@ flowchart LR
 ```
 ontautology.py          🧠🧩 本体（汎用だけ・標準ライブラリのみ。これ1本を vendor すれば動く）
 ontautology_graphs.py   🕸️ 汎用グラフ（畳み込み・独立閉路・単一障害点・最小被覆・近い識別子・first-parent）
+onto_path.py            🧭 checkout の根（明示 > 環境変数 > 隣 > マーカーを上へ辿る）
 tools/
   tautology.py          🧩⚖️ 第二弾の判定（規則・可逆な定義・真理値表）、証明の段までの距離
   ontology.py           📚 語彙の違反を全部挙げる・鍵に昇格できる属性の組
@@ -167,6 +168,26 @@ python -S ontautology_graphs.py lag --repo . --ref main --sha <pinned>
 - `lag` はローカルな git リポジトリで、ブランチの first-parent 上でピンした SHA より後にあるコミット数と、そのうちのマージ数を数えます。ピンが first-parent の鎖に無いとき（squash で消えたコミットや、側枝のコミット）はエラーです。`git rev-list --first-parent` と `git rev-parse` だけを使い、ネットワークには出ません。パス・参照・SHA は引数か `OTL_GIT_REPO` / `OTL_GIT_REF` / `OTL_GIT_SHA` です。このコマンドの sha256 は、読んだ first-parent 一覧のバイト列です。
 
 Python からは `collapse_reciprocal`、`cycle_basis`、`single_points_of_failure`、`set_cover_min`、`near_duplicates`、`first_parent_lag` を直接呼べます。
+
+## 経路
+
+checkout の場所は `onto_path.py` が決めます。正本は ONTO の同じファイルで、これはその複製です。関数の本体は同じで、根の名前と環境変数だけがこのリポジトリ用です。解決の順は、明示のオプション、環境変数、隣の checkout、マーカーを上へ辿る、です。
+
+| 根 | 環境変数 | 隣のディレクトリ | マーカー | オプション |
+| --- | --- | --- | --- | --- |
+| ONTO | `ONTO_ROOT` | `ONTO` | `knowledgegraph.py` | `--onto-root` |
+| TaxOntOy | `TAXONTOY_ROOT` | `TaxOntOy` | `otl-relations.json` | `--taxontoy-root` |
+| TopOntoLogy | `TOPONTOLOGY_ROOT` | `TopOntoLogy` | `topontology.py` | `--topontology-root` |
+
+import する根は ONTO だけです。TaxOntOy と TopOntoLogy は、そのコマンドが使うときだけ解決します。見つからないときや import に失敗したときは、トレースバックではなく一行で止めます。pytest は依存にせず、`conftest.py` が同じ失敗を `UsageError` にします。検査の正は unittest です。
+
+このリポジトリ自身の環境変数も同じファイルの先頭にまとめてあります。`OTL_ROOTS`、`OTL_GIT_REPO`、`OTL_GIT_REF`、`OTL_GIT_SHA`、`OTL_LIVE`、`OTL_EXPORT_DIR` です。
+
+隣に TaxOntOy と TopOntoLogy があるときは、分類表のパスも CLI のパスも書かずに集計を始められます。`too/` と `tol/` があるときは、そちらを先に使います。
+
+```sh
+python -S examples/wave_relations.py
+```
 
 ## 🗂️ オントロジーを並べて見る
 
@@ -977,5 +998,7 @@ OTL から TOO の分類表と TOL の構造集計へ渡す処理は `examples/s
 python -S examples/sibling_format.py export audit examples/audit-20261114.json -o audit.json
 python -S examples/sibling_format.py export concepts examples/concepts-20261115.json -o concepts.json
 python -S examples/sibling_format.py export cases examples/concepts-20261115.json -o cases.json
-PYTHONPATH=tol:ontautology_shared/_onto python -S tol/topontology.py audit.json too/otl-relations.json audit
+python -S examples/wave_relations.py
 ```
+
+`too/` と `tol/` という短いディレクトリ名に置いた固定 checkout では、そちらが先に使われます。分類表のパスを渡せば、そのファイルを使います。

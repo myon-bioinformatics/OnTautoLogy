@@ -13,6 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+import onto_path  # noqa: E402
 from examples.sibling_format import PROFILES, classification, counts_agree, export_graph, relation_groups
 from tools.tautology import cases
 
@@ -52,9 +53,19 @@ def run_cli(argv):
     return json.loads(result.stdout)
 
 
+def checkout_script(short, root_name, script, *, base=None):
+    """短いディレクトリ名がファイルならそれを使い、無ければ隣の checkout を探す。"""
+    base = ROOT if base is None else base
+    bundled = base / short / script
+    if bundled.is_file():
+        return bundled
+    return onto_path.resolve_root(root_name, anchor=base) / script
+
+
 def coverage_cli(classification_path):
     argv = [
-        str(ROOT / "too" / "taxontoy.py"), "coverage", Path(classification_path).as_posix(),
+        str(checkout_script("too", "TaxOntOy", "taxontoy.py")), "coverage",
+        Path(classification_path).as_posix(),
         "--onto", ONTO.as_posix(), "--strict", "--format", "json",
     ]
     for profile in PROFILES:
@@ -64,7 +75,7 @@ def coverage_cli(classification_path):
 
 def summarize_cli(classification_path, profile):
     return run_cli([
-        str(ROOT / "tol" / "topontology.py"),
+        str(checkout_script("tol", "TopOntoLogy", "topontology.py")),
         (EXPORTS / f"{profile}.json").as_posix(),
         Path(classification_path).as_posix(),
         profile,
@@ -99,5 +110,25 @@ def report(classification_path):
     }}
 
 
+def default_classification(anchor=None):
+    """TaxOntOy のマーカー。無ければ CI が使う短いディレクトリ名に戻す。"""
+    anchor = ROOT if anchor is None else anchor
+    try:
+        return onto_path.marker_file("TaxOntOy", anchor=anchor)
+    except onto_path.RootError:
+        return Path("too") / onto_path.TAXONTOY_MARKER
+
+
+def main(argv=None):
+    argv = sys.argv[1:] if argv is None else list(argv)
+    try:
+        target = argv[0] if argv else default_classification()
+        print(json.dumps(report(target), indent=2, ensure_ascii=False))
+    except Exception as error:
+        print(f"wave_relations: {error}", file=sys.stderr)
+        return 1
+    return 0
+
+
 if __name__ == "__main__":
-    print(json.dumps(report(sys.argv[1]), indent=2, ensure_ascii=False))
+    raise SystemExit(main())
