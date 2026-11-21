@@ -939,4 +939,18 @@ diagram = knowledgegraph.graph_mermaid(graph, focus="A")
 ワークボードの各ブラウザ内の編集はローカル保存される。
 
 Pagesは公開時に `python scripts/atlas.py site/atlas --renderer-output site/shared/mermaid.js` で再生成する（RDFLibとNodeを使用）。データベースは不要。
-`examples/wave-profiles.json` は `examples/wave-relations.md` の手順とCIの固定版TOO・TOLで生成した3弾の集計。
+`examples/wave-profiles.json` は `examples/wave-relations.md` の手順とCIの固定版TOO・TOLで生成した3弾の集計です。
+[構造集計](https://myon-bioinformatics.github.io/OnTautoLogy/relations/) はその JSON を表にして公開します。
+
+OTL から TOO の分類表と TOL の構造集計へ渡す処理は `examples/sibling_format.py` に閉じます。
+監査グラフの `relation` と、概念・事例グラフの `kind` を、TOL が読む `source`・`target`・`kind` だけにそろえて `otl-tol-graph/1` として書き出します。
+向きと ID は保存されたグラフのままで、芯の `edges_of` が行う反転はかけません。
+分類表は TOO の main `78ed91aee522e9a7305e2bf964dab9be2bd3fff0` にある `otl-relations.json` を想定します。プロファイル `audit`・`concepts`・`cases` の値が「関係名 → 分類名」です。
+集計そのものは TOL の main `7bd70a45585e94522a1e87c362ee35b1316118d9` の `topology.summarize` に任せ、OTL は同じ規則で辺の本数だけを数えて CI で突き合わせます。閉路検出は再実装しません。
+
+```sh
+python -S examples/sibling_format.py export audit examples/audit-20261114.json -o audit.json
+python -S examples/sibling_format.py export concepts examples/concepts-20261115.json -o concepts.json
+python -S examples/sibling_format.py export cases examples/concepts-20261115.json -o cases.json
+PYTHONPATH=tol:ontautology_shared/_onto python -S tol/topology.py audit.json too/otl-relations.json audit
+```

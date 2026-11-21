@@ -714,7 +714,14 @@ def _cases(args):
         return judgment_graph(corpus, found["cases"]).serialize(format="turtle"), disputed
     if not args.as_graph:
         return found, disputed
+    return case_graph(corpus, found), disputed
 
+
+def case_graph(corpus, found):
+    """事例の状態・候補・判断を nodes と edges にする。``cases --graph`` と同じ文書。
+
+    事例ノードにはマーカーを残す。TOL へ渡す投影はそれを落とす。
+    """
     _, meta, _, _ = ot._normalize_corpus(corpus)
     nodes, edges = {}, []
     for case_id, row in found["cases"].items():
@@ -741,7 +748,7 @@ def _cases(args):
         if key.startswith("case:"):
             node["markers"] = found["cases"][key[5:]]["markers"]
         result_nodes.append(node)
-    return {"nodes": result_nodes, "edges": edges}, disputed
+    return {"nodes": result_nodes, "edges": edges}
 
 
 def edition_narrative(subject):

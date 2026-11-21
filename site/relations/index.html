@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TOO の分類で見た構造集計 | OnTautoLogy</title>
+<link rel="stylesheet" href="../atlas/atlas.css">
+<style>
+table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+th, td { border: 1px solid #c3d5ce; padding: .4rem .6rem; vertical-align: top; text-align: left; }
+caption { text-align: left; font-weight: 600; margin-bottom: .4rem; }
+</style>
+</head>
+<body>
+<main>
+<nav><a href="../">OnTautoLogy</a> · <a href="../atlas/">知識グラフ</a></nav>
+<h1>TOO の分類で見た構造集計</h1>
+<p>第一弾から第三弾の固定例を <code>otl-tol-graph/1</code> に写し、
+<a href="https://github.com/myon-bioinformatics/TaxOntOy/commit/78ed91aee522e9a7305e2bf964dab9be2bd3fff0">TOO 78ed91aee522</a> の分類表で関係を選び、
+<a href="https://github.com/myon-bioinformatics/TopOntoLogy/commit/7bd70a45585e94522a1e87c362ee35b1316118d9">TOL 7bd70a45585e</a> の <code>topology.summarize</code> が数えた結果です。
+数値の正本は <a href="profiles.json">profiles.json</a>（リポジトリの <code>examples/wave-profiles.json</code>）です。</p>
+<section id="audit"><h2>第一弾　監査の依存と重複</h2><p>分類表に無い辺は 2,304 本です。</p><table><caption>TOL が返した分類ごとの構造</caption><thead><tr><th scope="col">分類</th><th scope="col">辺</th><th scope="col">端点</th><th scope="col">複数の始点を持つ終点</th><th scope="col">代表閉路</th></tr></thead><tbody><tr><th scope="row">dependency</th><td>13</td><td>15</td><td>pr:myon-bioinformatics/Aoi#210</td><td>なし</td></tr><tr><th scope="row">overlap</th><td>25</td><td>8</td><td>pr:myon-bioinformatics/Aoi#210</td><td>なし</td></tr></tbody></table></section>
+<section id="concepts"><h2>第二弾　階層と類似</h2><p>分類表に無い辺は 735 本です。</p><table><caption>TOL が返した分類ごとの構造</caption><thead><tr><th scope="col">分類</th><th scope="col">辺</th><th scope="col">端点</th><th scope="col">複数の始点を持つ終点</th><th scope="col">代表閉路</th></tr></thead><tbody><tr><th scope="row">hierarchy</th><td>29</td><td>24</td><td>elem:区分:仕組み<br>elem:区分:出来事<br>elem:区分:心の状態<br>elem:区分:架空の人物<br>elem:区分:架空の生き物<br>elem:区分:生き物<br>elem:区分:行い<br>elem:区分:道具<br>elem:区分:飲食物</td><td>なし</td></tr><tr><th scope="row">similarity</th><td>62</td><td>42</td><td>concept:C001-iphone<br>concept:C002-luigi<br>concept:C003-pikachu<br>concept:C004-energy-drink<br>concept:C005-guitar<br>concept:C006-salmon<br>concept:C007-spider-man<br>concept:C008-ai-agent<br>concept:C009-incident<br>concept:C010-anxiety<br>concept:C011-escalation</td><td>concept:Android → concept:C001-iphone → concept:Android<br>concept:C001-iphone → concept:iPad → concept:C001-iphone<br>concept:C002-luigi → concept:マリオ → concept:C002-luigi<br>concept:C002-luigi → concept:ワリオ → concept:C002-luigi<br>concept:C002-luigi → concept:ワルイージ → concept:C002-luigi</td></tr></tbody></table></section>
+<section id="cases"><h2>第三弾　候補・判断・未登録要素</h2><p>分類表に無い辺は 0 本です。</p><table><caption>TOL が返した分類ごとの構造</caption><thead><tr><th scope="col">分類</th><th scope="col">辺</th><th scope="col">端点</th><th scope="col">複数の始点を持つ終点</th><th scope="col">代表閉路</th></tr></thead><tbody><tr><th scope="row">affirmation</th><td>3</td><td>5</td><td>concept:C011-escalation</td><td>なし</td></tr><tr><th scope="row">hypothesis</th><td>3</td><td>6</td><td>なし</td><td>なし</td></tr><tr><th scope="row">judgment-record</th><td>3</td><td>6</td><td>なし</td><td>なし</td></tr><tr><th scope="row">negation</th><td>0</td><td>0</td><td>なし</td><td>なし</td></tr><tr><th scope="row">unknown-element</th><td>1</td><td>2</td><td>なし</td><td>なし</td></tr></tbody></table></section>
+<section id="cases-status"><h2>第三弾の判定</h2><p>事例が成り立つかは OTL の cases が決めます。TOL は上の辺を数えます。</p><table><caption>事例ごとの状態</caption><thead><tr><th scope="col">事例</th><th scope="col">状態</th><th scope="col">記録</th></tr></thead><tbody><tr><th scope="row">K001-night-db</th><td>確定</td><td><code>confirmed</code></td></tr><tr><th scope="row">K002-share-only</th><td>食い違い</td><td><code>disputed</code></td></tr><tr><th scope="row">K003-shift-change</th><td>未判断</td><td><code>pending</code></td></tr><tr><th scope="row">K004-first-word</th><td>人が決めた</td><td><code>judged</code></td></tr></tbody></table></section>
+</main>
+</body>
+</html>
