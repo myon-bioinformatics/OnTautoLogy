@@ -147,13 +147,15 @@ node vendor/py_launch.cjs --call equivalent -- tools/tautology.py '["NOR","a","b
 
 ## 🕸️ 汎用のグラフ手続き
 
-辺の畳み込み、独立閉路、単一障害点、最小集合被覆、近い識別子、first-parent の遅れは `ontautology_graphs.py` にあります。分類ごとの集計や語彙表の被覆は呼び出し側に残します。このファイルは標準ライブラリだけで、取得も書き込みもマージもしません。入力は引数か環境変数だけです。
+辺の畳み込み、独立閉路、有向閉路の反例、推移性の反例、単一障害点、最小集合被覆、近い識別子、first-parent の遅れは `ontautology_graphs.py` にあります。分類ごとの集計や語彙表の被覆は呼び出し側に残します。このファイルは標準ライブラリだけで、取得も書き込みもマージもしません。入力は引数か環境変数だけです。
 
 各サブコマンドは `--format text` または `--format json` で出します。`--json` は `--format json` と同じです。JSON もテキストも、ツール名 `ontautology-graphs` と版、入力パス、そのバイト列の sha256 を含みます。同じ入力なら出力は同じです。
 
 ```sh
 python -S ontautology_graphs.py collapse graph.json directions.json
 python -S ontautology_graphs.py basis graph.json --json
+python -S ontautology_graphs.py cycle graph.json
+python -S ontautology_graphs.py transitive graph.json
 python -S ontautology_graphs.py spof graph.json rootA rootB
 python -S ontautology_graphs.py cover cover.json
 python -S ontautology_graphs.py near graph.json
@@ -162,12 +164,14 @@ python -S ontautology_graphs.py lag --repo . --ref main --sha <pinned>
 
 - `collapse` は `mutual` または `undirected` の関係について、`a→b` と `b→a` を `a≤b` 側に畳みます。両方向があるときは逆向きを本数にかかわらず落とします（`a→b` が1本、`b→a` が2本なら `a→b` が1本残ります）。`a≤b` 側の多重辺は残します。長さ2の往復を独立閉路に数えないためです。`forward` と `directed`、および向きの指定が無い関係はそのまま残します。自己ループは対ではないので残します。`counts.edges` が入力の本数、`counts.collapsed_edges` が畳んだあとの本数です。
 - `basis` は無向多重グラフの基本閉路（独立閉路）です。本数は `E - V + C` で、孤立したノード記録は頂点に数えません。各閉路は元の辺と関係名（ラベル）を持つので、閉路がどの関係を横切るかが分かります。往復を1本にしたいときは、先に `collapse` します。
+- `cycle` は有向グラフの単純閉路を1本だけ返します。辺の本数が最少のものを選び、自己ループは1本の閉路なので、それより長い閉路より先に出ます。同じ向きの多重辺だけでは閉路になりません。往復は2本の閉路で、`collapse` する前の `basis` と同じ扱いです。向きは保ったまま回転だけし、逆向きにはしません。同点は `basis` と同じ辺キーと添字の列が辞書順で最小の回転です。探索はその回転を、最短閉路に乗る最小の辺と、始点へ1つ近づく辺のうち最小のものから組み立て、同じ長さの閉路を全部は挙げません。`nodes` はその閉じた歩行で、最初のノードを末尾に繰り返します。`indices` は入力の `edges` の位置です。`A→C`、`B→C`、`B→A`、`C→A` は `A→C→A` になります。無向の `basis` が返す三角形は有向閉路ではありません。閉路が無いときは `cycle: none` です。
+- `transitive` は、与えた辺集合の中の道 `a→b→c` で、弦 `a→c` が無いものを1つ返します。`a==c` は有向閉路であって欠けた弦ではないので、自己ループの無い往復は反例にしません。自己ループは要求せず、自己ループ自体も欠けた弦にはなりません。どちらかの一歩が自己ループなら、弦はもう一方の一歩そのもので、それは存在します。`a→c` が1本でもあれば、平行な辺があっても弦はあります。添字はそのリストの位置です。同点は、一歩目の辺キーと添字、次に二歩目の辺キーと添字の順です。関係名では絞らず、調べたい関係の辺だけを渡します。反例が無いときは `witness: none` です。
 - `spof` は与えた根からの即時支配点（Cooper–Harvey–Kennedy）と、無向グラフの関節点を返します。各ノードは、それを除くと根から届かなくなるノードの数で順位が付きます。届いていなかったノードは 0 です。根は引数か `OTL_ROOTS`（カンマ区切り）です。
 - `cover` は小さい候補集合を厳密に解きます。全体を覆えるときは最小個数で、同点はソートした名前の combinations の先頭です。全体を覆えないときは、覆えた要素が最も多い組です。候補が `--limit`（既定 18。18 個までは厳密、19 個から貪欲）を超えると貪欲法に切り替え、`method` が `greedy` になります。各候補には、それだけが覆う要素も付きます。
 - `near` はノード ID と関係名を、casefold、Unicode NFC、末尾の `.git`、先頭と末尾の `/`、camelCase と snake_case（`dependsOn` と `depends_on`）の違いだけでまとめます。報告だけで、統合はしません。`folded` は常に false で、どの正規化が必要だったかを `normalizations` に残します。
 - `lag` はローカルな git リポジトリで、ブランチの first-parent 上でピンした SHA より後にあるコミット数と、そのうちのマージ数を数えます。ピンが first-parent の鎖に無いとき（squash で消えたコミットや、側枝のコミット）はエラーです。`git rev-list --first-parent` と `git rev-parse` だけを使い、ネットワークには出ません。パス・参照・SHA は引数か `OTL_GIT_REPO` / `OTL_GIT_REF` / `OTL_GIT_SHA` です。このコマンドの sha256 は、読んだ first-parent 一覧のバイト列です。
 
-Python からは `collapse_reciprocal`、`cycle_basis`、`single_points_of_failure`、`set_cover_min`、`near_duplicates`、`first_parent_lag` を直接呼べます。
+Python からは `collapse_reciprocal`、`cycle_basis`、`directed_cycle_witness`、`transitivity_witness`、`single_points_of_failure`、`set_cover_min`、`near_duplicates`、`first_parent_lag` を直接呼べます。
 
 ## 経路
 

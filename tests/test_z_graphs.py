@@ -730,6 +730,8 @@ class CliTests(unittest.TestCase):
         cases = [
             (["collapse", str(graph), str(directions)], "collapse", "collapsed_edges: 3"),
             (["basis", str(graph)], "basis", "cycle: 1"),
+            (["cycle", str(graph)], "cycle", "cycle: a b a"),
+            (["transitive", str(graph)], "transitive", "witness: b a c"),
             (["spof", str(graph), "a"], "spof", "dominator: a -"),
             (["cover", str(cover)], "cover", "complete: yes"),
             (["near", str(graph)], "near", "folded: no"),
@@ -748,7 +750,7 @@ class CliTests(unittest.TestCase):
                 self.assertEqual(body["command"], command)
                 self.assertEqual(len(body["provenance"]["inputs"][0]["sha256"]), 64)
                 self.assertEqual(raw, json.dumps(body, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
-                if command in ("collapse", "basis", "near"):
+                if command in ("collapse", "basis", "cycle", "near", "transitive"):
                     self.assertNotIn("parameters", body["provenance"])
                     self.assertNotIn("parameter:", out)
         code, collapse_text, err = invoke(["collapse", str(graph), str(directions)])
@@ -879,8 +881,244 @@ class CliTests(unittest.TestCase):
         for banned in ("urllib", "socket", "requests", "gh_audit", "workflow_dispatch", "fetch("):
             self.assertNotIn(banned, source)
         self.assertIn("ontautology_graphs.py", readme)
-        for command in ("collapse", "basis", "spof", "cover", "near", "lag"):
+        for command in ("collapse", "basis", "cycle", "transitive", "spof", "cover", "near", "lag"):
             self.assertIn(command, readme)
+
+
+def diamond_chain(depth, b_before_a=False):
+    edges = []
+    for i in range(depth):
+        left, right, nxt = f"n{i}", f"a{i}", f"n{i + 1}"
+        other = f"b{i}"
+        pair = [(left, other), (left, right)] if b_before_a else [(left, right), (left, other)]
+        for source, target in pair:
+            edges.append(edge("r", source, target))
+        edges.append(edge("r", right, nxt))
+        edges.append(edge("r", other, nxt))
+    edges.append(edge("r", f"n{depth}", "n0"))
+    return edges
+
+
+def diamond_nodes(depth):
+    nodes = ["a0"]
+    for i in range(1, depth):
+        nodes.append(f"n{i}")
+        nodes.append(f"a{i}")
+    nodes.append(f"n{depth}")
+    nodes.append("n0")
+    nodes.append("a0")
+    return nodes
+
+
+class WitnessTests(unittest.TestCase):
+    def test_the_directed_witness_is_the_2_cycle_not_the_undirected_triangle(self):
+        edges = [
+            edge("k", "A", "C"),
+            edge("k", "B", "C"),
+            edge("k", "B", "A"),
+            edge("k", "C", "A"),
+        ]
+        found = graphs.directed_cycle_witness(graph_of(edges))
+        self.assertEqual(found["nodes"], ["A", "C", "A"])
+        self.assertEqual(found["indices"], [0, 3])
+        self.assertEqual(found["labels"], ["k", "k"])
+        self.assertEqual([(item["source"], item["target"]) for item in found["edges"]], [("A", "C"), ("C", "A")])
+        basis = graphs.cycle_basis(graph_of(edges))
+        self.assertGreater(basis["independent_cycles"], 1)
+        self.assertNotIn([0, 3], [cycle["indices"] for cycle in basis["cycles"] if len(cycle["indices"]) == 3])
+
+    def test_shortest_cycle_beats_a_longer_one_and_parallel_edges_stay_directed(self):
+        loop = edge("k", "a", "a")
+        edges = [
+            edge("k", "a", "b"), edge("k", "b", "c"), edge("k", "c", "a"), loop,
+        ]
+        found = graphs.directed_cycle_witness(graph_of(edges))
+        self.assertEqual(found["nodes"], ["a", "a"])
+        self.assertEqual(found["indices"], [3])
+        later = [
+            edge("k", "a", "b"), edge("k", "b", "a"), edge("k", "z", "z"),
+        ]
+        shortened = graphs.directed_cycle_witness(graph_of(later))
+        self.assertEqual(shortened["nodes"], ["z", "z"])
+        self.assertEqual(shortened["indices"], [2])
+        same_way = [edge("k", "a", "b"), edge("k", "a", "b")]
+        self.assertIsNone(graphs.directed_cycle_witness(graph_of(same_way)))
+        paired = same_way + [edge("k", "b", "a")]
+        closed = graphs.directed_cycle_witness(graph_of(paired))
+        self.assertEqual(closed["indices"], [0, 2])
+        self.assertEqual(closed["nodes"], ["a", "b", "a"])
+        marked = [edge("k", "a", "b"), edge("m", "a", "b"), edge("k", "b", "a")]
+        preferred = graphs.directed_cycle_witness(graph_of(marked))
+        self.assertEqual(preferred["indices"], [0, 2])
+        self.assertEqual(preferred["labels"], ["k", "k"])
+
+    def test_equal_cycles_break_ties_by_the_rotated_edge_key(self):
+        edges = [
+            edge("k", "c", "d"), edge("k", "d", "c"),
+            edge("k", "a", "b"), edge("k", "b", "a"),
+        ]
+        found = graphs.directed_cycle_witness(graph_of(edges))
+        self.assertEqual(found["nodes"], ["a", "b", "a"])
+        self.assertEqual(found["indices"], [2, 3])
+        shuffled = list(edges)
+        random.Random(4).shuffle(shuffled)
+        again = graphs.directed_cycle_witness(graph_of(shuffled))
+        self.assertEqual(again["nodes"], ["a", "b", "a"])
+        self.assertEqual(
+            [(item["source"], item["target"]) for item in again["edges"]],
+            [("a", "b"), ("b", "a")],
+        )
+        self.assertIsNone(graphs.directed_cycle_witness({"edges": []}))
+        tree = graphs.directed_cycle_witness(graph_of([edge("k", "a", "b"), edge("k", "b", "c")]))
+        self.assertIsNone(tree)
+        with self.assertRaisesRegex(ValueError, "edges list"):
+            graphs.directed_cycle_witness([])
+
+    def test_a_missing_chord_is_reported_and_a_return_is_not(self):
+        edges = [edge("k", "a", "b"), edge("k", "b", "a")]
+        self.assertIsNone(graphs.transitivity_witness(edges))
+        self.assertIsNone(graphs.transitivity_witness([edge("k", "a", "a"), edge("k", "a", "b")]))
+        missing = [edge("k", "a", "b"), edge("k", "b", "c")]
+        found = graphs.transitivity_witness(missing)
+        self.assertEqual(found["nodes"], ["a", "b", "c"])
+        self.assertEqual(found["indices"], [0, 1])
+        self.assertEqual(found["missing"], {"source": "a", "target": "c"})
+        closed = graphs.transitivity_witness(missing + [edge("k", "a", "c")])
+        self.assertIsNone(closed)
+        parallel = graphs.transitivity_witness(missing + [edge("k", "a", "c"), edge("m", "a", "c")])
+        self.assertIsNone(parallel)
+        self.assertIsNone(graphs.transitivity_witness([]))
+        with self.assertRaisesRegex(ValueError, "edges must be a list"):
+            graphs.transitivity_witness({"edges": []})
+        with self.assertRaisesRegex(ValueError, "relation"):
+            graphs.transitivity_witness([{"source": "a", "target": "b"}])
+
+    def test_transitivity_ties_prefer_the_smaller_edge_key(self):
+        edges = [
+            edge("z", "a", "m"), edge("k", "m", "c"),
+            edge("a", "a", "b"), edge("k", "b", "c"),
+        ]
+        found = graphs.transitivity_witness(edges)
+        self.assertEqual(found["nodes"], ["a", "b", "c"])
+        self.assertEqual(found["indices"], [2, 3])
+        self.assertEqual(found["missing"], {"source": "a", "target": "c"})
+        reverse = [
+            edge("a", "a", "b"), edge("k", "b", "c"),
+            edge("z", "a", "m"), edge("k", "m", "c"),
+        ]
+        kept = graphs.transitivity_witness(reverse)
+        self.assertEqual(kept["indices"], [0, 1])
+        self.assertEqual(kept["nodes"], ["a", "b", "c"])
+        lone = [edge("k", "a", "b")]
+        self.assertIsNone(graphs.transitivity_witness(lone))
+
+    def test_a_dead_end_does_not_steal_the_cycle(self):
+        found = graphs.directed_cycle_witness(graph_of([
+            edge("a", "n", "z"),
+            edge("r", "p", "q"),
+            edge("a", "q", "x"),
+            edge("r", "q", "p"),
+        ]))
+        self.assertEqual(found["nodes"], ["p", "q", "p"])
+        self.assertEqual(found["indices"], [1, 3])
+
+    def test_a_reachable_detour_does_not_replace_the_step_closer(self):
+        # T→Y is reachable and has the smaller relation, but it does not step
+        # one closer to S. The shortest cycle stays S→T→X→S.
+        found = graphs.directed_cycle_witness(graph_of([
+            edge("r", "S", "T"),
+            edge("z", "T", "X"),
+            edge("a", "T", "Y"),
+            edge("r", "X", "S"),
+            edge("r", "Y", "Z"),
+            edge("r", "Z", "S"),
+        ]))
+        self.assertEqual(found["nodes"], ["S", "T", "X", "S"])
+        self.assertEqual(found["indices"], [0, 1, 3])
+
+    def test_diamond_chain_stays_fast_and_picks_the_smaller_side(self):
+        found = graphs.directed_cycle_witness(graph_of(diamond_chain(2)))
+        self.assertEqual(found["nodes"], diamond_nodes(2))
+        self.assertEqual(len(found["indices"]), 5)
+        swapped = graphs.directed_cycle_witness(graph_of(diamond_chain(2, b_before_a=True)))
+        self.assertEqual(swapped["nodes"], diamond_nodes(2))
+        probe = r"""
+import time, sys
+sys.path.insert(0, sys.argv[1])
+import ontautology_graphs as graphs
+
+def chain(depth):
+    edges = []
+    for i in range(depth):
+        left, right, nxt, other = f"n{i}", f"a{i}", f"n{i + 1}", f"b{i}"
+        edges.append({"kind": "r", "source": left, "target": right})
+        edges.append({"kind": "r", "source": left, "target": other})
+        edges.append({"kind": "r", "source": right, "target": nxt})
+        edges.append({"kind": "r", "source": other, "target": nxt})
+    edges.append({"kind": "r", "source": f"n{depth}", "target": "n0"})
+    return edges
+
+def nodes(depth):
+    found = ["a0"]
+    for i in range(1, depth):
+        found.append(f"n{i}")
+        found.append(f"a{i}")
+    found.extend([f"n{depth}", "n0", "a0"])
+    return found
+
+lines = []
+for depth in (8, 12, 30):
+    started = time.perf_counter()
+    witness = graphs.directed_cycle_witness({"edges": chain(depth)})
+    elapsed = time.perf_counter() - started
+    if witness["nodes"] != nodes(depth) or elapsed >= 1.0:
+        raise SystemExit(f"d={depth} {elapsed:.4f}s {witness['nodes'][:8]}")
+    lines.append(f"d={depth} {elapsed:.4f}s")
+print(" ".join(lines))
+"""
+        done = subprocess.run(
+            [sys.executable, "-S", "-c", probe, str(ROOT)],
+            capture_output=True, text=True, encoding="utf-8",
+        )
+        self.assertEqual(done.returncode, 0, done.stderr + done.stdout)
+        sys.stderr.write(done.stdout)
+
+    def test_cli_prints_the_witness_or_none(self):
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        cycle = write_json(folder.name, "cycle.json", graph_of([
+            edge("k", "A", "C"), edge("k", "B", "C"), edge("k", "B", "A"), edge("k", "C", "A"),
+        ]))
+        code, out, err = invoke(["cycle", str(cycle)])
+        self.assertEqual(code, 0, err)
+        self.assertIn("cycle: A C A", out)
+        self.assertIn("edge: 0 k A C", out)
+        self.assertIn("edge: 3 k C A", out)
+        code, raw, err = invoke(["cycle", str(cycle), "--json"])
+        self.assertEqual(json.loads(raw)["result"]["indices"], [0, 3], err)
+        acyclic = write_json(folder.name, "tree.json", graph_of([edge("k", "a", "b")]))
+        code, out, err = invoke(["cycle", str(acyclic), "--format", "text"])
+        self.assertEqual(code, 0, err)
+        self.assertIn("cycle: none", out)
+        chord = write_json(folder.name, "chord.json", graph_of([
+            edge("k", "a", "b"), edge("k", "b", "c"),
+        ]))
+        code, out, err = invoke(["transitive", str(chord)])
+        self.assertEqual(code, 0, err)
+        self.assertIn("witness: a b c", out)
+        self.assertIn("missing: a c", out)
+        self.assertIn("edge: 0 k a b", out)
+        self.assertIn("edge: 1 k b c", out)
+        code, raw, err = invoke(["transitive", str(chord), "--json"])
+        body = json.loads(raw)
+        self.assertEqual(body["result"]["missing"], {"source": "a", "target": "c"}, err)
+        self.assertNotIn("parameters", body["provenance"])
+        done = write_json(folder.name, "done.json", graph_of([
+            edge("k", "a", "b"), edge("k", "b", "c"), edge("k", "a", "c"),
+        ]))
+        code, out, err = invoke(["transitive", str(done)])
+        self.assertEqual(code, 0, err)
+        self.assertIn("witness: none", out)
 
 
 class MutationTests(unittest.TestCase):
@@ -932,6 +1170,59 @@ class MutationTests(unittest.TestCase):
             if not found["nodes"] or found["nodes"][0]["normalizations"] != ["camel_snake", "casefold"]:
                 raise AssertionError(found)
 
+        def check_cycle(module):
+            found = module["directed_cycle_witness"](graph_of([
+                edge("k", "a", "b"), edge("k", "b", "c"), edge("k", "c", "a"), edge("k", "a", "a"),
+            ]))
+            if found["indices"] != [3]:
+                raise AssertionError(found)
+
+        def check_side(module):
+            found = module["directed_cycle_witness"](graph_of(diamond_chain(2)))
+            if found is None or found["nodes"] != diamond_nodes(2):
+                raise AssertionError(found)
+
+        def check_closer(module):
+            found = module["directed_cycle_witness"](graph_of([
+                edge("r", "S", "T"),
+                edge("z", "T", "X"),
+                edge("a", "T", "Y"),
+                edge("r", "X", "S"),
+                edge("r", "Y", "Z"),
+                edge("r", "Z", "S"),
+            ]))
+            if found is None or found["nodes"] != ["S", "T", "X", "S"]:
+                raise AssertionError(found)
+
+        def check_prune(module):
+            found = module["directed_cycle_witness"](graph_of([
+                edge("a", "n", "z"),
+                edge("r", "p", "q"),
+                edge("a", "q", "x"),
+                edge("r", "q", "p"),
+            ]))
+            if found is None or found["nodes"] != ["p", "q", "p"]:
+                raise AssertionError(found)
+
+        def check_cycle_tie(module):
+            found = module["directed_cycle_witness"](graph_of([
+                edge("k", "c", "d"), edge("k", "d", "c"),
+                edge("k", "a", "b"), edge("k", "b", "a"),
+            ]))
+            if found["nodes"] != ["a", "b", "a"]:
+                raise AssertionError(found)
+
+        def check_transitive(module):
+            pair = module["transitivity_witness"]([edge("k", "a", "b"), edge("k", "b", "a")])
+            if pair is not None:
+                raise AssertionError(pair)
+            found = module["transitivity_witness"]([
+                edge("z", "a", "m"), edge("k", "m", "c"),
+                edge("a", "a", "b"), edge("k", "b", "c"),
+            ])
+            if found["indices"] != [2, 3]:
+                raise AssertionError(found)
+
         def check_lag(module):
             pin, mid, tip = "a" * 40, "b" * 40, "c" * 40
             found = module["first_parent_lag"]([
@@ -959,6 +1250,34 @@ class MutationTests(unittest.TestCase):
                 check_near,
             ),
             ('if len(commit["parents"]) > 1:', 'if len(commit["parents"]) >= 1:', check_lag),
+            ("if best is None or step < best:", "if best is None or step > best:", check_cycle),
+            (
+                "if best_rank is None or rank < best_rank:",
+                "if best_rank is None or rank > best_rank:",
+                check_cycle_tie,
+            ),
+            (
+                "if picked_rank is None or rank < picked_rank:",
+                "if picked_rank is None or rank > picked_rank:",
+                check_side,
+            ),
+            (
+                "if back is None or back != need:",
+                "if False and (back is None or back != need):",
+                check_prune,
+            ),
+            (
+                "if dist_nxt is None or dist_nxt != here - 1:",
+                "if False and (dist_nxt is None or dist_nxt != here - 1):",
+                check_prune,
+            ),
+            (
+                "if dist_nxt is None or dist_nxt != here - 1:",
+                "if dist_nxt is None and dist_nxt != here - 1:",
+                check_closer,
+            ),
+            ("if source == nxt:\n                continue", "if False and source == nxt:\n                continue", check_transitive),
+            ("if winner is None or key < winner[0]:", "if winner is None or key > winner[0]:", check_transitive),
         ]
         for old, new, check in mutations:
             with self.subTest(old=old):
@@ -967,7 +1286,9 @@ class MutationTests(unittest.TestCase):
                 check({"collapse_reciprocal": graphs.collapse_reciprocal, "cycle_basis": graphs.cycle_basis,
                        "single_points_of_failure": graphs.single_points_of_failure,
                        "set_cover_min": graphs.set_cover_min, "near_duplicates": graphs.near_duplicates,
-                       "first_parent_lag": graphs.first_parent_lag})
+                       "first_parent_lag": graphs.first_parent_lag,
+                       "directed_cycle_witness": graphs.directed_cycle_witness,
+                       "transitivity_witness": graphs.transitivity_witness})
 
 
 _WRAPPER = r"""
@@ -1070,6 +1391,8 @@ class ZCoverageTests(unittest.TestCase):
         commands = [
             ["collapse", str(graph), str(directions)],
             ["basis", str(graph), "--json"],
+            ["cycle", str(graph), "--format", "text"],
+            ["transitive", str(graph), "--json"],
             ["spof", str(graph), "a"],
             ["cover", str(cover), "--format", "text"],
             ["near", str(graph), "--json"],
