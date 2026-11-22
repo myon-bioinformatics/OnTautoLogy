@@ -6,6 +6,7 @@
 投影の辺数は、TOL が増やしたキーを除いた ``edges`` と ``unclassified_edges`` に一致させ、
 TOO の被覆が閉じていなければ失敗する。
 """
+import argparse
 import json
 import subprocess
 import sys
@@ -120,9 +121,11 @@ def default_classification(anchor=None):
 
 
 def main(argv=None):
-    argv = sys.argv[1:] if argv is None else list(argv)
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("target", nargs="?", help="classification to read (default: the bundled one)")
+    args = parser.parse_args(argv)
     try:
-        target = argv[0] if argv else default_classification()
+        target = args.target or default_classification()
         print(json.dumps(report(target), indent=2, ensure_ascii=False))
     except Exception as error:
         print(f"wave_relations: {error}", file=sys.stderr)
