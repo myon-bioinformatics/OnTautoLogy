@@ -1,10 +1,12 @@
 """回帰確認。CI が TOO/TOL から得た集計は、Pages が読む wave-profiles.json と一致する。"""
+import argparse
 import json
-import sys
 from pathlib import Path
 
 here = Path(__file__).parent
-report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+_parser = argparse.ArgumentParser(description=__doc__)
+_parser.add_argument("report", type=Path, help="JSON report the CI built from TOO/TOL")
+report = json.loads(_parser.parse_args().report.read_text(encoding="utf-8"))
 published = json.loads((here / "wave-profiles.json").read_text(encoding="utf-8"))
 CLASS_KEYS = {
     "edges", "incident_nodes", "multiple_sources", "sample_cycles",
