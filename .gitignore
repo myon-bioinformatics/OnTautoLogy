@@ -6,3 +6,9 @@ dist/
 
 /site/shared/mermaid.js
 /examples/tol-export/
+*.py[cod]
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.DS_Store
