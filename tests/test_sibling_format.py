@@ -64,13 +64,15 @@ def _hook(frame, event, arg):
 
 sys.settrace(_hook)
 from examples.sibling_format import (  # noqa: E402
-    SCHEMA, SCHEMA_V1, SCHEMA_V2, TOL_COMMIT, TOO_COMMIT, classification, counts_agree, export_graph, main,
-    project, relation_groups, render_relations_page, source_graph, write_relations_site,
+    SCHEMA, SCHEMA_V1, SCHEMA_V2, SCHEMA_V3, TOL_COMMIT, TOO_COMMIT, classification, counts_agree,
+    export_graph, main, project, relation_groups, render_relations_page, source_graph, tol_table,
+    write_relations_site,
 )
 from gh_audit import gh_audit as ga  # noqa: E402
 
-# TOO main 8621f2261d694af0de35e103ad2387872ca10b99 の弾ごとの対応。
+# TOO main c80f39cd9a5359403fdfce0fec9be4605594c8eb の弾ごとの対応。
 # direction と excluded は taxontoy coverage が見る。holds false は表に無い。
+# similarTo は mutual なので、TOL と同じく往復を畳んでから数える。
 ASSUMED = {
     "audit": {"dependsOn": "dependency", "duplicates": "overlap"},
     "concepts": {"narrower": "hierarchy", "similarTo": "similarity"},
@@ -78,6 +80,16 @@ ASSUMED = {
         "to_model": "unknown-element", "candidate": "hypothesis", "judgment": "judgment-record",
         "holds true": "affirmation",
     },
+}
+ASSUMED_DIRECTIONS = {
+    "dependsOn": "forward",
+    "duplicates": "undirected",
+    "narrower": "forward",
+    "similarTo": "mutual",
+    "to_model": "forward",
+    "candidate": "forward",
+    "judgment": "forward",
+    "holds true": "forward",
 }
 
 
@@ -107,7 +119,8 @@ class ProjectionTests(unittest.TestCase):
         table = classification(ASSUMED)
         for profile in ASSUMED:
             document = self.snapshot if profile == "audit" else self.corpus
-            groups = relation_groups(export_graph(profile, document), table[profile])
+            groups = relation_groups(
+                export_graph(profile, document), table[profile], ASSUMED_DIRECTIONS)
             wave = self.published["waves"][profile]
             with self.subTest(profile=profile):
                 self.assertEqual(groups["unclassified"], wave["unclassified_edges"])
@@ -382,7 +395,7 @@ def _version(schema):
         },
         "excluded": {"audit": ["blocks"], "concepts": [], "cases": []},
     }
-    if schema == SCHEMA_V2:
+    if schema in (SCHEMA_V2, SCHEMA_V3):
         document["properties"] = {
             "classes": {
                 "dependency": {"acyclic": _stamp(since="2024-02-29")},
@@ -406,6 +419,16 @@ def _version(schema):
                 "similarTo": {"transitive": _stamp(since="2026-11-15", reason="shared")},
             },
         }
+    if schema == SCHEMA_V3:
+        document["excluded"] = {
+            "audit": [{"relation": "blocks", "kind": "out_of_scope", "since": "2026-11-21", "reason": "test"}],
+            "concepts": [],
+            "cases": [],
+        }
+        document["repos"] = {"vendor": "dependency"}
+        document["direction"]["vendor"] = "forward"
+        document["excluded"]["repos"] = []
+        document["properties"]["relations"]["vendor"] = {"acyclic": _stamp(reason="copy")}
     return document
 
 
@@ -420,6 +443,98 @@ class RelationTableV2Tests(unittest.TestCase):
         empty["properties"] = {"classes": {}, "relations": {}}
         self.assertEqual(set(classification(empty)), {"audit", "concepts", "cases"})
 
+    def test_version_3_reads_object_exclusions_and_optional_repos(self):
+        found = classification(_version(SCHEMA_V3))
+        self.assertEqual(set(found), {"audit", "concepts", "cases"})
+        self.assertEqual(found["audit"]["dependsOn"], "dependency")
+        self.assertNotIn("repos", found)
+        without_repos = _version(SCHEMA_V3)
+        del without_repos["repos"]
+        del without_repos["excluded"]["repos"]
+        del without_repos["direction"]["vendor"]
+        del without_repos["properties"]["relations"]["vendor"]
+        self.assertEqual(set(classification(without_repos)), {"audit", "concepts", "cases"})
+        down = tol_table(_version(SCHEMA_V3))
+        self.assertEqual(down["schema"], SCHEMA_V2)
+        self.assertEqual(down["excluded"]["audit"], ["blocks"])
+        self.assertNotIn("repos", down)
+        unchanged = _version(SCHEMA_V2)
+        self.assertIs(tol_table(unchanged), unchanged)
+        self.assertEqual(tol_table("raw"), "raw")
+
+    def test_version_3_domain_and_range_declarations(self):
+        document = _version(SCHEMA_V3)
+        document["properties"]["relations"]["belongsTo"] = {
+            "domain": {
+                "types": ["File", "PullRequest"],
+                "since": "2026-11-21",
+                "reason": "source types",
+            },
+            "range": {
+                "types": ["Repository"],
+                "since": "2026-11-21",
+                "reason": "target type",
+            },
+        }
+        document["excluded"]["audit"].append({
+            "relation": "belongsTo", "kind": "out_of_scope", "since": "2026-11-21", "reason": "typed",
+        })
+        self.assertEqual(classification(document)["audit"]["dependsOn"], "dependency")
+        samples = []
+
+        def add(message, mutate):
+            body = _version(SCHEMA_V3)
+            body["properties"]["relations"]["belongsTo"] = {
+                "domain": {
+                    "types": ["File"],
+                    "since": "2026-11-21",
+                    "reason": "ok",
+                },
+            }
+            body["excluded"]["audit"].append({
+                "relation": "belongsTo", "kind": "out_of_scope", "since": "2026-11-21", "reason": "typed",
+            })
+            mutate(body)
+            samples.append((message, body))
+
+        add("properties.relations.belongsTo.domain must be an object",
+            lambda doc: doc["properties"]["relations"]["belongsTo"].__setitem__("domain", []))
+        add("properties.relations.belongsTo.domain has unexpected field note",
+            lambda doc: doc["properties"]["relations"]["belongsTo"]["domain"].__setitem__("note", "x"))
+        add("properties.relations.belongsTo.domain missing since",
+            lambda doc: doc["properties"]["relations"]["belongsTo"]["domain"].__delitem__("since"))
+        add("properties.relations.belongsTo.domain invalid since",
+            lambda doc: doc["properties"]["relations"]["belongsTo"]["domain"].__setitem__("since", "2026-02-31"))
+        add("properties.relations.belongsTo.domain missing reason",
+            lambda doc: doc["properties"]["relations"]["belongsTo"]["domain"].__delitem__("reason"))
+        add("properties.relations.belongsTo.domain missing reason",
+            lambda doc: doc["properties"]["relations"]["belongsTo"]["domain"].__setitem__("reason", ""))
+        add("properties.relations.belongsTo.domain missing reason",
+            lambda doc: doc["properties"]["relations"]["belongsTo"]["domain"].__setitem__("reason", " padded "))
+        add("properties.relations.belongsTo.domain missing reason",
+            lambda doc: doc["properties"]["relations"]["belongsTo"]["domain"].__setitem__("reason", 1))
+        add("properties.relations.belongsTo.domain missing types",
+            lambda doc: doc["properties"]["relations"]["belongsTo"]["domain"].__delitem__("types"))
+        add("properties.relations.belongsTo.domain missing types",
+            lambda doc: doc["properties"]["relations"]["belongsTo"]["domain"].__setitem__("types", []))
+        add("properties.relations.belongsTo.domain.types[0] must be a non-empty string",
+            lambda doc: doc["properties"]["relations"]["belongsTo"]["domain"].__setitem__("types", [""]))
+        add("properties.relations.belongsTo.domain.types must be sorted and unique",
+            lambda doc: doc["properties"]["relations"]["belongsTo"]["domain"].__setitem__(
+                "types", ["PullRequest", "File"]))
+        add("properties.relations.belongsTo.domain.types must be sorted and unique",
+            lambda doc: doc["properties"]["relations"]["belongsTo"]["domain"].__setitem__(
+                "types", ["File", "File"]))
+        add("excluded.audit must be an array",
+            lambda doc: doc["excluded"].__setitem__("audit", "blocks"))
+        add("excluded.audit[1] must be a string or object",
+            lambda doc: doc["excluded"]["audit"].__setitem__(1, 3))
+        for message, document in samples:
+            with self.subTest(message=message):
+                with self.assertRaises(ValueError) as caught:
+                    classification(document)
+                self.assertEqual(str(caught.exception), message)
+
     def test_each_version_rejects_a_different_key_set(self):
         extra_v1 = _version(SCHEMA_V1)
         extra_v1["properties"] = {"classes": {}, "relations": {}}
@@ -427,10 +542,13 @@ class RelationTableV2Tests(unittest.TestCase):
         del missing_v2["properties"]
         extra_v2 = _version(SCHEMA_V2)
         extra_v2["note"] = "no"
+        extra_v3 = _version(SCHEMA_V3)
+        extra_v3["note"] = "no"
         for document, message in (
             (extra_v1, "taxontoy-relations/1 has unexpected keys"),
             (missing_v2, "taxontoy-relations/2 has unexpected keys"),
             (extra_v2, "taxontoy-relations/2 has unexpected keys"),
+            (extra_v3, "taxontoy-relations/3 has unexpected keys"),
         ):
             with self.subTest(message=message):
                 with self.assertRaises(ValueError) as caught:
@@ -556,6 +674,15 @@ class RelationTableV2Tests(unittest.TestCase):
             )
             self.assertEqual(checked.returncode, 0, checked.stderr)
             self.assertEqual(json.loads(checked.stdout)["classes"]["dependency"], 1)
+            # Parent-process check so coverage sees the direction-dict branch in main.
+            with redirect_stdout(io.StringIO()) as out:
+                self.assertEqual(main(["check", str(folder / "graph.json"), str(table), "audit"]), 0)
+            self.assertEqual(json.loads(out.getvalue())["classes"]["dependency"], 1)
+            schemaless = folder / "schemaless.json"
+            schemaless.write_text(json.dumps({"audit": {"dependsOn": "dependency"}}), encoding="utf-8")
+            with redirect_stdout(io.StringIO()) as out:
+                self.assertEqual(main(["check", str(folder / "graph.json"), str(schemaless), "audit"]), 0)
+            self.assertEqual(json.loads(out.getvalue())["classes"]["dependency"], 1)
             table.write_text(json.dumps(_version("taxontoy-relations/9")), encoding="utf-8")
             rejected = subprocess.run(
                 [sys.executable, "-S", script, "check", str(folder / "graph.json"), str(table), "audit"],

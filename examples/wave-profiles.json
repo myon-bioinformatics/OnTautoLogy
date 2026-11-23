@@ -17,7 +17,7 @@
       },
       {
         "path": "too/otl-relations.json",
-        "sha256": "141bfc1df14eec80ca7dedd5dd5f1310b839a675d14aa726b14133884d0f8afb"
+        "sha256": "857e015d7df020509dda6ec43dd8a9f74784c8a1976a40828d174b7cba4c3b4a"
       }
     ],
     "ok": true,
@@ -26,7 +26,7 @@
       "sha256": "3f9a7540d8bfb4917dd521b7d19a56a68699146e60af759cf67b0f7a3263683f"
     },
     "tool": "taxontoy",
-    "version": "0.2.0",
+    "version": "0.6.0",
     "waves": {
       "audit": {
         "alias_candidates": [
@@ -107,6 +107,16 @@
           "dependency": 13,
           "overlap": 25
         },
+        "edge_weight": {
+          "classified": 38,
+          "classified_ratio": {
+            "denominator": 2342,
+            "numerator": 38
+          },
+          "excluded": 2304,
+          "total": 2342,
+          "unclassified": 0
+        },
         "excluded_edges": {
           "belongsTo": 691,
           "blocks": 13,
@@ -181,6 +191,55 @@
             "symmetric": false
           }
         },
+        "types": {
+          "relations": {
+            "belongsTo": {
+              "actual": [
+                {
+                  "edges": 93,
+                  "source": "ActionsRun",
+                  "target": "Repository"
+                },
+                {
+                  "edges": 9,
+                  "source": "Branch",
+                  "target": "Repository"
+                },
+                {
+                  "edges": 32,
+                  "source": "Commit",
+                  "target": "Repository"
+                },
+                {
+                  "edges": 542,
+                  "source": "File",
+                  "target": "Repository"
+                },
+                {
+                  "edges": 15,
+                  "source": "PullRequest",
+                  "target": "Repository"
+                }
+              ],
+              "declared": {
+                "domain": [
+                  "ActionsRun",
+                  "Branch",
+                  "Commit",
+                  "File",
+                  "PullRequest"
+                ],
+                "range": [
+                  "Repository"
+                ]
+              },
+              "gap": {
+                "actual_only": [],
+                "declared_only": []
+              }
+            }
+          }
+        },
         "unclassified_edges": {}
       },
       "cases": {
@@ -190,6 +249,16 @@
           "hypothesis": 3,
           "judgment-record": 3,
           "unknown-element": 1
+        },
+        "edge_weight": {
+          "classified": 10,
+          "classified_ratio": {
+            "denominator": 10,
+            "numerator": 10
+          },
+          "excluded": 0,
+          "total": 10,
+          "unclassified": 0
         },
         "excluded_edges": {},
         "names": {
@@ -253,6 +322,16 @@
           "hierarchy": 29,
           "similarity": 62
         },
+        "edge_weight": {
+          "classified": 91,
+          "classified_ratio": {
+            "denominator": 826,
+            "numerator": 91
+          },
+          "excluded": 735,
+          "total": 826,
+          "unclassified": 0
+        },
         "excluded_edges": {
           "derived_from": 43,
           "differentiaElement": 43,
@@ -311,6 +390,10 @@
     "audit": {
       "classes": {
         "dependency": {
+          "cycle_basis": {
+            "cycles": [],
+            "independent_cycles": 0
+          },
           "degree": {
             "max_in": 7,
             "max_out": 2,
@@ -336,6 +419,395 @@
           }
         },
         "overlap": {
+          "cycle_basis": {
+            "cycles": [
+              {
+                "edges": [
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#207",
+                    "target": "pr:myon-bioinformatics/Aoi#208"
+                  },
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#207",
+                    "target": "pr:myon-bioinformatics/Aoi#208"
+                  }
+                ],
+                "labels": [
+                  "duplicates",
+                  "duplicates"
+                ]
+              },
+              {
+                "edges": [
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#207",
+                    "target": "pr:myon-bioinformatics/Aoi#209"
+                  },
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#207",
+                    "target": "pr:myon-bioinformatics/Aoi#209"
+                  }
+                ],
+                "labels": [
+                  "duplicates",
+                  "duplicates"
+                ]
+              },
+              {
+                "edges": [
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#207",
+                    "target": "pr:myon-bioinformatics/Aoi#209"
+                  },
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#207",
+                    "target": "pr:myon-bioinformatics/Aoi#209"
+                  }
+                ],
+                "labels": [
+                  "duplicates",
+                  "duplicates"
+                ]
+              },
+              {
+                "edges": [
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#207",
+                    "target": "pr:myon-bioinformatics/Aoi#209"
+                  },
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#207",
+                    "target": "pr:myon-bioinformatics/Aoi#210"
+                  },
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#209",
+                    "target": "pr:myon-bioinformatics/Aoi#210"
+                  }
+                ],
+                "labels": [
+                  "duplicates",
+                  "duplicates",
+                  "duplicates"
+                ]
+              },
+              {
+                "edges": [
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#207",
+                    "target": "pr:myon-bioinformatics/Aoi#209"
+                  },
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#207",
+                    "target": "pr:myon-bioinformatics/Aoi#210"
+                  },
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#209",
+                    "target": "pr:myon-bioinformatics/Aoi#210"
+                  }
+                ],
+                "labels": [
+                  "duplicates",
+                  "duplicates",
+                  "duplicates"
+                ]
+              },
+              {
+                "edges": [
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#207",
+                    "target": "pr:myon-bioinformatics/Aoi#209"
+                  },
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#207",
+                    "target": "pr:myon-bioinformatics/Aoi#210"
+                  },
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#209",
+                    "target": "pr:myon-bioinformatics/Aoi#210"
+                  }
+                ],
+                "labels": [
+                  "duplicates",
+                  "duplicates",
+                  "duplicates"
+                ]
+              },
+              {
+                "edges": [
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#207",
+                    "target": "pr:myon-bioinformatics/Aoi#209"
+                  },
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#207",
+                    "target": "pr:myon-bioinformatics/Aoi#210"
+                  },
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#209",
+                    "target": "pr:myon-bioinformatics/Aoi#210"
+                  }
+                ],
+                "labels": [
+                  "duplicates",
+                  "duplicates",
+                  "duplicates"
+                ]
+              },
+              {
+                "edges": [
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#209",
+                    "target": "pr:myon-bioinformatics/Aoi#210"
+                  },
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#209",
+                    "target": "pr:myon-bioinformatics/Aoi#210"
+                  }
+                ],
+                "labels": [
+                  "duplicates",
+                  "duplicates"
+                ]
+              },
+              {
+                "edges": [
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#209",
+                    "target": "pr:myon-bioinformatics/Aoi#210"
+                  },
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#209",
+                    "target": "pr:myon-bioinformatics/Aoi#210"
+                  }
+                ],
+                "labels": [
+                  "duplicates",
+                  "duplicates"
+                ]
+              },
+              {
+                "edges": [
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#209",
+                    "target": "pr:myon-bioinformatics/Aoi#210"
+                  },
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#209",
+                    "target": "pr:myon-bioinformatics/Aoi#210"
+                  }
+                ],
+                "labels": [
+                  "duplicates",
+                  "duplicates"
+                ]
+              },
+              {
+                "edges": [
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#209",
+                    "target": "pr:myon-bioinformatics/Aoi#210"
+                  },
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#209",
+                    "target": "pr:myon-bioinformatics/Aoi#210"
+                  }
+                ],
+                "labels": [
+                  "duplicates",
+                  "duplicates"
+                ]
+              },
+              {
+                "edges": [
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#209",
+                    "target": "pr:myon-bioinformatics/Aoi#210"
+                  },
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#209",
+                    "target": "pr:myon-bioinformatics/Aoi#210"
+                  }
+                ],
+                "labels": [
+                  "duplicates",
+                  "duplicates"
+                ]
+              },
+              {
+                "edges": [
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#209",
+                    "target": "pr:myon-bioinformatics/Aoi#210"
+                  },
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#209",
+                    "target": "pr:myon-bioinformatics/Aoi#210"
+                  }
+                ],
+                "labels": [
+                  "duplicates",
+                  "duplicates"
+                ]
+              },
+              {
+                "edges": [
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#209",
+                    "target": "pr:myon-bioinformatics/Aoi#210"
+                  },
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#209",
+                    "target": "pr:myon-bioinformatics/Aoi#210"
+                  }
+                ],
+                "labels": [
+                  "duplicates",
+                  "duplicates"
+                ]
+              },
+              {
+                "edges": [
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#209",
+                    "target": "pr:myon-bioinformatics/Aoi#210"
+                  },
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#209",
+                    "target": "pr:myon-bioinformatics/Aoi#210"
+                  }
+                ],
+                "labels": [
+                  "duplicates",
+                  "duplicates"
+                ]
+              },
+              {
+                "edges": [
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#209",
+                    "target": "pr:myon-bioinformatics/Aoi#210"
+                  },
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/Aoi#209",
+                    "target": "pr:myon-bioinformatics/Aoi#210"
+                  }
+                ],
+                "labels": [
+                  "duplicates",
+                  "duplicates"
+                ]
+              },
+              {
+                "edges": [
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/BlueProbe#52",
+                    "target": "pr:myon-bioinformatics/BlueProbe#53"
+                  },
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/BlueProbe#52",
+                    "target": "pr:myon-bioinformatics/BlueProbe#53"
+                  }
+                ],
+                "labels": [
+                  "duplicates",
+                  "duplicates"
+                ]
+              },
+              {
+                "edges": [
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/BlueProbe#52",
+                    "target": "pr:myon-bioinformatics/BlueProbe#53"
+                  },
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/BlueProbe#52",
+                    "target": "pr:myon-bioinformatics/BlueProbe#53"
+                  }
+                ],
+                "labels": [
+                  "duplicates",
+                  "duplicates"
+                ]
+              },
+              {
+                "edges": [
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/BlueProbe#52",
+                    "target": "pr:myon-bioinformatics/BlueProbe#53"
+                  },
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/BlueProbe#52",
+                    "target": "pr:myon-bioinformatics/BlueProbe#53"
+                  }
+                ],
+                "labels": [
+                  "duplicates",
+                  "duplicates"
+                ]
+              },
+              {
+                "edges": [
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/DRAgoWing#47",
+                    "target": "pr:myon-bioinformatics/DRAgoWing#48"
+                  },
+                  {
+                    "relation": "duplicates",
+                    "source": "pr:myon-bioinformatics/DRAgoWing#47",
+                    "target": "pr:myon-bioinformatics/DRAgoWing#48"
+                  }
+                ],
+                "labels": [
+                  "duplicates",
+                  "duplicates"
+                ]
+              }
+            ],
+            "independent_cycles": 20
+          },
           "degree": {
             "max_in": 14,
             "max_out": 10,
@@ -362,10 +834,12 @@
           }
         }
       },
+      "collapsed_edges": [],
+      "pin_lag": [],
       "provenance": {
         "classification": {
           "path": "too/otl-relations.json",
-          "sha256": "141bfc1df14eec80ca7dedd5dd5f1310b839a675d14aa726b14133884d0f8afb"
+          "sha256": "857e015d7df020509dda6ec43dd8a9f74784c8a1976a40828d174b7cba4c3b4a"
         },
         "graph": {
           "path": "examples/tol-export/audit.json",
@@ -373,15 +847,204 @@
         },
         "profile": "audit"
       },
+      "spof": {
+        "reason": "no source root",
+        "status": "not applicable"
+      },
       "tool": {
         "name": "topontology",
-        "version": "0.1.0"
+        "version": "0.9.0"
       },
       "unclassified_edges": 2304
     },
     "concepts": {
       "classes": {
         "hierarchy": {
+          "cycle_basis": {
+            "cycles": [
+              {
+                "edges": [
+                  {
+                    "relation": "narrower",
+                    "source": "elem:上位:こと",
+                    "target": "elem:区分:出来事"
+                  },
+                  {
+                    "relation": "narrower",
+                    "source": "elem:上位:こと",
+                    "target": "elem:区分:心の状態"
+                  },
+                  {
+                    "relation": "narrower",
+                    "source": "elem:実在:する",
+                    "target": "elem:区分:心の状態"
+                  },
+                  {
+                    "relation": "narrower",
+                    "source": "elem:実在:する",
+                    "target": "elem:区分:出来事"
+                  }
+                ],
+                "labels": [
+                  "narrower",
+                  "narrower",
+                  "narrower",
+                  "narrower"
+                ]
+              },
+              {
+                "edges": [
+                  {
+                    "relation": "narrower",
+                    "source": "elem:上位:こと",
+                    "target": "elem:区分:出来事"
+                  },
+                  {
+                    "relation": "narrower",
+                    "source": "elem:上位:こと",
+                    "target": "elem:区分:行い"
+                  },
+                  {
+                    "relation": "narrower",
+                    "source": "elem:実在:する",
+                    "target": "elem:区分:行い"
+                  },
+                  {
+                    "relation": "narrower",
+                    "source": "elem:実在:する",
+                    "target": "elem:区分:出来事"
+                  }
+                ],
+                "labels": [
+                  "narrower",
+                  "narrower",
+                  "narrower",
+                  "narrower"
+                ]
+              },
+              {
+                "edges": [
+                  {
+                    "relation": "narrower",
+                    "source": "elem:上位:もの",
+                    "target": "elem:区分:仕組み"
+                  },
+                  {
+                    "relation": "narrower",
+                    "source": "elem:上位:もの",
+                    "target": "elem:区分:生き物"
+                  },
+                  {
+                    "relation": "narrower",
+                    "source": "elem:実在:する",
+                    "target": "elem:区分:生き物"
+                  },
+                  {
+                    "relation": "narrower",
+                    "source": "elem:実在:する",
+                    "target": "elem:区分:仕組み"
+                  }
+                ],
+                "labels": [
+                  "narrower",
+                  "narrower",
+                  "narrower",
+                  "narrower"
+                ]
+              },
+              {
+                "edges": [
+                  {
+                    "relation": "narrower",
+                    "source": "elem:上位:もの",
+                    "target": "elem:区分:仕組み"
+                  },
+                  {
+                    "relation": "narrower",
+                    "source": "elem:上位:もの",
+                    "target": "elem:区分:道具"
+                  },
+                  {
+                    "relation": "narrower",
+                    "source": "elem:実在:する",
+                    "target": "elem:区分:道具"
+                  },
+                  {
+                    "relation": "narrower",
+                    "source": "elem:実在:する",
+                    "target": "elem:区分:仕組み"
+                  }
+                ],
+                "labels": [
+                  "narrower",
+                  "narrower",
+                  "narrower",
+                  "narrower"
+                ]
+              },
+              {
+                "edges": [
+                  {
+                    "relation": "narrower",
+                    "source": "elem:上位:もの",
+                    "target": "elem:区分:仕組み"
+                  },
+                  {
+                    "relation": "narrower",
+                    "source": "elem:上位:もの",
+                    "target": "elem:区分:飲食物"
+                  },
+                  {
+                    "relation": "narrower",
+                    "source": "elem:実在:する",
+                    "target": "elem:区分:飲食物"
+                  },
+                  {
+                    "relation": "narrower",
+                    "source": "elem:実在:する",
+                    "target": "elem:区分:仕組み"
+                  }
+                ],
+                "labels": [
+                  "narrower",
+                  "narrower",
+                  "narrower",
+                  "narrower"
+                ]
+              },
+              {
+                "edges": [
+                  {
+                    "relation": "narrower",
+                    "source": "elem:上位:もの",
+                    "target": "elem:区分:架空の人物"
+                  },
+                  {
+                    "relation": "narrower",
+                    "source": "elem:上位:もの",
+                    "target": "elem:区分:架空の生き物"
+                  },
+                  {
+                    "relation": "narrower",
+                    "source": "elem:実在:しない",
+                    "target": "elem:区分:架空の生き物"
+                  },
+                  {
+                    "relation": "narrower",
+                    "source": "elem:実在:しない",
+                    "target": "elem:区分:架空の人物"
+                  }
+                ],
+                "labels": [
+                  "narrower",
+                  "narrower",
+                  "narrower",
+                  "narrower"
+                ]
+              }
+            ],
+            "independent_cycles": 6
+          },
           "degree": {
             "max_in": 2,
             "max_out": 7,
@@ -414,62 +1077,24 @@
           }
         },
         "similarity": {
-          "degree": {
-            "max_in": 8,
-            "max_out": 8,
-            "max_total": 16,
-            "sinks": 0,
-            "sources": 0
+          "cycle_basis": {
+            "cycles": [],
+            "independent_cycles": 0
           },
-          "depth": null,
-          "edges": 62,
+          "degree": {
+            "max_in": 1,
+            "max_out": 8,
+            "max_total": 8,
+            "sinks": 30,
+            "sources": 11
+          },
+          "depth": 2,
+          "edges": 31,
           "incident_nodes": 42,
-          "independent_cycles": 31,
-          "multiple_sources": [
-            "concept:C001-iphone",
-            "concept:C002-luigi",
-            "concept:C003-pikachu",
-            "concept:C004-energy-drink",
-            "concept:C005-guitar",
-            "concept:C006-salmon",
-            "concept:C007-spider-man",
-            "concept:C008-ai-agent",
-            "concept:C009-incident",
-            "concept:C010-anxiety",
-            "concept:C011-escalation"
-          ],
-          "order_cycle": [
-            "concept:Android",
-            "concept:C001-iphone",
-            "concept:Android"
-          ],
-          "sample_cycles": [
-            [
-              "concept:Android",
-              "concept:C001-iphone",
-              "concept:Android"
-            ],
-            [
-              "concept:C001-iphone",
-              "concept:iPad",
-              "concept:C001-iphone"
-            ],
-            [
-              "concept:C002-luigi",
-              "concept:マリオ",
-              "concept:C002-luigi"
-            ],
-            [
-              "concept:C002-luigi",
-              "concept:ワリオ",
-              "concept:C002-luigi"
-            ],
-            [
-              "concept:C002-luigi",
-              "concept:ワルイージ",
-              "concept:C002-luigi"
-            ]
-          ],
+          "independent_cycles": 0,
+          "multiple_sources": [],
+          "order_cycle": null,
+          "sample_cycles": [],
           "weakly_connected_components": {
             "count": 11,
             "sizes": [
@@ -488,10 +1113,354 @@
           }
         }
       },
+      "collapsed_edges": [
+        {
+          "dropped": {
+            "source": "concept:C001-iphone",
+            "target": "concept:Android"
+          },
+          "kept": {
+            "source": "concept:Android",
+            "target": "concept:C001-iphone"
+          },
+          "relation": "similarTo"
+        },
+        {
+          "dropped": {
+            "source": "concept:iPad",
+            "target": "concept:C001-iphone"
+          },
+          "kept": {
+            "source": "concept:C001-iphone",
+            "target": "concept:iPad"
+          },
+          "relation": "similarTo"
+        },
+        {
+          "dropped": {
+            "source": "concept:ウクレレ",
+            "target": "concept:C005-guitar"
+          },
+          "kept": {
+            "source": "concept:C005-guitar",
+            "target": "concept:ウクレレ"
+          },
+          "relation": "similarTo"
+        },
+        {
+          "dropped": {
+            "source": "concept:カクテル",
+            "target": "concept:C004-energy-drink"
+          },
+          "kept": {
+            "source": "concept:C004-energy-drink",
+            "target": "concept:カクテル"
+          },
+          "relation": "similarTo"
+        },
+        {
+          "dropped": {
+            "source": "concept:コーヒー",
+            "target": "concept:C004-energy-drink"
+          },
+          "kept": {
+            "source": "concept:C004-energy-drink",
+            "target": "concept:コーヒー"
+          },
+          "relation": "similarTo"
+        },
+        {
+          "dropped": {
+            "source": "concept:サクラマス",
+            "target": "concept:C006-salmon"
+          },
+          "kept": {
+            "source": "concept:C006-salmon",
+            "target": "concept:サクラマス"
+          },
+          "relation": "similarTo"
+        },
+        {
+          "dropped": {
+            "source": "concept:スチールヘッド",
+            "target": "concept:C006-salmon"
+          },
+          "kept": {
+            "source": "concept:C006-salmon",
+            "target": "concept:スチールヘッド"
+          },
+          "relation": "similarTo"
+        },
+        {
+          "dropped": {
+            "source": "concept:スーパーマン",
+            "target": "concept:C007-spider-man"
+          },
+          "kept": {
+            "source": "concept:C007-spider-man",
+            "target": "concept:スーパーマン"
+          },
+          "relation": "similarTo"
+        },
+        {
+          "dropped": {
+            "source": "concept:チャットボット",
+            "target": "concept:C008-ai-agent"
+          },
+          "kept": {
+            "source": "concept:C008-ai-agent",
+            "target": "concept:チャットボット"
+          },
+          "relation": "similarTo"
+        },
+        {
+          "dropped": {
+            "source": "concept:デデンネ",
+            "target": "concept:C003-pikachu"
+          },
+          "kept": {
+            "source": "concept:C003-pikachu",
+            "target": "concept:デデンネ"
+          },
+          "relation": "similarTo"
+        },
+        {
+          "dropped": {
+            "source": "concept:バイオリン",
+            "target": "concept:C005-guitar"
+          },
+          "kept": {
+            "source": "concept:C005-guitar",
+            "target": "concept:バイオリン"
+          },
+          "relation": "similarTo"
+        },
+        {
+          "dropped": {
+            "source": "concept:バットマン",
+            "target": "concept:C007-spider-man"
+          },
+          "kept": {
+            "source": "concept:C007-spider-man",
+            "target": "concept:バットマン"
+          },
+          "relation": "similarTo"
+        },
+        {
+          "dropped": {
+            "source": "concept:パチリス",
+            "target": "concept:C003-pikachu"
+          },
+          "kept": {
+            "source": "concept:C003-pikachu",
+            "target": "concept:パチリス"
+          },
+          "relation": "similarTo"
+        },
+        {
+          "dropped": {
+            "source": "concept:ピチュー",
+            "target": "concept:C003-pikachu"
+          },
+          "kept": {
+            "source": "concept:C003-pikachu",
+            "target": "concept:ピチュー"
+          },
+          "relation": "similarTo"
+        },
+        {
+          "dropped": {
+            "source": "concept:プラスル",
+            "target": "concept:C003-pikachu"
+          },
+          "kept": {
+            "source": "concept:C003-pikachu",
+            "target": "concept:プラスル"
+          },
+          "relation": "similarTo"
+        },
+        {
+          "dropped": {
+            "source": "concept:ベース",
+            "target": "concept:C005-guitar"
+          },
+          "kept": {
+            "source": "concept:C005-guitar",
+            "target": "concept:ベース"
+          },
+          "relation": "similarTo"
+        },
+        {
+          "dropped": {
+            "source": "concept:マイナン",
+            "target": "concept:C003-pikachu"
+          },
+          "kept": {
+            "source": "concept:C003-pikachu",
+            "target": "concept:マイナン"
+          },
+          "relation": "similarTo"
+        },
+        {
+          "dropped": {
+            "source": "concept:マリオ",
+            "target": "concept:C002-luigi"
+          },
+          "kept": {
+            "source": "concept:C002-luigi",
+            "target": "concept:マリオ"
+          },
+          "relation": "similarTo"
+        },
+        {
+          "dropped": {
+            "source": "concept:ミミッキュ",
+            "target": "concept:C003-pikachu"
+          },
+          "kept": {
+            "source": "concept:C003-pikachu",
+            "target": "concept:ミミッキュ"
+          },
+          "relation": "similarTo"
+        },
+        {
+          "dropped": {
+            "source": "concept:モルペコ",
+            "target": "concept:C003-pikachu"
+          },
+          "kept": {
+            "source": "concept:C003-pikachu",
+            "target": "concept:モルペコ"
+          },
+          "relation": "similarTo"
+        },
+        {
+          "dropped": {
+            "source": "concept:ライチュウ",
+            "target": "concept:C003-pikachu"
+          },
+          "kept": {
+            "source": "concept:C003-pikachu",
+            "target": "concept:ライチュウ"
+          },
+          "relation": "similarTo"
+        },
+        {
+          "dropped": {
+            "source": "concept:ワリオ",
+            "target": "concept:C002-luigi"
+          },
+          "kept": {
+            "source": "concept:C002-luigi",
+            "target": "concept:ワリオ"
+          },
+          "relation": "similarTo"
+        },
+        {
+          "dropped": {
+            "source": "concept:ワルイージ",
+            "target": "concept:C002-luigi"
+          },
+          "kept": {
+            "source": "concept:C002-luigi",
+            "target": "concept:ワルイージ"
+          },
+          "relation": "similarTo"
+        },
+        {
+          "dropped": {
+            "source": "concept:三味線",
+            "target": "concept:C005-guitar"
+          },
+          "kept": {
+            "source": "concept:C005-guitar",
+            "target": "concept:三味線"
+          },
+          "relation": "similarTo"
+        },
+        {
+          "dropped": {
+            "source": "concept:原因調査",
+            "target": "concept:C009-incident"
+          },
+          "kept": {
+            "source": "concept:C009-incident",
+            "target": "concept:原因調査"
+          },
+          "relation": "similarTo"
+        },
+        {
+          "dropped": {
+            "source": "concept:定型依頼",
+            "target": "concept:C009-incident"
+          },
+          "kept": {
+            "source": "concept:C009-incident",
+            "target": "concept:定型依頼"
+          },
+          "relation": "similarTo"
+        },
+        {
+          "dropped": {
+            "source": "concept:怒り",
+            "target": "concept:C010-anxiety"
+          },
+          "kept": {
+            "source": "concept:C010-anxiety",
+            "target": "concept:怒り"
+          },
+          "relation": "similarTo"
+        },
+        {
+          "dropped": {
+            "source": "concept:恐怖",
+            "target": "concept:C010-anxiety"
+          },
+          "kept": {
+            "source": "concept:C010-anxiety",
+            "target": "concept:恐怖"
+          },
+          "relation": "similarTo"
+        },
+        {
+          "dropped": {
+            "source": "concept:担当引き継ぎ",
+            "target": "concept:C011-escalation"
+          },
+          "kept": {
+            "source": "concept:C011-escalation",
+            "target": "concept:担当引き継ぎ"
+          },
+          "relation": "similarTo"
+        },
+        {
+          "dropped": {
+            "source": "concept:検索ボット",
+            "target": "concept:C008-ai-agent"
+          },
+          "kept": {
+            "source": "concept:C008-ai-agent",
+            "target": "concept:検索ボット"
+          },
+          "relation": "similarTo"
+        },
+        {
+          "dropped": {
+            "source": "concept:状況報告",
+            "target": "concept:C011-escalation"
+          },
+          "kept": {
+            "source": "concept:C011-escalation",
+            "target": "concept:状況報告"
+          },
+          "relation": "similarTo"
+        }
+      ],
+      "pin_lag": [],
       "provenance": {
         "classification": {
           "path": "too/otl-relations.json",
-          "sha256": "141bfc1df14eec80ca7dedd5dd5f1310b839a675d14aa726b14133884d0f8afb"
+          "sha256": "857e015d7df020509dda6ec43dd8a9f74784c8a1976a40828d174b7cba4c3b4a"
         },
         "graph": {
           "path": "examples/tol-export/concepts.json",
@@ -499,15 +1468,5587 @@
         },
         "profile": "concepts"
       },
+      "spof": {
+        "articulation_points": [
+          "concept:Android",
+          "concept:C001-iphone",
+          "concept:C002-luigi",
+          "concept:C003-pikachu",
+          "concept:C004-energy-drink",
+          "concept:C005-guitar",
+          "concept:C006-salmon",
+          "concept:C007-spider-man",
+          "concept:C008-ai-agent",
+          "concept:C009-incident",
+          "concept:C010-anxiety",
+          "concept:C011-escalation",
+          "concept:iPad",
+          "concept:ウクレレ",
+          "concept:カクテル",
+          "concept:コーヒー",
+          "concept:サクラマス",
+          "concept:スチールヘッド",
+          "concept:スーパーマン",
+          "concept:チャットボット",
+          "concept:デデンネ",
+          "concept:バイオリン",
+          "concept:バットマン",
+          "concept:パチリス",
+          "concept:ピアノ",
+          "concept:ピチュー",
+          "concept:プラスル",
+          "concept:ベース",
+          "concept:マイナン",
+          "concept:マリオ",
+          "concept:ミミッキュ",
+          "concept:モルペコ",
+          "concept:ライチュウ",
+          "concept:ワリオ",
+          "concept:ワルイージ",
+          "concept:三味線",
+          "concept:原因調査",
+          "concept:定型依頼",
+          "concept:怒り",
+          "concept:恐怖",
+          "concept:担当引き継ぎ",
+          "concept:検索ボット",
+          "concept:状況報告"
+        ],
+        "dominators": [
+          {
+            "idom": null,
+            "node": "concept:Android"
+          },
+          {
+            "idom": null,
+            "node": "concept:C001-iphone"
+          },
+          {
+            "idom": null,
+            "node": "concept:C002-luigi"
+          },
+          {
+            "idom": null,
+            "node": "concept:C003-pikachu"
+          },
+          {
+            "idom": null,
+            "node": "concept:C004-energy-drink"
+          },
+          {
+            "idom": null,
+            "node": "concept:C005-guitar"
+          },
+          {
+            "idom": null,
+            "node": "concept:C006-salmon"
+          },
+          {
+            "idom": null,
+            "node": "concept:C007-spider-man"
+          },
+          {
+            "idom": null,
+            "node": "concept:C008-ai-agent"
+          },
+          {
+            "idom": null,
+            "node": "concept:C009-incident"
+          },
+          {
+            "idom": null,
+            "node": "concept:C010-anxiety"
+          },
+          {
+            "idom": null,
+            "node": "concept:C011-escalation"
+          },
+          {
+            "idom": null,
+            "node": "concept:iPad"
+          },
+          {
+            "idom": null,
+            "node": "concept:ウクレレ"
+          },
+          {
+            "idom": null,
+            "node": "concept:カクテル"
+          },
+          {
+            "idom": null,
+            "node": "concept:コーヒー"
+          },
+          {
+            "idom": null,
+            "node": "concept:サクラマス"
+          },
+          {
+            "idom": null,
+            "node": "concept:スチールヘッド"
+          },
+          {
+            "idom": null,
+            "node": "concept:スーパーマン"
+          },
+          {
+            "idom": null,
+            "node": "concept:チャットボット"
+          },
+          {
+            "idom": null,
+            "node": "concept:デデンネ"
+          },
+          {
+            "idom": null,
+            "node": "concept:バイオリン"
+          },
+          {
+            "idom": null,
+            "node": "concept:バットマン"
+          },
+          {
+            "idom": null,
+            "node": "concept:パチリス"
+          },
+          {
+            "idom": null,
+            "node": "concept:ピアノ"
+          },
+          {
+            "idom": null,
+            "node": "concept:ピチュー"
+          },
+          {
+            "idom": null,
+            "node": "concept:プラスル"
+          },
+          {
+            "idom": null,
+            "node": "concept:ベース"
+          },
+          {
+            "idom": null,
+            "node": "concept:マイナン"
+          },
+          {
+            "idom": null,
+            "node": "concept:マリオ"
+          },
+          {
+            "idom": null,
+            "node": "concept:ミミッキュ"
+          },
+          {
+            "idom": null,
+            "node": "concept:モルペコ"
+          },
+          {
+            "idom": null,
+            "node": "concept:ライチュウ"
+          },
+          {
+            "idom": null,
+            "node": "concept:ワリオ"
+          },
+          {
+            "idom": null,
+            "node": "concept:ワルイージ"
+          },
+          {
+            "idom": null,
+            "node": "concept:三味線"
+          },
+          {
+            "idom": null,
+            "node": "concept:原因調査"
+          },
+          {
+            "idom": null,
+            "node": "concept:定型依頼"
+          },
+          {
+            "idom": null,
+            "node": "concept:怒り"
+          },
+          {
+            "idom": null,
+            "node": "concept:恐怖"
+          },
+          {
+            "idom": null,
+            "node": "concept:担当引き継ぎ"
+          },
+          {
+            "idom": null,
+            "node": "concept:検索ボット"
+          },
+          {
+            "idom": null,
+            "node": "concept:状況報告"
+          },
+          {
+            "idom": null,
+            "node": "elem:3弦標準"
+          },
+          {
+            "idom": null,
+            "node": "elem:4弦標準"
+          },
+          {
+            "idom": null,
+            "node": "elem:6弦標準"
+          },
+          {
+            "idom": null,
+            "node": "elem:88鍵標準"
+          },
+          {
+            "idom": null,
+            "node": "elem:Apple製"
+          },
+          {
+            "idom": null,
+            "node": "elem:Google系OS"
+          },
+          {
+            "idom": null,
+            "node": "elem:iOS"
+          },
+          {
+            "idom": null,
+            "node": "elem:これからを案じる"
+          },
+          {
+            "idom": null,
+            "node": "elem:ほっぺ蓄電"
+          },
+          {
+            "idom": null,
+            "node": "elem:アクセサリ:Apple Pencil"
+          },
+          {
+            "idom": null,
+            "node": "elem:アクセサリ:MagSafe"
+          },
+          {
+            "idom": null,
+            "node": "elem:アクセサリ:Sペン"
+          },
+          {
+            "idom": "elem:区分:道具",
+            "node": "elem:アプリ実行環境"
+          },
+          {
+            "idom": null,
+            "node": "elem:アルコール含有"
+          },
+          {
+            "idom": null,
+            "node": "elem:エクマンの6感情:入らない"
+          },
+          {
+            "idom": null,
+            "node": "elem:エクマンの6感情:入る"
+          },
+          {
+            "idom": null,
+            "node": "elem:エレキ"
+          },
+          {
+            "idom": null,
+            "node": "elem:オーバーオール"
+          },
+          {
+            "idom": null,
+            "node": "elem:カフェイン含有"
+          },
+          {
+            "idom": null,
+            "node": "elem:クモの能力"
+          },
+          {
+            "idom": "elem:区分:架空の人物",
+            "node": "elem:ゲームキャラクター"
+          },
+          {
+            "idom": null,
+            "node": "elem:コウモリの衣装"
+          },
+          {
+            "idom": null,
+            "node": "elem:サケ属"
+          },
+          {
+            "idom": null,
+            "node": "elem:サケ科"
+          },
+          {
+            "idom": null,
+            "node": "elem:スマートフォン"
+          },
+          {
+            "idom": "elem:区分:仕組み",
+            "node": "elem:ソフトウェア"
+          },
+          {
+            "idom": null,
+            "node": "elem:タイプ:あく"
+          },
+          {
+            "idom": null,
+            "node": "elem:タイプ:でんき"
+          },
+          {
+            "idom": null,
+            "node": "elem:タイプ:ゴースト"
+          },
+          {
+            "idom": null,
+            "node": "elem:タイプ:フェアリー"
+          },
+          {
+            "idom": null,
+            "node": "elem:タウリン・ビタミンB群"
+          },
+          {
+            "idom": null,
+            "node": "elem:タッチパネル"
+          },
+          {
+            "idom": null,
+            "node": "elem:タブレット"
+          },
+          {
+            "idom": null,
+            "node": "elem:ヒーロー"
+          },
+          {
+            "idom": "elem:区分:架空の人物",
+            "node": "elem:フィクション"
+          },
+          {
+            "idom": null,
+            "node": "elem:フレット"
+          },
+          {
+            "idom": null,
+            "node": "elem:フレットなし"
+          },
+          {
+            "idom": null,
+            "node": "elem:ベイビィポケモン"
+          },
+          {
+            "idom": null,
+            "node": "elem:ボディ"
+          },
+          {
+            "idom": "elem:区分:架空の生き物",
+            "node": "elem:ポケモン"
+          },
+          {
+            "idom": null,
+            "node": "elem:モバイル通信"
+          },
+          {
+            "idom": null,
+            "node": "elem:ライバル視:マリオ"
+          },
+          {
+            "idom": null,
+            "node": "elem:ライバル視:ルイージ"
+          },
+          {
+            "idom": null,
+            "node": "elem:上位:こと"
+          },
+          {
+            "idom": null,
+            "node": "elem:上位:もの"
+          },
+          {
+            "idom": null,
+            "node": "elem:上位へ引き上げる"
+          },
+          {
+            "idom": null,
+            "node": "elem:中高音主体"
+          },
+          {
+            "idom": null,
+            "node": "elem:予定外の中断"
+          },
+          {
+            "idom": null,
+            "node": "elem:人間"
+          },
+          {
+            "idom": null,
+            "node": "elem:代表モデル:ストラトキャスター"
+          },
+          {
+            "idom": null,
+            "node": "elem:代表モデル:レスポール"
+          },
+          {
+            "idom": null,
+            "node": "elem:代表例:ELIZA"
+          },
+          {
+            "idom": null,
+            "node": "elem:任天堂"
+          },
+          {
+            "idom": null,
+            "node": "elem:低音主体"
+          },
+          {
+            "idom": null,
+            "node": "elem:作者:ジェリー・シーゲル"
+          },
+          {
+            "idom": null,
+            "node": "elem:作者:ジョー・シャスター"
+          },
+          {
+            "idom": null,
+            "node": "elem:作者:スタン・リー"
+          },
+          {
+            "idom": null,
+            "node": "elem:作者:スティーヴ・ディッコ"
+          },
+          {
+            "idom": null,
+            "node": "elem:作者:ビル・フィンガー"
+          },
+          {
+            "idom": null,
+            "node": "elem:作者:ボブ・ケイン"
+          },
+          {
+            "idom": null,
+            "node": "elem:例:サーバ停止"
+          },
+          {
+            "idom": null,
+            "node": "elem:例:パスワード再設定"
+          },
+          {
+            "idom": null,
+            "node": "elem:例:一次対応から二次対応へ"
+          },
+          {
+            "idom": null,
+            "node": "elem:例:夜勤から日勤へ"
+          },
+          {
+            "idom": null,
+            "node": "elem:例:日報"
+          },
+          {
+            "idom": null,
+            "node": "elem:例:毎週起きる同じ障害"
+          },
+          {
+            "idom": null,
+            "node": "elem:兄"
+          },
+          {
+            "idom": null,
+            "node": "elem:再発防止が目的"
+          },
+          {
+            "idom": null,
+            "node": "elem:出力:作業の結果"
+          },
+          {
+            "idom": null,
+            "node": "elem:出力:結果の一覧"
+          },
+          {
+            "idom": null,
+            "node": "elem:出力:返事"
+          },
+          {
+            "idom": null,
+            "node": "elem:出版社:DC"
+          },
+          {
+            "idom": null,
+            "node": "elem:出版社:マーベル"
+          },
+          {
+            "idom": null,
+            "node": "elem:分類:おうえんポケモン"
+          },
+          {
+            "idom": null,
+            "node": "elem:分類:こねずみポケモン"
+          },
+          {
+            "idom": null,
+            "node": "elem:分類:でんきりすポケモン"
+          },
+          {
+            "idom": null,
+            "node": "elem:分類:にめんポケモン"
+          },
+          {
+            "idom": null,
+            "node": "elem:分類:ねずみポケモン"
+          },
+          {
+            "idom": null,
+            "node": "elem:分類:ばけのかわポケモン"
+          },
+          {
+            "idom": null,
+            "node": "elem:分類:アンテナポケモン"
+          },
+          {
+            "idom": null,
+            "node": "elem:初登場世代:第1世代"
+          },
+          {
+            "idom": null,
+            "node": "elem:初登場世代:第2世代"
+          },
+          {
+            "idom": null,
+            "node": "elem:初登場世代:第3世代"
+          },
+          {
+            "idom": null,
+            "node": "elem:初登場世代:第4世代"
+          },
+          {
+            "idom": null,
+            "node": "elem:初登場世代:第6世代"
+          },
+          {
+            "idom": null,
+            "node": "elem:初登場世代:第7世代"
+          },
+          {
+            "idom": null,
+            "node": "elem:初登場世代:第8世代"
+          },
+          {
+            "idom": null,
+            "node": "elem:初登場年:1938"
+          },
+          {
+            "idom": null,
+            "node": "elem:初登場年:1939"
+          },
+          {
+            "idom": null,
+            "node": "elem:初登場年:1962"
+          },
+          {
+            "idom": null,
+            "node": "elem:初登場年:1981"
+          },
+          {
+            "idom": null,
+            "node": "elem:初登場年:1983"
+          },
+          {
+            "idom": null,
+            "node": "elem:初登場年:1992"
+          },
+          {
+            "idom": null,
+            "node": "elem:初登場年:2000"
+          },
+          {
+            "idom": null,
+            "node": "elem:判断の持ち主:上位へ移る"
+          },
+          {
+            "idom": null,
+            "node": "elem:判断の持ち主:次の担当へ移る"
+          },
+          {
+            "idom": null,
+            "node": "elem:判断の持ち主:自分のまま"
+          },
+          {
+            "idom": null,
+            "node": "elem:判断は委ねない"
+          },
+          {
+            "idom": null,
+            "node": "elem:判断を委ねる"
+          },
+          {
+            "idom": null,
+            "node": "elem:利用者の代理"
+          },
+          {
+            "idom": null,
+            "node": "elem:区分:仕組み"
+          },
+          {
+            "idom": null,
+            "node": "elem:区分:出来事"
+          },
+          {
+            "idom": null,
+            "node": "elem:区分:心の状態"
+          },
+          {
+            "idom": null,
+            "node": "elem:区分:架空の人物"
+          },
+          {
+            "idom": null,
+            "node": "elem:区分:架空の生き物"
+          },
+          {
+            "idom": null,
+            "node": "elem:区分:生き物"
+          },
+          {
+            "idom": null,
+            "node": "elem:区分:行い"
+          },
+          {
+            "idom": null,
+            "node": "elem:区分:道具"
+          },
+          {
+            "idom": null,
+            "node": "elem:区分:飲食物"
+          },
+          {
+            "idom": null,
+            "node": "elem:原因を特定する"
+          },
+          {
+            "idom": null,
+            "node": "elem:向き:上位へ"
+          },
+          {
+            "idom": null,
+            "node": "elem:向き:次の担当へ"
+          },
+          {
+            "idom": null,
+            "node": "elem:向き:関係者へ"
+          },
+          {
+            "idom": null,
+            "node": "elem:和楽器"
+          },
+          {
+            "idom": null,
+            "node": "elem:商品:ZONe"
+          },
+          {
+            "idom": null,
+            "node": "elem:商品:モンスターエナジー"
+          },
+          {
+            "idom": null,
+            "node": "elem:商品:レッドブル"
+          },
+          {
+            "idom": null,
+            "node": "elem:国内OSシェア:45.6%"
+          },
+          {
+            "idom": null,
+            "node": "elem:国内OSシェア:54.1%"
+          },
+          {
+            "idom": null,
+            "node": "elem:基盤:シナリオ"
+          },
+          {
+            "idom": null,
+            "node": "elem:基盤:検索式"
+          },
+          {
+            "idom": null,
+            "node": "elem:基盤:言語モデル"
+          },
+          {
+            "idom": null,
+            "node": "elem:外部の道具:使う"
+          },
+          {
+            "idom": null,
+            "node": "elem:外部の道具:使わない"
+          },
+          {
+            "idom": null,
+            "node": "elem:外部の道具:索引"
+          },
+          {
+            "idom": null,
+            "node": "elem:契機:交代"
+          },
+          {
+            "idom": null,
+            "node": "elem:契機:定期・節目"
+          },
+          {
+            "idom": null,
+            "node": "elem:契機:自分では解けない"
+          },
+          {
+            "idom": null,
+            "node": "elem:妨害への反応"
+          },
+          {
+            "idom": null,
+            "node": "elem:実在:しない"
+          },
+          {
+            "idom": null,
+            "node": "elem:実在:する"
+          },
+          {
+            "idom": null,
+            "node": "elem:対話で応答する"
+          },
+          {
+            "idom": null,
+            "node": "elem:対象:はっきりしている"
+          },
+          {
+            "idom": null,
+            "node": "elem:対象:はっきりしない"
+          },
+          {
+            "idom": null,
+            "node": "elem:対象:妨げた相手"
+          },
+          {
+            "idom": null,
+            "node": "elem:小型"
+          },
+          {
+            "idom": null,
+            "node": "elem:帽子"
+          },
+          {
+            "idom": null,
+            "node": "elem:帽子のマーク:L"
+          },
+          {
+            "idom": null,
+            "node": "elem:帽子のマーク:M"
+          },
+          {
+            "idom": null,
+            "node": "elem:帽子のマーク:W"
+          },
+          {
+            "idom": null,
+            "node": "elem:帽子のマーク:逆L"
+          },
+          {
+            "idom": null,
+            "node": "elem:弓で弾く"
+          },
+          {
+            "idom": null,
+            "node": "elem:弟"
+          },
+          {
+            "idom": null,
+            "node": "elem:弦楽器"
+          },
+          {
+            "idom": null,
+            "node": "elem:復旧が目的"
+          },
+          {
+            "idom": null,
+            "node": "elem:急ぎ:すぐ"
+          },
+          {
+            "idom": null,
+            "node": "elem:急ぎ:約束の期限まで"
+          },
+          {
+            "idom": null,
+            "node": "elem:急ぎ:計画して"
+          },
+          {
+            "idom": "elem:区分:心の状態",
+            "node": "elem:感情"
+          },
+          {
+            "idom": null,
+            "node": "elem:手続きどおりの依頼"
+          },
+          {
+            "idom": null,
+            "node": "elem:手順:一問一答"
+          },
+          {
+            "idom": null,
+            "node": "elem:手順:計画して何手も進める"
+          },
+          {
+            "idom": null,
+            "node": "elem:打弦"
+          },
+          {
+            "idom": null,
+            "node": "elem:抽出液"
+          },
+          {
+            "idom": null,
+            "node": "elem:担当を渡す"
+          },
+          {
+            "idom": null,
+            "node": "elem:拠点:ゴッサム・シティ"
+          },
+          {
+            "idom": null,
+            "node": "elem:拠点:ニューヨーク"
+          },
+          {
+            "idom": null,
+            "node": "elem:拠点:メトロポリス"
+          },
+          {
+            "idom": null,
+            "node": "elem:提供が目的"
+          },
+          {
+            "idom": null,
+            "node": "elem:撥で弾く"
+          },
+          {
+            "idom": null,
+            "node": "elem:撥弦"
+          },
+          {
+            "idom": null,
+            "node": "elem:擦弦"
+          },
+          {
+            "idom": null,
+            "node": "elem:料理:ちゃんちゃん焼き"
+          },
+          {
+            "idom": null,
+            "node": "elem:料理:ます寿司"
+          },
+          {
+            "idom": null,
+            "node": "elem:料理:ルイベ"
+          },
+          {
+            "idom": null,
+            "node": "elem:料理:塩焼き"
+          },
+          {
+            "idom": null,
+            "node": "elem:時:いま"
+          },
+          {
+            "idom": null,
+            "node": "elem:時:これから"
+          },
+          {
+            "idom": null,
+            "node": "elem:時:起きたこと"
+          },
+          {
+            "idom": null,
+            "node": "elem:有名なリフ:Another One Bites the Dust"
+          },
+          {
+            "idom": null,
+            "node": "elem:有名なリフ:Seven Nation Army"
+          },
+          {
+            "idom": null,
+            "node": "elem:有名なリフ:Smoke on the Water"
+          },
+          {
+            "idom": null,
+            "node": "elem:桜色の婚姻色"
+          },
+          {
+            "idom": "elem:区分:道具",
+            "node": "elem:楽器"
+          },
+          {
+            "idom": null,
+            "node": "elem:正体:クラーク・ケント"
+          },
+          {
+            "idom": null,
+            "node": "elem:正体:ピーター・パーカー"
+          },
+          {
+            "idom": null,
+            "node": "elem:正体:ブルース・ウェイン"
+          },
+          {
+            "idom": null,
+            "node": "elem:流通名:トラウトサーモン"
+          },
+          {
+            "idom": null,
+            "node": "elem:混ぜて作る"
+          },
+          {
+            "idom": null,
+            "node": "elem:炭酸"
+          },
+          {
+            "idom": null,
+            "node": "elem:焙煎豆"
+          },
+          {
+            "idom": null,
+            "node": "elem:状況を伝える"
+          },
+          {
+            "idom": null,
+            "node": "elem:甘味料"
+          },
+          {
+            "idom": null,
+            "node": "elem:産卵:一生に一度"
+          },
+          {
+            "idom": null,
+            "node": "elem:産卵:複数回"
+          },
+          {
+            "idom": null,
+            "node": "elem:目の前の脅威"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値HP:20"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値HP:35"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値HP:55"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値HP:58"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値HP:60"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値HP:67"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値こうげき:40"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値こうげき:45"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値こうげき:50"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値こうげき:55"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値こうげき:58"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値こうげき:90"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値こうげき:95"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値すばやさ:101"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値すばやさ:110"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値すばやさ:60"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値すばやさ:90"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値すばやさ:95"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値すばやさ:96"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値すばやさ:97"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値とくこう:35"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値とくこう:45"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値とくこう:50"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値とくこう:70"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値とくこう:75"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値とくこう:81"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値とくこう:85"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値とくこう:90"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値とくぼう:105"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値とくぼう:35"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値とくぼう:50"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値とくぼう:58"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値とくぼう:67"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値とくぼう:75"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値とくぼう:80"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値とくぼう:85"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値とくぼう:90"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値ぼうぎょ:15"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値ぼうぎょ:40"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値ぼうぎょ:50"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値ぼうぎょ:55"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値ぼうぎょ:57"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値ぼうぎょ:58"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値ぼうぎょ:70"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値ぼうぎょ:80"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値合計:205"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値合計:320"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値合計:405"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値合計:431"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値合計:436"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値合計:476"
+          },
+          {
+            "idom": null,
+            "node": "elem:種族値合計:485"
+          },
+          {
+            "idom": null,
+            "node": "elem:索引を引く"
+          },
+          {
+            "idom": null,
+            "node": "elem:紫色"
+          },
+          {
+            "idom": null,
+            "node": "elem:緑色"
+          },
+          {
+            "idom": null,
+            "node": "elem:缶入り"
+          },
+          {
+            "idom": null,
+            "node": "elem:能力の由来:クモにかまれた"
+          },
+          {
+            "idom": null,
+            "node": "elem:能力の由来:クリプトン星人"
+          },
+          {
+            "idom": null,
+            "node": "elem:能力の由来:鍛錬と財力"
+          },
+          {
+            "idom": null,
+            "node": "elem:自律して作業する"
+          },
+          {
+            "idom": null,
+            "node": "elem:苦味"
+          },
+          {
+            "idom": null,
+            "node": "elem:行動:備える"
+          },
+          {
+            "idom": null,
+            "node": "elem:行動:立ち向かう"
+          },
+          {
+            "idom": null,
+            "node": "elem:行動:逃げる"
+          },
+          {
+            "idom": null,
+            "node": "elem:行動:避ける"
+          },
+          {
+            "idom": null,
+            "node": "elem:複数メーカー採用"
+          },
+          {
+            "idom": null,
+            "node": "elem:見守り:スクリーンタイム"
+          },
+          {
+            "idom": null,
+            "node": "elem:見守り:ファミリーリンク"
+          },
+          {
+            "idom": null,
+            "node": "elem:覚醒目的"
+          },
+          {
+            "idom": null,
+            "node": "elem:誕生:マリオの2Pカラー"
+          },
+          {
+            "idom": null,
+            "node": "elem:赤いほっぺ"
+          },
+          {
+            "idom": null,
+            "node": "elem:赤色"
+          },
+          {
+            "idom": null,
+            "node": "elem:起点:利用者の依頼"
+          },
+          {
+            "idom": null,
+            "node": "elem:起点:利用者の申告"
+          },
+          {
+            "idom": null,
+            "node": "elem:起点:監視の検知"
+          },
+          {
+            "idom": null,
+            "node": "elem:起点:繰り返す障害"
+          },
+          {
+            "idom": null,
+            "node": "elem:身体反応:すくみ"
+          },
+          {
+            "idom": null,
+            "node": "elem:身体反応:緊張"
+          },
+          {
+            "idom": null,
+            "node": "elem:身体反応:興奮"
+          },
+          {
+            "idom": "elem:区分:行い",
+            "node": "elem:連絡"
+          },
+          {
+            "idom": null,
+            "node": "elem:進化しない"
+          },
+          {
+            "idom": null,
+            "node": "elem:進化の段:1進化ポケモン"
+          },
+          {
+            "idom": null,
+            "node": "elem:進化の段:2進化ポケモン"
+          },
+          {
+            "idom": null,
+            "node": "elem:進化の段:たねポケモン"
+          },
+          {
+            "idom": null,
+            "node": "elem:進化方法:かみなりのいし"
+          },
+          {
+            "idom": null,
+            "node": "elem:進化方法:なつき"
+          },
+          {
+            "idom": "elem:区分:出来事",
+            "node": "elem:運用の出来事"
+          },
+          {
+            "idom": null,
+            "node": "elem:遡河回遊魚"
+          },
+          {
+            "idom": null,
+            "node": "elem:配管工"
+          },
+          {
+            "idom": null,
+            "node": "elem:酒類"
+          },
+          {
+            "idom": null,
+            "node": "elem:重大度:あり"
+          },
+          {
+            "idom": null,
+            "node": "elem:金属弦"
+          },
+          {
+            "idom": null,
+            "node": "elem:銀白色の体側"
+          },
+          {
+            "idom": null,
+            "node": "elem:鍵盤"
+          },
+          {
+            "idom": null,
+            "node": "elem:開放弦:EADG"
+          },
+          {
+            "idom": null,
+            "node": "elem:開放弦:EADGBE"
+          },
+          {
+            "idom": null,
+            "node": "elem:開放弦:GCEA"
+          },
+          {
+            "idom": null,
+            "node": "elem:開放弦:GDAE"
+          },
+          {
+            "idom": null,
+            "node": "elem:開放弦:曲ごとに調子を変える"
+          },
+          {
+            "idom": null,
+            "node": "elem:陸封型:ニジマス"
+          },
+          {
+            "idom": null,
+            "node": "elem:陸封型:ヤマメ"
+          },
+          {
+            "idom": null,
+            "node": "elem:音声通話"
+          },
+          {
+            "idom": null,
+            "node": "elem:飛行"
+          },
+          {
+            "idom": null,
+            "node": "elem:食用"
+          },
+          {
+            "idom": "elem:区分:飲食物",
+            "node": "elem:飲料"
+          },
+          {
+            "idom": "elem:区分:生き物",
+            "node": "elem:魚類"
+          },
+          {
+            "idom": null,
+            "node": "elem:黄色"
+          },
+          {
+            "idom": null,
+            "node": "name:ITIL用語:インシデント管理"
+          },
+          {
+            "idom": null,
+            "node": "name:ITIL用語:サービス要求管理"
+          },
+          {
+            "idom": null,
+            "node": "name:ITIL用語:問題管理"
+          },
+          {
+            "idom": null,
+            "node": "name:OS名:iPadOS"
+          },
+          {
+            "idom": null,
+            "node": "name:主役シリーズ:スーパーマリオ"
+          },
+          {
+            "idom": null,
+            "node": "name:主役シリーズ:メイド イン ワリオ"
+          },
+          {
+            "idom": null,
+            "node": "name:主役シリーズ:ルイージマンション"
+          },
+          {
+            "idom": null,
+            "node": "name:主役シリーズ:ワリオランド"
+          },
+          {
+            "idom": null,
+            "node": "name:代表モデル:ジャズベース"
+          },
+          {
+            "idom": null,
+            "node": "name:代表モデル:プレシジョンベース"
+          },
+          {
+            "idom": null,
+            "node": "name:別名:アキアジ"
+          },
+          {
+            "idom": null,
+            "node": "name:別名:スパイダー"
+          },
+          {
+            "idom": null,
+            "node": "name:別名:トキシラズ"
+          },
+          {
+            "idom": null,
+            "node": "name:別名:ママス"
+          },
+          {
+            "idom": null,
+            "node": "name:別名:不安感"
+          },
+          {
+            "idom": null,
+            "node": "name:別名:人工知能エージェント"
+          },
+          {
+            "idom": null,
+            "node": "name:同音語:避け"
+          },
+          {
+            "idom": null,
+            "node": "name:同音語:酒"
+          },
+          {
+            "idom": null,
+            "node": "name:名前の由来:イタリアで多い名前"
+          },
+          {
+            "idom": null,
+            "node": "name:名前の由来:類似"
+          },
+          {
+            "idom": null,
+            "node": "name:和名:シロザケ"
+          },
+          {
+            "idom": null,
+            "node": "name:学名:Oncorhynchus keta"
+          },
+          {
+            "idom": null,
+            "node": "name:学名:Oncorhynchus masou"
+          },
+          {
+            "idom": null,
+            "node": "name:学名:Oncorhynchus mykiss"
+          },
+          {
+            "idom": null,
+            "node": "name:略語:INC"
+          },
+          {
+            "idom": null,
+            "node": "name:略語:Spidey"
+          },
+          {
+            "idom": null,
+            "node": "name:略語:エスカレ"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:AI agent"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:Android"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:Bass"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:Batman"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:Chum salmon"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:Cocktail"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:Coffee"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:Dedenne"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:Energy drink"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:Guitar"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:Luigi"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:Mario"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:Masu salmon"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:Mimikyu"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:Minun"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:Morpeko"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:Pachirisu"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:Piano"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:Pichu"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:Pikachu"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:Plusle"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:Raichu"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:Salmon"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:Shamisen"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:Spider-Man"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:Steelhead"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:Superman"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:Ukulele"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:Violin"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:Waluigi"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:Wario"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:anger"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:anxiety"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:chatbot"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:escalation"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:fear"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:handover"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:iPad"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:iPhone"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:incident"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:problem investigation"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:search bot"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:service request"
+          },
+          {
+            "idom": null,
+            "node": "name:英名:status report"
+          },
+          {
+            "idom": null,
+            "node": "name:読み:いかり"
+          },
+          {
+            "idom": null,
+            "node": "name:読み:いんしでんと"
+          },
+          {
+            "idom": null,
+            "node": "name:読み:えすかれーしょん"
+          },
+          {
+            "idom": null,
+            "node": "name:読み:きょうふ"
+          },
+          {
+            "idom": null,
+            "node": "name:読み:さけ"
+          },
+          {
+            "idom": null,
+            "node": "name:読み:しゃけ"
+          },
+          {
+            "idom": null,
+            "node": "name:読み:しゃみせん"
+          },
+          {
+            "idom": null,
+            "node": "name:読み:すぱいだーまん"
+          },
+          {
+            "idom": null,
+            "node": "name:読み:すーぱーまん"
+          },
+          {
+            "idom": null,
+            "node": "name:読み:ちゃっとぼっと"
+          },
+          {
+            "idom": null,
+            "node": "name:読み:ばっとまん"
+          },
+          {
+            "idom": null,
+            "node": "name:読み:ふあん"
+          },
+          {
+            "idom": null,
+            "node": "name:韓国語:스파이더맨"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:Android"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C001-iphone"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C002-luigi"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C003-pikachu"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C004-energy-drink"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C005-guitar"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C006-salmon"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C007-spider-man"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C008-ai-agent"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C009-incident"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C010-anxiety"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C011-escalation"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:iPad"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ウクレレ"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:カクテル"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:コーヒー"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:サクラマス"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:スチールヘッド"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:スーパーマン"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:チャットボット"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:デデンネ"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:バイオリン"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:バットマン"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:パチリス"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ピアノ"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ピチュー"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:プラスル"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ベース"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:マイナン"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:マリオ"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ミミッキュ"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:モルペコ"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ライチュウ"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ワリオ"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ワルイージ"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:三味線"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:原因調査"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:定型依頼"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:怒り"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:恐怖"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:担当引き継ぎ"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:検索ボット"
+          },
+          {
+            "idom": null,
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:状況報告"
+          },
+          {
+            "idom": null,
+            "node": "snapshot:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b"
+          }
+        ],
+        "ranked": [
+          {
+            "lost": [
+              "elem:ゲームキャラクター",
+              "elem:フィクション",
+              "elem:区分:架空の人物"
+            ],
+            "node": "elem:区分:架空の人物",
+            "unreachable": 3
+          },
+          {
+            "lost": [
+              "elem:アプリ実行環境",
+              "elem:区分:道具",
+              "elem:楽器"
+            ],
+            "node": "elem:区分:道具",
+            "unreachable": 3
+          },
+          {
+            "lost": [
+              "elem:ソフトウェア",
+              "elem:区分:仕組み"
+            ],
+            "node": "elem:区分:仕組み",
+            "unreachable": 2
+          },
+          {
+            "lost": [
+              "elem:区分:出来事",
+              "elem:運用の出来事"
+            ],
+            "node": "elem:区分:出来事",
+            "unreachable": 2
+          },
+          {
+            "lost": [
+              "elem:区分:心の状態",
+              "elem:感情"
+            ],
+            "node": "elem:区分:心の状態",
+            "unreachable": 2
+          },
+          {
+            "lost": [
+              "elem:ポケモン",
+              "elem:区分:架空の生き物"
+            ],
+            "node": "elem:区分:架空の生き物",
+            "unreachable": 2
+          },
+          {
+            "lost": [
+              "elem:区分:生き物",
+              "elem:魚類"
+            ],
+            "node": "elem:区分:生き物",
+            "unreachable": 2
+          },
+          {
+            "lost": [
+              "elem:区分:行い",
+              "elem:連絡"
+            ],
+            "node": "elem:区分:行い",
+            "unreachable": 2
+          },
+          {
+            "lost": [
+              "elem:区分:飲食物",
+              "elem:飲料"
+            ],
+            "node": "elem:区分:飲食物",
+            "unreachable": 2
+          },
+          {
+            "lost": [
+              "concept:Android"
+            ],
+            "node": "concept:Android",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:C001-iphone"
+            ],
+            "node": "concept:C001-iphone",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:C002-luigi"
+            ],
+            "node": "concept:C002-luigi",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:C003-pikachu"
+            ],
+            "node": "concept:C003-pikachu",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:C004-energy-drink"
+            ],
+            "node": "concept:C004-energy-drink",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:C005-guitar"
+            ],
+            "node": "concept:C005-guitar",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:C006-salmon"
+            ],
+            "node": "concept:C006-salmon",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:C007-spider-man"
+            ],
+            "node": "concept:C007-spider-man",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:C008-ai-agent"
+            ],
+            "node": "concept:C008-ai-agent",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:C009-incident"
+            ],
+            "node": "concept:C009-incident",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:C010-anxiety"
+            ],
+            "node": "concept:C010-anxiety",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:C011-escalation"
+            ],
+            "node": "concept:C011-escalation",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:iPad"
+            ],
+            "node": "concept:iPad",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:ウクレレ"
+            ],
+            "node": "concept:ウクレレ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:カクテル"
+            ],
+            "node": "concept:カクテル",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:コーヒー"
+            ],
+            "node": "concept:コーヒー",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:サクラマス"
+            ],
+            "node": "concept:サクラマス",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:スチールヘッド"
+            ],
+            "node": "concept:スチールヘッド",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:スーパーマン"
+            ],
+            "node": "concept:スーパーマン",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:チャットボット"
+            ],
+            "node": "concept:チャットボット",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:デデンネ"
+            ],
+            "node": "concept:デデンネ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:バイオリン"
+            ],
+            "node": "concept:バイオリン",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:バットマン"
+            ],
+            "node": "concept:バットマン",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:パチリス"
+            ],
+            "node": "concept:パチリス",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:ピアノ"
+            ],
+            "node": "concept:ピアノ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:ピチュー"
+            ],
+            "node": "concept:ピチュー",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:プラスル"
+            ],
+            "node": "concept:プラスル",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:ベース"
+            ],
+            "node": "concept:ベース",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:マイナン"
+            ],
+            "node": "concept:マイナン",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:マリオ"
+            ],
+            "node": "concept:マリオ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:ミミッキュ"
+            ],
+            "node": "concept:ミミッキュ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:モルペコ"
+            ],
+            "node": "concept:モルペコ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:ライチュウ"
+            ],
+            "node": "concept:ライチュウ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:ワリオ"
+            ],
+            "node": "concept:ワリオ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:ワルイージ"
+            ],
+            "node": "concept:ワルイージ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:三味線"
+            ],
+            "node": "concept:三味線",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:原因調査"
+            ],
+            "node": "concept:原因調査",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:定型依頼"
+            ],
+            "node": "concept:定型依頼",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:怒り"
+            ],
+            "node": "concept:怒り",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:恐怖"
+            ],
+            "node": "concept:恐怖",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:担当引き継ぎ"
+            ],
+            "node": "concept:担当引き継ぎ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:検索ボット"
+            ],
+            "node": "concept:検索ボット",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:状況報告"
+            ],
+            "node": "concept:状況報告",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:3弦標準"
+            ],
+            "node": "elem:3弦標準",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:4弦標準"
+            ],
+            "node": "elem:4弦標準",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:6弦標準"
+            ],
+            "node": "elem:6弦標準",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:88鍵標準"
+            ],
+            "node": "elem:88鍵標準",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:Apple製"
+            ],
+            "node": "elem:Apple製",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:Google系OS"
+            ],
+            "node": "elem:Google系OS",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:iOS"
+            ],
+            "node": "elem:iOS",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:これからを案じる"
+            ],
+            "node": "elem:これからを案じる",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:ほっぺ蓄電"
+            ],
+            "node": "elem:ほっぺ蓄電",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:アクセサリ:Apple Pencil"
+            ],
+            "node": "elem:アクセサリ:Apple Pencil",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:アクセサリ:MagSafe"
+            ],
+            "node": "elem:アクセサリ:MagSafe",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:アクセサリ:Sペン"
+            ],
+            "node": "elem:アクセサリ:Sペン",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:アプリ実行環境"
+            ],
+            "node": "elem:アプリ実行環境",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:アルコール含有"
+            ],
+            "node": "elem:アルコール含有",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:エクマンの6感情:入らない"
+            ],
+            "node": "elem:エクマンの6感情:入らない",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:エクマンの6感情:入る"
+            ],
+            "node": "elem:エクマンの6感情:入る",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:エレキ"
+            ],
+            "node": "elem:エレキ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:オーバーオール"
+            ],
+            "node": "elem:オーバーオール",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:カフェイン含有"
+            ],
+            "node": "elem:カフェイン含有",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:クモの能力"
+            ],
+            "node": "elem:クモの能力",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:ゲームキャラクター"
+            ],
+            "node": "elem:ゲームキャラクター",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:コウモリの衣装"
+            ],
+            "node": "elem:コウモリの衣装",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:サケ属"
+            ],
+            "node": "elem:サケ属",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:サケ科"
+            ],
+            "node": "elem:サケ科",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:スマートフォン"
+            ],
+            "node": "elem:スマートフォン",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:ソフトウェア"
+            ],
+            "node": "elem:ソフトウェア",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:タイプ:あく"
+            ],
+            "node": "elem:タイプ:あく",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:タイプ:でんき"
+            ],
+            "node": "elem:タイプ:でんき",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:タイプ:ゴースト"
+            ],
+            "node": "elem:タイプ:ゴースト",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:タイプ:フェアリー"
+            ],
+            "node": "elem:タイプ:フェアリー",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:タウリン・ビタミンB群"
+            ],
+            "node": "elem:タウリン・ビタミンB群",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:タッチパネル"
+            ],
+            "node": "elem:タッチパネル",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:タブレット"
+            ],
+            "node": "elem:タブレット",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:ヒーロー"
+            ],
+            "node": "elem:ヒーロー",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:フィクション"
+            ],
+            "node": "elem:フィクション",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:フレット"
+            ],
+            "node": "elem:フレット",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:フレットなし"
+            ],
+            "node": "elem:フレットなし",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:ベイビィポケモン"
+            ],
+            "node": "elem:ベイビィポケモン",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:ボディ"
+            ],
+            "node": "elem:ボディ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:ポケモン"
+            ],
+            "node": "elem:ポケモン",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:モバイル通信"
+            ],
+            "node": "elem:モバイル通信",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:ライバル視:マリオ"
+            ],
+            "node": "elem:ライバル視:マリオ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:ライバル視:ルイージ"
+            ],
+            "node": "elem:ライバル視:ルイージ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:上位:こと"
+            ],
+            "node": "elem:上位:こと",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:上位:もの"
+            ],
+            "node": "elem:上位:もの",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:上位へ引き上げる"
+            ],
+            "node": "elem:上位へ引き上げる",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:中高音主体"
+            ],
+            "node": "elem:中高音主体",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:予定外の中断"
+            ],
+            "node": "elem:予定外の中断",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:人間"
+            ],
+            "node": "elem:人間",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:代表モデル:ストラトキャスター"
+            ],
+            "node": "elem:代表モデル:ストラトキャスター",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:代表モデル:レスポール"
+            ],
+            "node": "elem:代表モデル:レスポール",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:代表例:ELIZA"
+            ],
+            "node": "elem:代表例:ELIZA",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:任天堂"
+            ],
+            "node": "elem:任天堂",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:低音主体"
+            ],
+            "node": "elem:低音主体",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:作者:ジェリー・シーゲル"
+            ],
+            "node": "elem:作者:ジェリー・シーゲル",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:作者:ジョー・シャスター"
+            ],
+            "node": "elem:作者:ジョー・シャスター",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:作者:スタン・リー"
+            ],
+            "node": "elem:作者:スタン・リー",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:作者:スティーヴ・ディッコ"
+            ],
+            "node": "elem:作者:スティーヴ・ディッコ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:作者:ビル・フィンガー"
+            ],
+            "node": "elem:作者:ビル・フィンガー",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:作者:ボブ・ケイン"
+            ],
+            "node": "elem:作者:ボブ・ケイン",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:例:サーバ停止"
+            ],
+            "node": "elem:例:サーバ停止",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:例:パスワード再設定"
+            ],
+            "node": "elem:例:パスワード再設定",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:例:一次対応から二次対応へ"
+            ],
+            "node": "elem:例:一次対応から二次対応へ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:例:夜勤から日勤へ"
+            ],
+            "node": "elem:例:夜勤から日勤へ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:例:日報"
+            ],
+            "node": "elem:例:日報",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:例:毎週起きる同じ障害"
+            ],
+            "node": "elem:例:毎週起きる同じ障害",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:兄"
+            ],
+            "node": "elem:兄",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:再発防止が目的"
+            ],
+            "node": "elem:再発防止が目的",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:出力:作業の結果"
+            ],
+            "node": "elem:出力:作業の結果",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:出力:結果の一覧"
+            ],
+            "node": "elem:出力:結果の一覧",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:出力:返事"
+            ],
+            "node": "elem:出力:返事",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:出版社:DC"
+            ],
+            "node": "elem:出版社:DC",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:出版社:マーベル"
+            ],
+            "node": "elem:出版社:マーベル",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:分類:おうえんポケモン"
+            ],
+            "node": "elem:分類:おうえんポケモン",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:分類:こねずみポケモン"
+            ],
+            "node": "elem:分類:こねずみポケモン",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:分類:でんきりすポケモン"
+            ],
+            "node": "elem:分類:でんきりすポケモン",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:分類:にめんポケモン"
+            ],
+            "node": "elem:分類:にめんポケモン",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:分類:ねずみポケモン"
+            ],
+            "node": "elem:分類:ねずみポケモン",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:分類:ばけのかわポケモン"
+            ],
+            "node": "elem:分類:ばけのかわポケモン",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:分類:アンテナポケモン"
+            ],
+            "node": "elem:分類:アンテナポケモン",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:初登場世代:第1世代"
+            ],
+            "node": "elem:初登場世代:第1世代",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:初登場世代:第2世代"
+            ],
+            "node": "elem:初登場世代:第2世代",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:初登場世代:第3世代"
+            ],
+            "node": "elem:初登場世代:第3世代",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:初登場世代:第4世代"
+            ],
+            "node": "elem:初登場世代:第4世代",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:初登場世代:第6世代"
+            ],
+            "node": "elem:初登場世代:第6世代",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:初登場世代:第7世代"
+            ],
+            "node": "elem:初登場世代:第7世代",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:初登場世代:第8世代"
+            ],
+            "node": "elem:初登場世代:第8世代",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:初登場年:1938"
+            ],
+            "node": "elem:初登場年:1938",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:初登場年:1939"
+            ],
+            "node": "elem:初登場年:1939",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:初登場年:1962"
+            ],
+            "node": "elem:初登場年:1962",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:初登場年:1981"
+            ],
+            "node": "elem:初登場年:1981",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:初登場年:1983"
+            ],
+            "node": "elem:初登場年:1983",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:初登場年:1992"
+            ],
+            "node": "elem:初登場年:1992",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:初登場年:2000"
+            ],
+            "node": "elem:初登場年:2000",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:判断の持ち主:上位へ移る"
+            ],
+            "node": "elem:判断の持ち主:上位へ移る",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:判断の持ち主:次の担当へ移る"
+            ],
+            "node": "elem:判断の持ち主:次の担当へ移る",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:判断の持ち主:自分のまま"
+            ],
+            "node": "elem:判断の持ち主:自分のまま",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:判断は委ねない"
+            ],
+            "node": "elem:判断は委ねない",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:判断を委ねる"
+            ],
+            "node": "elem:判断を委ねる",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:利用者の代理"
+            ],
+            "node": "elem:利用者の代理",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:原因を特定する"
+            ],
+            "node": "elem:原因を特定する",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:向き:上位へ"
+            ],
+            "node": "elem:向き:上位へ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:向き:次の担当へ"
+            ],
+            "node": "elem:向き:次の担当へ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:向き:関係者へ"
+            ],
+            "node": "elem:向き:関係者へ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:和楽器"
+            ],
+            "node": "elem:和楽器",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:商品:ZONe"
+            ],
+            "node": "elem:商品:ZONe",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:商品:モンスターエナジー"
+            ],
+            "node": "elem:商品:モンスターエナジー",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:商品:レッドブル"
+            ],
+            "node": "elem:商品:レッドブル",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:国内OSシェア:45.6%"
+            ],
+            "node": "elem:国内OSシェア:45.6%",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:国内OSシェア:54.1%"
+            ],
+            "node": "elem:国内OSシェア:54.1%",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:基盤:シナリオ"
+            ],
+            "node": "elem:基盤:シナリオ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:基盤:検索式"
+            ],
+            "node": "elem:基盤:検索式",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:基盤:言語モデル"
+            ],
+            "node": "elem:基盤:言語モデル",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:外部の道具:使う"
+            ],
+            "node": "elem:外部の道具:使う",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:外部の道具:使わない"
+            ],
+            "node": "elem:外部の道具:使わない",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:外部の道具:索引"
+            ],
+            "node": "elem:外部の道具:索引",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:契機:交代"
+            ],
+            "node": "elem:契機:交代",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:契機:定期・節目"
+            ],
+            "node": "elem:契機:定期・節目",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:契機:自分では解けない"
+            ],
+            "node": "elem:契機:自分では解けない",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:妨害への反応"
+            ],
+            "node": "elem:妨害への反応",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:実在:しない"
+            ],
+            "node": "elem:実在:しない",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:実在:する"
+            ],
+            "node": "elem:実在:する",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:対話で応答する"
+            ],
+            "node": "elem:対話で応答する",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:対象:はっきりしている"
+            ],
+            "node": "elem:対象:はっきりしている",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:対象:はっきりしない"
+            ],
+            "node": "elem:対象:はっきりしない",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:対象:妨げた相手"
+            ],
+            "node": "elem:対象:妨げた相手",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:小型"
+            ],
+            "node": "elem:小型",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:帽子"
+            ],
+            "node": "elem:帽子",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:帽子のマーク:L"
+            ],
+            "node": "elem:帽子のマーク:L",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:帽子のマーク:M"
+            ],
+            "node": "elem:帽子のマーク:M",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:帽子のマーク:W"
+            ],
+            "node": "elem:帽子のマーク:W",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:帽子のマーク:逆L"
+            ],
+            "node": "elem:帽子のマーク:逆L",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:弓で弾く"
+            ],
+            "node": "elem:弓で弾く",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:弟"
+            ],
+            "node": "elem:弟",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:弦楽器"
+            ],
+            "node": "elem:弦楽器",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:復旧が目的"
+            ],
+            "node": "elem:復旧が目的",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:急ぎ:すぐ"
+            ],
+            "node": "elem:急ぎ:すぐ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:急ぎ:約束の期限まで"
+            ],
+            "node": "elem:急ぎ:約束の期限まで",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:急ぎ:計画して"
+            ],
+            "node": "elem:急ぎ:計画して",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:感情"
+            ],
+            "node": "elem:感情",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:手続きどおりの依頼"
+            ],
+            "node": "elem:手続きどおりの依頼",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:手順:一問一答"
+            ],
+            "node": "elem:手順:一問一答",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:手順:計画して何手も進める"
+            ],
+            "node": "elem:手順:計画して何手も進める",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:打弦"
+            ],
+            "node": "elem:打弦",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:抽出液"
+            ],
+            "node": "elem:抽出液",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:担当を渡す"
+            ],
+            "node": "elem:担当を渡す",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:拠点:ゴッサム・シティ"
+            ],
+            "node": "elem:拠点:ゴッサム・シティ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:拠点:ニューヨーク"
+            ],
+            "node": "elem:拠点:ニューヨーク",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:拠点:メトロポリス"
+            ],
+            "node": "elem:拠点:メトロポリス",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:提供が目的"
+            ],
+            "node": "elem:提供が目的",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:撥で弾く"
+            ],
+            "node": "elem:撥で弾く",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:撥弦"
+            ],
+            "node": "elem:撥弦",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:擦弦"
+            ],
+            "node": "elem:擦弦",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:料理:ちゃんちゃん焼き"
+            ],
+            "node": "elem:料理:ちゃんちゃん焼き",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:料理:ます寿司"
+            ],
+            "node": "elem:料理:ます寿司",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:料理:ルイベ"
+            ],
+            "node": "elem:料理:ルイベ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:料理:塩焼き"
+            ],
+            "node": "elem:料理:塩焼き",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:時:いま"
+            ],
+            "node": "elem:時:いま",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:時:これから"
+            ],
+            "node": "elem:時:これから",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:時:起きたこと"
+            ],
+            "node": "elem:時:起きたこと",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:有名なリフ:Another One Bites the Dust"
+            ],
+            "node": "elem:有名なリフ:Another One Bites the Dust",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:有名なリフ:Seven Nation Army"
+            ],
+            "node": "elem:有名なリフ:Seven Nation Army",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:有名なリフ:Smoke on the Water"
+            ],
+            "node": "elem:有名なリフ:Smoke on the Water",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:桜色の婚姻色"
+            ],
+            "node": "elem:桜色の婚姻色",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:楽器"
+            ],
+            "node": "elem:楽器",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:正体:クラーク・ケント"
+            ],
+            "node": "elem:正体:クラーク・ケント",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:正体:ピーター・パーカー"
+            ],
+            "node": "elem:正体:ピーター・パーカー",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:正体:ブルース・ウェイン"
+            ],
+            "node": "elem:正体:ブルース・ウェイン",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:流通名:トラウトサーモン"
+            ],
+            "node": "elem:流通名:トラウトサーモン",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:混ぜて作る"
+            ],
+            "node": "elem:混ぜて作る",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:炭酸"
+            ],
+            "node": "elem:炭酸",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:焙煎豆"
+            ],
+            "node": "elem:焙煎豆",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:状況を伝える"
+            ],
+            "node": "elem:状況を伝える",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:甘味料"
+            ],
+            "node": "elem:甘味料",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:産卵:一生に一度"
+            ],
+            "node": "elem:産卵:一生に一度",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:産卵:複数回"
+            ],
+            "node": "elem:産卵:複数回",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:目の前の脅威"
+            ],
+            "node": "elem:目の前の脅威",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値HP:20"
+            ],
+            "node": "elem:種族値HP:20",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値HP:35"
+            ],
+            "node": "elem:種族値HP:35",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値HP:55"
+            ],
+            "node": "elem:種族値HP:55",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値HP:58"
+            ],
+            "node": "elem:種族値HP:58",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値HP:60"
+            ],
+            "node": "elem:種族値HP:60",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値HP:67"
+            ],
+            "node": "elem:種族値HP:67",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値こうげき:40"
+            ],
+            "node": "elem:種族値こうげき:40",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値こうげき:45"
+            ],
+            "node": "elem:種族値こうげき:45",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値こうげき:50"
+            ],
+            "node": "elem:種族値こうげき:50",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値こうげき:55"
+            ],
+            "node": "elem:種族値こうげき:55",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値こうげき:58"
+            ],
+            "node": "elem:種族値こうげき:58",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値こうげき:90"
+            ],
+            "node": "elem:種族値こうげき:90",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値こうげき:95"
+            ],
+            "node": "elem:種族値こうげき:95",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値すばやさ:101"
+            ],
+            "node": "elem:種族値すばやさ:101",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値すばやさ:110"
+            ],
+            "node": "elem:種族値すばやさ:110",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値すばやさ:60"
+            ],
+            "node": "elem:種族値すばやさ:60",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値すばやさ:90"
+            ],
+            "node": "elem:種族値すばやさ:90",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値すばやさ:95"
+            ],
+            "node": "elem:種族値すばやさ:95",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値すばやさ:96"
+            ],
+            "node": "elem:種族値すばやさ:96",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値すばやさ:97"
+            ],
+            "node": "elem:種族値すばやさ:97",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値とくこう:35"
+            ],
+            "node": "elem:種族値とくこう:35",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値とくこう:45"
+            ],
+            "node": "elem:種族値とくこう:45",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値とくこう:50"
+            ],
+            "node": "elem:種族値とくこう:50",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値とくこう:70"
+            ],
+            "node": "elem:種族値とくこう:70",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値とくこう:75"
+            ],
+            "node": "elem:種族値とくこう:75",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値とくこう:81"
+            ],
+            "node": "elem:種族値とくこう:81",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値とくこう:85"
+            ],
+            "node": "elem:種族値とくこう:85",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値とくこう:90"
+            ],
+            "node": "elem:種族値とくこう:90",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値とくぼう:105"
+            ],
+            "node": "elem:種族値とくぼう:105",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値とくぼう:35"
+            ],
+            "node": "elem:種族値とくぼう:35",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値とくぼう:50"
+            ],
+            "node": "elem:種族値とくぼう:50",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値とくぼう:58"
+            ],
+            "node": "elem:種族値とくぼう:58",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値とくぼう:67"
+            ],
+            "node": "elem:種族値とくぼう:67",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値とくぼう:75"
+            ],
+            "node": "elem:種族値とくぼう:75",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値とくぼう:80"
+            ],
+            "node": "elem:種族値とくぼう:80",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値とくぼう:85"
+            ],
+            "node": "elem:種族値とくぼう:85",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値とくぼう:90"
+            ],
+            "node": "elem:種族値とくぼう:90",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値ぼうぎょ:15"
+            ],
+            "node": "elem:種族値ぼうぎょ:15",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値ぼうぎょ:40"
+            ],
+            "node": "elem:種族値ぼうぎょ:40",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値ぼうぎょ:50"
+            ],
+            "node": "elem:種族値ぼうぎょ:50",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値ぼうぎょ:55"
+            ],
+            "node": "elem:種族値ぼうぎょ:55",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値ぼうぎょ:57"
+            ],
+            "node": "elem:種族値ぼうぎょ:57",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値ぼうぎょ:58"
+            ],
+            "node": "elem:種族値ぼうぎょ:58",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値ぼうぎょ:70"
+            ],
+            "node": "elem:種族値ぼうぎょ:70",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値ぼうぎょ:80"
+            ],
+            "node": "elem:種族値ぼうぎょ:80",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値合計:205"
+            ],
+            "node": "elem:種族値合計:205",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値合計:320"
+            ],
+            "node": "elem:種族値合計:320",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値合計:405"
+            ],
+            "node": "elem:種族値合計:405",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値合計:431"
+            ],
+            "node": "elem:種族値合計:431",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値合計:436"
+            ],
+            "node": "elem:種族値合計:436",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値合計:476"
+            ],
+            "node": "elem:種族値合計:476",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:種族値合計:485"
+            ],
+            "node": "elem:種族値合計:485",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:索引を引く"
+            ],
+            "node": "elem:索引を引く",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:紫色"
+            ],
+            "node": "elem:紫色",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:緑色"
+            ],
+            "node": "elem:緑色",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:缶入り"
+            ],
+            "node": "elem:缶入り",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:能力の由来:クモにかまれた"
+            ],
+            "node": "elem:能力の由来:クモにかまれた",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:能力の由来:クリプトン星人"
+            ],
+            "node": "elem:能力の由来:クリプトン星人",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:能力の由来:鍛錬と財力"
+            ],
+            "node": "elem:能力の由来:鍛錬と財力",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:自律して作業する"
+            ],
+            "node": "elem:自律して作業する",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:苦味"
+            ],
+            "node": "elem:苦味",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:行動:備える"
+            ],
+            "node": "elem:行動:備える",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:行動:立ち向かう"
+            ],
+            "node": "elem:行動:立ち向かう",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:行動:逃げる"
+            ],
+            "node": "elem:行動:逃げる",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:行動:避ける"
+            ],
+            "node": "elem:行動:避ける",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:複数メーカー採用"
+            ],
+            "node": "elem:複数メーカー採用",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:見守り:スクリーンタイム"
+            ],
+            "node": "elem:見守り:スクリーンタイム",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:見守り:ファミリーリンク"
+            ],
+            "node": "elem:見守り:ファミリーリンク",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:覚醒目的"
+            ],
+            "node": "elem:覚醒目的",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:誕生:マリオの2Pカラー"
+            ],
+            "node": "elem:誕生:マリオの2Pカラー",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:赤いほっぺ"
+            ],
+            "node": "elem:赤いほっぺ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:赤色"
+            ],
+            "node": "elem:赤色",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:起点:利用者の依頼"
+            ],
+            "node": "elem:起点:利用者の依頼",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:起点:利用者の申告"
+            ],
+            "node": "elem:起点:利用者の申告",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:起点:監視の検知"
+            ],
+            "node": "elem:起点:監視の検知",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:起点:繰り返す障害"
+            ],
+            "node": "elem:起点:繰り返す障害",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:身体反応:すくみ"
+            ],
+            "node": "elem:身体反応:すくみ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:身体反応:緊張"
+            ],
+            "node": "elem:身体反応:緊張",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:身体反応:興奮"
+            ],
+            "node": "elem:身体反応:興奮",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:連絡"
+            ],
+            "node": "elem:連絡",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:進化しない"
+            ],
+            "node": "elem:進化しない",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:進化の段:1進化ポケモン"
+            ],
+            "node": "elem:進化の段:1進化ポケモン",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:進化の段:2進化ポケモン"
+            ],
+            "node": "elem:進化の段:2進化ポケモン",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:進化の段:たねポケモン"
+            ],
+            "node": "elem:進化の段:たねポケモン",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:進化方法:かみなりのいし"
+            ],
+            "node": "elem:進化方法:かみなりのいし",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:進化方法:なつき"
+            ],
+            "node": "elem:進化方法:なつき",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:運用の出来事"
+            ],
+            "node": "elem:運用の出来事",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:遡河回遊魚"
+            ],
+            "node": "elem:遡河回遊魚",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:配管工"
+            ],
+            "node": "elem:配管工",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:酒類"
+            ],
+            "node": "elem:酒類",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:重大度:あり"
+            ],
+            "node": "elem:重大度:あり",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:金属弦"
+            ],
+            "node": "elem:金属弦",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:銀白色の体側"
+            ],
+            "node": "elem:銀白色の体側",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:鍵盤"
+            ],
+            "node": "elem:鍵盤",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:開放弦:EADG"
+            ],
+            "node": "elem:開放弦:EADG",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:開放弦:EADGBE"
+            ],
+            "node": "elem:開放弦:EADGBE",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:開放弦:GCEA"
+            ],
+            "node": "elem:開放弦:GCEA",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:開放弦:GDAE"
+            ],
+            "node": "elem:開放弦:GDAE",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:開放弦:曲ごとに調子を変える"
+            ],
+            "node": "elem:開放弦:曲ごとに調子を変える",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:陸封型:ニジマス"
+            ],
+            "node": "elem:陸封型:ニジマス",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:陸封型:ヤマメ"
+            ],
+            "node": "elem:陸封型:ヤマメ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:音声通話"
+            ],
+            "node": "elem:音声通話",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:飛行"
+            ],
+            "node": "elem:飛行",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:食用"
+            ],
+            "node": "elem:食用",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:飲料"
+            ],
+            "node": "elem:飲料",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:魚類"
+            ],
+            "node": "elem:魚類",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:黄色"
+            ],
+            "node": "elem:黄色",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:ITIL用語:インシデント管理"
+            ],
+            "node": "name:ITIL用語:インシデント管理",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:ITIL用語:サービス要求管理"
+            ],
+            "node": "name:ITIL用語:サービス要求管理",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:ITIL用語:問題管理"
+            ],
+            "node": "name:ITIL用語:問題管理",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:OS名:iPadOS"
+            ],
+            "node": "name:OS名:iPadOS",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:主役シリーズ:スーパーマリオ"
+            ],
+            "node": "name:主役シリーズ:スーパーマリオ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:主役シリーズ:メイド イン ワリオ"
+            ],
+            "node": "name:主役シリーズ:メイド イン ワリオ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:主役シリーズ:ルイージマンション"
+            ],
+            "node": "name:主役シリーズ:ルイージマンション",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:主役シリーズ:ワリオランド"
+            ],
+            "node": "name:主役シリーズ:ワリオランド",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:代表モデル:ジャズベース"
+            ],
+            "node": "name:代表モデル:ジャズベース",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:代表モデル:プレシジョンベース"
+            ],
+            "node": "name:代表モデル:プレシジョンベース",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:別名:アキアジ"
+            ],
+            "node": "name:別名:アキアジ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:別名:スパイダー"
+            ],
+            "node": "name:別名:スパイダー",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:別名:トキシラズ"
+            ],
+            "node": "name:別名:トキシラズ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:別名:ママス"
+            ],
+            "node": "name:別名:ママス",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:別名:不安感"
+            ],
+            "node": "name:別名:不安感",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:別名:人工知能エージェント"
+            ],
+            "node": "name:別名:人工知能エージェント",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:同音語:避け"
+            ],
+            "node": "name:同音語:避け",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:同音語:酒"
+            ],
+            "node": "name:同音語:酒",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:名前の由来:イタリアで多い名前"
+            ],
+            "node": "name:名前の由来:イタリアで多い名前",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:名前の由来:類似"
+            ],
+            "node": "name:名前の由来:類似",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:和名:シロザケ"
+            ],
+            "node": "name:和名:シロザケ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:学名:Oncorhynchus keta"
+            ],
+            "node": "name:学名:Oncorhynchus keta",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:学名:Oncorhynchus masou"
+            ],
+            "node": "name:学名:Oncorhynchus masou",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:学名:Oncorhynchus mykiss"
+            ],
+            "node": "name:学名:Oncorhynchus mykiss",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:略語:INC"
+            ],
+            "node": "name:略語:INC",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:略語:Spidey"
+            ],
+            "node": "name:略語:Spidey",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:略語:エスカレ"
+            ],
+            "node": "name:略語:エスカレ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:AI agent"
+            ],
+            "node": "name:英名:AI agent",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:Android"
+            ],
+            "node": "name:英名:Android",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:Bass"
+            ],
+            "node": "name:英名:Bass",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:Batman"
+            ],
+            "node": "name:英名:Batman",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:Chum salmon"
+            ],
+            "node": "name:英名:Chum salmon",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:Cocktail"
+            ],
+            "node": "name:英名:Cocktail",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:Coffee"
+            ],
+            "node": "name:英名:Coffee",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:Dedenne"
+            ],
+            "node": "name:英名:Dedenne",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:Energy drink"
+            ],
+            "node": "name:英名:Energy drink",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:Guitar"
+            ],
+            "node": "name:英名:Guitar",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:Luigi"
+            ],
+            "node": "name:英名:Luigi",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:Mario"
+            ],
+            "node": "name:英名:Mario",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:Masu salmon"
+            ],
+            "node": "name:英名:Masu salmon",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:Mimikyu"
+            ],
+            "node": "name:英名:Mimikyu",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:Minun"
+            ],
+            "node": "name:英名:Minun",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:Morpeko"
+            ],
+            "node": "name:英名:Morpeko",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:Pachirisu"
+            ],
+            "node": "name:英名:Pachirisu",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:Piano"
+            ],
+            "node": "name:英名:Piano",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:Pichu"
+            ],
+            "node": "name:英名:Pichu",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:Pikachu"
+            ],
+            "node": "name:英名:Pikachu",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:Plusle"
+            ],
+            "node": "name:英名:Plusle",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:Raichu"
+            ],
+            "node": "name:英名:Raichu",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:Salmon"
+            ],
+            "node": "name:英名:Salmon",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:Shamisen"
+            ],
+            "node": "name:英名:Shamisen",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:Spider-Man"
+            ],
+            "node": "name:英名:Spider-Man",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:Steelhead"
+            ],
+            "node": "name:英名:Steelhead",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:Superman"
+            ],
+            "node": "name:英名:Superman",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:Ukulele"
+            ],
+            "node": "name:英名:Ukulele",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:Violin"
+            ],
+            "node": "name:英名:Violin",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:Waluigi"
+            ],
+            "node": "name:英名:Waluigi",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:Wario"
+            ],
+            "node": "name:英名:Wario",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:anger"
+            ],
+            "node": "name:英名:anger",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:anxiety"
+            ],
+            "node": "name:英名:anxiety",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:chatbot"
+            ],
+            "node": "name:英名:chatbot",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:escalation"
+            ],
+            "node": "name:英名:escalation",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:fear"
+            ],
+            "node": "name:英名:fear",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:handover"
+            ],
+            "node": "name:英名:handover",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:iPad"
+            ],
+            "node": "name:英名:iPad",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:iPhone"
+            ],
+            "node": "name:英名:iPhone",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:incident"
+            ],
+            "node": "name:英名:incident",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:problem investigation"
+            ],
+            "node": "name:英名:problem investigation",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:search bot"
+            ],
+            "node": "name:英名:search bot",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:service request"
+            ],
+            "node": "name:英名:service request",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:英名:status report"
+            ],
+            "node": "name:英名:status report",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:読み:いかり"
+            ],
+            "node": "name:読み:いかり",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:読み:いんしでんと"
+            ],
+            "node": "name:読み:いんしでんと",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:読み:えすかれーしょん"
+            ],
+            "node": "name:読み:えすかれーしょん",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:読み:きょうふ"
+            ],
+            "node": "name:読み:きょうふ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:読み:さけ"
+            ],
+            "node": "name:読み:さけ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:読み:しゃけ"
+            ],
+            "node": "name:読み:しゃけ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:読み:しゃみせん"
+            ],
+            "node": "name:読み:しゃみせん",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:読み:すぱいだーまん"
+            ],
+            "node": "name:読み:すぱいだーまん",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:読み:すーぱーまん"
+            ],
+            "node": "name:読み:すーぱーまん",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:読み:ちゃっとぼっと"
+            ],
+            "node": "name:読み:ちゃっとぼっと",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:読み:ばっとまん"
+            ],
+            "node": "name:読み:ばっとまん",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:読み:ふあん"
+            ],
+            "node": "name:読み:ふあん",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "name:韓国語:스파이더맨"
+            ],
+            "node": "name:韓国語:스파이더맨",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:Android"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:Android",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C001-iphone"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C001-iphone",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C002-luigi"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C002-luigi",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C003-pikachu"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C003-pikachu",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C004-energy-drink"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C004-energy-drink",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C005-guitar"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C005-guitar",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C006-salmon"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C006-salmon",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C007-spider-man"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C007-spider-man",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C008-ai-agent"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C008-ai-agent",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C009-incident"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C009-incident",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C010-anxiety"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C010-anxiety",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C011-escalation"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C011-escalation",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:iPad"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:iPad",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ウクレレ"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ウクレレ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:カクテル"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:カクテル",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:コーヒー"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:コーヒー",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:サクラマス"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:サクラマス",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:スチールヘッド"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:スチールヘッド",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:スーパーマン"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:スーパーマン",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:チャットボット"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:チャットボット",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:デデンネ"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:デデンネ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:バイオリン"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:バイオリン",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:バットマン"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:バットマン",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:パチリス"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:パチリス",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ピアノ"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ピアノ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ピチュー"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ピチュー",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:プラスル"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:プラスル",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ベース"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ベース",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:マイナン"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:マイナン",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:マリオ"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:マリオ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ミミッキュ"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ミミッキュ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:モルペコ"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:モルペコ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ライチュウ"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ライチュウ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ワリオ"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ワリオ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ワルイージ"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ワルイージ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:三味線"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:三味線",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:原因調査"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:原因調査",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:定型依頼"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:定型依頼",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:怒り"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:怒り",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:恐怖"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:恐怖",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:担当引き継ぎ"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:担当引き継ぎ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:検索ボット"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:検索ボット",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:状況報告"
+            ],
+            "node": "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:状況報告",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "snapshot:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b"
+            ],
+            "node": "snapshot:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b",
+            "unreachable": 1
+          }
+        ],
+        "roots": [
+          "elem:3弦標準",
+          "elem:4弦標準",
+          "elem:6弦標準",
+          "elem:88鍵標準",
+          "elem:Apple製",
+          "elem:Google系OS",
+          "elem:iOS",
+          "elem:これからを案じる",
+          "elem:ほっぺ蓄電",
+          "elem:アクセサリ:Apple Pencil",
+          "elem:アクセサリ:MagSafe",
+          "elem:アクセサリ:Sペン",
+          "elem:アルコール含有",
+          "elem:エクマンの6感情:入らない",
+          "elem:エクマンの6感情:入る",
+          "elem:エレキ",
+          "elem:オーバーオール",
+          "elem:カフェイン含有",
+          "elem:クモの能力",
+          "elem:コウモリの衣装",
+          "elem:サケ属",
+          "elem:サケ科",
+          "elem:スマートフォン",
+          "elem:タイプ:あく",
+          "elem:タイプ:でんき",
+          "elem:タイプ:ゴースト",
+          "elem:タイプ:フェアリー",
+          "elem:タウリン・ビタミンB群",
+          "elem:タッチパネル",
+          "elem:タブレット",
+          "elem:ヒーロー",
+          "elem:フレット",
+          "elem:フレットなし",
+          "elem:ベイビィポケモン",
+          "elem:ボディ",
+          "elem:モバイル通信",
+          "elem:ライバル視:マリオ",
+          "elem:ライバル視:ルイージ",
+          "elem:上位:こと",
+          "elem:上位:もの",
+          "elem:上位へ引き上げる",
+          "elem:中高音主体",
+          "elem:予定外の中断",
+          "elem:人間",
+          "elem:代表モデル:ストラトキャスター",
+          "elem:代表モデル:レスポール",
+          "elem:代表例:ELIZA",
+          "elem:任天堂",
+          "elem:低音主体",
+          "elem:作者:ジェリー・シーゲル",
+          "elem:作者:ジョー・シャスター",
+          "elem:作者:スタン・リー",
+          "elem:作者:スティーヴ・ディッコ",
+          "elem:作者:ビル・フィンガー",
+          "elem:作者:ボブ・ケイン",
+          "elem:例:サーバ停止",
+          "elem:例:パスワード再設定",
+          "elem:例:一次対応から二次対応へ",
+          "elem:例:夜勤から日勤へ",
+          "elem:例:日報",
+          "elem:例:毎週起きる同じ障害",
+          "elem:兄",
+          "elem:再発防止が目的",
+          "elem:出力:作業の結果",
+          "elem:出力:結果の一覧",
+          "elem:出力:返事",
+          "elem:出版社:DC",
+          "elem:出版社:マーベル",
+          "elem:分類:おうえんポケモン",
+          "elem:分類:こねずみポケモン",
+          "elem:分類:でんきりすポケモン",
+          "elem:分類:にめんポケモン",
+          "elem:分類:ねずみポケモン",
+          "elem:分類:ばけのかわポケモン",
+          "elem:分類:アンテナポケモン",
+          "elem:初登場世代:第1世代",
+          "elem:初登場世代:第2世代",
+          "elem:初登場世代:第3世代",
+          "elem:初登場世代:第4世代",
+          "elem:初登場世代:第6世代",
+          "elem:初登場世代:第7世代",
+          "elem:初登場世代:第8世代",
+          "elem:初登場年:1938",
+          "elem:初登場年:1939",
+          "elem:初登場年:1962",
+          "elem:初登場年:1981",
+          "elem:初登場年:1983",
+          "elem:初登場年:1992",
+          "elem:初登場年:2000",
+          "elem:判断の持ち主:上位へ移る",
+          "elem:判断の持ち主:次の担当へ移る",
+          "elem:判断の持ち主:自分のまま",
+          "elem:判断は委ねない",
+          "elem:判断を委ねる",
+          "elem:利用者の代理",
+          "elem:原因を特定する",
+          "elem:向き:上位へ",
+          "elem:向き:次の担当へ",
+          "elem:向き:関係者へ",
+          "elem:和楽器",
+          "elem:商品:ZONe",
+          "elem:商品:モンスターエナジー",
+          "elem:商品:レッドブル",
+          "elem:国内OSシェア:45.6%",
+          "elem:国内OSシェア:54.1%",
+          "elem:基盤:シナリオ",
+          "elem:基盤:検索式",
+          "elem:基盤:言語モデル",
+          "elem:外部の道具:使う",
+          "elem:外部の道具:使わない",
+          "elem:外部の道具:索引",
+          "elem:契機:交代",
+          "elem:契機:定期・節目",
+          "elem:契機:自分では解けない",
+          "elem:妨害への反応",
+          "elem:実在:しない",
+          "elem:実在:する",
+          "elem:対話で応答する",
+          "elem:対象:はっきりしている",
+          "elem:対象:はっきりしない",
+          "elem:対象:妨げた相手",
+          "elem:小型",
+          "elem:帽子",
+          "elem:帽子のマーク:L",
+          "elem:帽子のマーク:M",
+          "elem:帽子のマーク:W",
+          "elem:帽子のマーク:逆L",
+          "elem:弓で弾く",
+          "elem:弟",
+          "elem:弦楽器",
+          "elem:復旧が目的",
+          "elem:急ぎ:すぐ",
+          "elem:急ぎ:約束の期限まで",
+          "elem:急ぎ:計画して",
+          "elem:手続きどおりの依頼",
+          "elem:手順:一問一答",
+          "elem:手順:計画して何手も進める",
+          "elem:打弦",
+          "elem:抽出液",
+          "elem:担当を渡す",
+          "elem:拠点:ゴッサム・シティ",
+          "elem:拠点:ニューヨーク",
+          "elem:拠点:メトロポリス",
+          "elem:提供が目的",
+          "elem:撥で弾く",
+          "elem:撥弦",
+          "elem:擦弦",
+          "elem:料理:ちゃんちゃん焼き",
+          "elem:料理:ます寿司",
+          "elem:料理:ルイベ",
+          "elem:料理:塩焼き",
+          "elem:時:いま",
+          "elem:時:これから",
+          "elem:時:起きたこと",
+          "elem:有名なリフ:Another One Bites the Dust",
+          "elem:有名なリフ:Seven Nation Army",
+          "elem:有名なリフ:Smoke on the Water",
+          "elem:桜色の婚姻色",
+          "elem:正体:クラーク・ケント",
+          "elem:正体:ピーター・パーカー",
+          "elem:正体:ブルース・ウェイン",
+          "elem:流通名:トラウトサーモン",
+          "elem:混ぜて作る",
+          "elem:炭酸",
+          "elem:焙煎豆",
+          "elem:状況を伝える",
+          "elem:甘味料",
+          "elem:産卵:一生に一度",
+          "elem:産卵:複数回",
+          "elem:目の前の脅威",
+          "elem:種族値HP:20",
+          "elem:種族値HP:35",
+          "elem:種族値HP:55",
+          "elem:種族値HP:58",
+          "elem:種族値HP:60",
+          "elem:種族値HP:67",
+          "elem:種族値こうげき:40",
+          "elem:種族値こうげき:45",
+          "elem:種族値こうげき:50",
+          "elem:種族値こうげき:55",
+          "elem:種族値こうげき:58",
+          "elem:種族値こうげき:90",
+          "elem:種族値こうげき:95",
+          "elem:種族値すばやさ:101",
+          "elem:種族値すばやさ:110",
+          "elem:種族値すばやさ:60",
+          "elem:種族値すばやさ:90",
+          "elem:種族値すばやさ:95",
+          "elem:種族値すばやさ:96",
+          "elem:種族値すばやさ:97",
+          "elem:種族値とくこう:35",
+          "elem:種族値とくこう:45",
+          "elem:種族値とくこう:50",
+          "elem:種族値とくこう:70",
+          "elem:種族値とくこう:75",
+          "elem:種族値とくこう:81",
+          "elem:種族値とくこう:85",
+          "elem:種族値とくこう:90",
+          "elem:種族値とくぼう:105",
+          "elem:種族値とくぼう:35",
+          "elem:種族値とくぼう:50",
+          "elem:種族値とくぼう:58",
+          "elem:種族値とくぼう:67",
+          "elem:種族値とくぼう:75",
+          "elem:種族値とくぼう:80",
+          "elem:種族値とくぼう:85",
+          "elem:種族値とくぼう:90",
+          "elem:種族値ぼうぎょ:15",
+          "elem:種族値ぼうぎょ:40",
+          "elem:種族値ぼうぎょ:50",
+          "elem:種族値ぼうぎょ:55",
+          "elem:種族値ぼうぎょ:57",
+          "elem:種族値ぼうぎょ:58",
+          "elem:種族値ぼうぎょ:70",
+          "elem:種族値ぼうぎょ:80",
+          "elem:種族値合計:205",
+          "elem:種族値合計:320",
+          "elem:種族値合計:405",
+          "elem:種族値合計:431",
+          "elem:種族値合計:436",
+          "elem:種族値合計:476",
+          "elem:種族値合計:485",
+          "elem:索引を引く",
+          "elem:紫色",
+          "elem:緑色",
+          "elem:缶入り",
+          "elem:能力の由来:クモにかまれた",
+          "elem:能力の由来:クリプトン星人",
+          "elem:能力の由来:鍛錬と財力",
+          "elem:自律して作業する",
+          "elem:苦味",
+          "elem:行動:備える",
+          "elem:行動:立ち向かう",
+          "elem:行動:逃げる",
+          "elem:行動:避ける",
+          "elem:複数メーカー採用",
+          "elem:見守り:スクリーンタイム",
+          "elem:見守り:ファミリーリンク",
+          "elem:覚醒目的",
+          "elem:誕生:マリオの2Pカラー",
+          "elem:赤いほっぺ",
+          "elem:赤色",
+          "elem:起点:利用者の依頼",
+          "elem:起点:利用者の申告",
+          "elem:起点:監視の検知",
+          "elem:起点:繰り返す障害",
+          "elem:身体反応:すくみ",
+          "elem:身体反応:緊張",
+          "elem:身体反応:興奮",
+          "elem:進化しない",
+          "elem:進化の段:1進化ポケモン",
+          "elem:進化の段:2進化ポケモン",
+          "elem:進化の段:たねポケモン",
+          "elem:進化方法:かみなりのいし",
+          "elem:進化方法:なつき",
+          "elem:遡河回遊魚",
+          "elem:配管工",
+          "elem:酒類",
+          "elem:重大度:あり",
+          "elem:金属弦",
+          "elem:銀白色の体側",
+          "elem:鍵盤",
+          "elem:開放弦:EADG",
+          "elem:開放弦:EADGBE",
+          "elem:開放弦:GCEA",
+          "elem:開放弦:GDAE",
+          "elem:開放弦:曲ごとに調子を変える",
+          "elem:陸封型:ニジマス",
+          "elem:陸封型:ヤマメ",
+          "elem:音声通話",
+          "elem:飛行",
+          "elem:食用",
+          "elem:黄色",
+          "name:ITIL用語:インシデント管理",
+          "name:ITIL用語:サービス要求管理",
+          "name:ITIL用語:問題管理",
+          "name:OS名:iPadOS",
+          "name:主役シリーズ:スーパーマリオ",
+          "name:主役シリーズ:メイド イン ワリオ",
+          "name:主役シリーズ:ルイージマンション",
+          "name:主役シリーズ:ワリオランド",
+          "name:代表モデル:ジャズベース",
+          "name:代表モデル:プレシジョンベース",
+          "name:別名:アキアジ",
+          "name:別名:スパイダー",
+          "name:別名:トキシラズ",
+          "name:別名:ママス",
+          "name:別名:不安感",
+          "name:別名:人工知能エージェント",
+          "name:同音語:避け",
+          "name:同音語:酒",
+          "name:名前の由来:イタリアで多い名前",
+          "name:名前の由来:類似",
+          "name:和名:シロザケ",
+          "name:学名:Oncorhynchus keta",
+          "name:学名:Oncorhynchus masou",
+          "name:学名:Oncorhynchus mykiss",
+          "name:略語:INC",
+          "name:略語:Spidey",
+          "name:略語:エスカレ",
+          "name:英名:AI agent",
+          "name:英名:Android",
+          "name:英名:Bass",
+          "name:英名:Batman",
+          "name:英名:Chum salmon",
+          "name:英名:Cocktail",
+          "name:英名:Coffee",
+          "name:英名:Dedenne",
+          "name:英名:Energy drink",
+          "name:英名:Guitar",
+          "name:英名:Luigi",
+          "name:英名:Mario",
+          "name:英名:Masu salmon",
+          "name:英名:Mimikyu",
+          "name:英名:Minun",
+          "name:英名:Morpeko",
+          "name:英名:Pachirisu",
+          "name:英名:Piano",
+          "name:英名:Pichu",
+          "name:英名:Pikachu",
+          "name:英名:Plusle",
+          "name:英名:Raichu",
+          "name:英名:Salmon",
+          "name:英名:Shamisen",
+          "name:英名:Spider-Man",
+          "name:英名:Steelhead",
+          "name:英名:Superman",
+          "name:英名:Ukulele",
+          "name:英名:Violin",
+          "name:英名:Waluigi",
+          "name:英名:Wario",
+          "name:英名:anger",
+          "name:英名:anxiety",
+          "name:英名:chatbot",
+          "name:英名:escalation",
+          "name:英名:fear",
+          "name:英名:handover",
+          "name:英名:iPad",
+          "name:英名:iPhone",
+          "name:英名:incident",
+          "name:英名:problem investigation",
+          "name:英名:search bot",
+          "name:英名:service request",
+          "name:英名:status report",
+          "name:読み:いかり",
+          "name:読み:いんしでんと",
+          "name:読み:えすかれーしょん",
+          "name:読み:きょうふ",
+          "name:読み:さけ",
+          "name:読み:しゃけ",
+          "name:読み:しゃみせん",
+          "name:読み:すぱいだーまん",
+          "name:読み:すーぱーまん",
+          "name:読み:ちゃっとぼっと",
+          "name:読み:ばっとまん",
+          "name:読み:ふあん",
+          "name:韓国語:스파이더맨",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:Android",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C001-iphone",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C002-luigi",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C003-pikachu",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C004-energy-drink",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C005-guitar",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C006-salmon",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C007-spider-man",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C008-ai-agent",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C009-incident",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C010-anxiety",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:C011-escalation",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:iPad",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ウクレレ",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:カクテル",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:コーヒー",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:サクラマス",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:スチールヘッド",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:スーパーマン",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:チャットボット",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:デデンネ",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:バイオリン",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:バットマン",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:パチリス",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ピアノ",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ピチュー",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:プラスル",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ベース",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:マイナン",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:マリオ",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ミミッキュ",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:モルペコ",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ライチュウ",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ワリオ",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:ワルイージ",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:三味線",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:原因調査",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:定型依頼",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:怒り",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:恐怖",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:担当引き継ぎ",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:検索ボット",
+          "observation:951c91f63531ff915893d1b9185e1bddae48935980396ec5af9c4ad3b7c5720b:concept:状況報告"
+        ]
+      },
       "tool": {
         "name": "topontology",
-        "version": "0.1.0"
+        "version": "0.9.0"
       },
       "unclassified_edges": 735
     },
     "cases": {
       "classes": {
         "affirmation": {
+          "cycle_basis": {
+            "cycles": [],
+            "independent_cycles": 0
+          },
           "degree": {
             "max_in": 2,
             "max_out": 1,
@@ -533,6 +7074,10 @@
           }
         },
         "hypothesis": {
+          "cycle_basis": {
+            "cycles": [],
+            "independent_cycles": 0
+          },
           "degree": {
             "max_in": 1,
             "max_out": 1,
@@ -557,6 +7102,10 @@
           }
         },
         "judgment-record": {
+          "cycle_basis": {
+            "cycles": [],
+            "independent_cycles": 0
+          },
           "degree": {
             "max_in": 1,
             "max_out": 1,
@@ -581,6 +7130,10 @@
           }
         },
         "unknown-element": {
+          "cycle_basis": {
+            "cycles": [],
+            "independent_cycles": 0
+          },
           "degree": {
             "max_in": 1,
             "max_out": 1,
@@ -603,10 +7156,12 @@
           }
         }
       },
+      "collapsed_edges": [],
+      "pin_lag": [],
       "provenance": {
         "classification": {
           "path": "too/otl-relations.json",
-          "sha256": "141bfc1df14eec80ca7dedd5dd5f1310b839a675d14aa726b14133884d0f8afb"
+          "sha256": "857e015d7df020509dda6ec43dd8a9f74784c8a1976a40828d174b7cba4c3b4a"
         },
         "graph": {
           "path": "examples/tol-export/cases.json",
@@ -614,9 +7169,155 @@
         },
         "profile": "cases"
       },
+      "spof": {
+        "articulation_points": [
+          "case:K002-share-only",
+          "case:K003-shift-change",
+          "concept:C011-escalation",
+          "concept:状況報告",
+          "judgment:K002-share-only:0",
+          "judgment:K004-first-word:0"
+        ],
+        "dominators": [
+          {
+            "idom": null,
+            "node": "case:K001-night-db"
+          },
+          {
+            "idom": null,
+            "node": "case:K002-share-only"
+          },
+          {
+            "idom": null,
+            "node": "case:K003-shift-change"
+          },
+          {
+            "idom": null,
+            "node": "case:K004-first-word"
+          },
+          {
+            "idom": null,
+            "node": "concept:C011-escalation"
+          },
+          {
+            "idom": "case:K003-shift-change",
+            "node": "concept:担当引き継ぎ"
+          },
+          {
+            "idom": null,
+            "node": "concept:状況報告"
+          },
+          {
+            "idom": "case:K003-shift-change",
+            "node": "elem:引き継ぎメモを書く"
+          },
+          {
+            "idom": "case:K001-night-db",
+            "node": "judgment:K001-night-db:0"
+          },
+          {
+            "idom": "case:K002-share-only",
+            "node": "judgment:K002-share-only:0"
+          },
+          {
+            "idom": "case:K004-first-word",
+            "node": "judgment:K004-first-word:0"
+          }
+        ],
+        "ranked": [
+          {
+            "lost": [
+              "case:K003-shift-change",
+              "concept:担当引き継ぎ",
+              "elem:引き継ぎメモを書く"
+            ],
+            "node": "case:K003-shift-change",
+            "unreachable": 3
+          },
+          {
+            "lost": [
+              "case:K001-night-db",
+              "judgment:K001-night-db:0"
+            ],
+            "node": "case:K001-night-db",
+            "unreachable": 2
+          },
+          {
+            "lost": [
+              "case:K002-share-only",
+              "judgment:K002-share-only:0"
+            ],
+            "node": "case:K002-share-only",
+            "unreachable": 2
+          },
+          {
+            "lost": [
+              "case:K004-first-word",
+              "judgment:K004-first-word:0"
+            ],
+            "node": "case:K004-first-word",
+            "unreachable": 2
+          },
+          {
+            "lost": [
+              "concept:C011-escalation"
+            ],
+            "node": "concept:C011-escalation",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:担当引き継ぎ"
+            ],
+            "node": "concept:担当引き継ぎ",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "concept:状況報告"
+            ],
+            "node": "concept:状況報告",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "elem:引き継ぎメモを書く"
+            ],
+            "node": "elem:引き継ぎメモを書く",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "judgment:K001-night-db:0"
+            ],
+            "node": "judgment:K001-night-db:0",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "judgment:K002-share-only:0"
+            ],
+            "node": "judgment:K002-share-only:0",
+            "unreachable": 1
+          },
+          {
+            "lost": [
+              "judgment:K004-first-word:0"
+            ],
+            "node": "judgment:K004-first-word:0",
+            "unreachable": 1
+          }
+        ],
+        "roots": [
+          "case:K001-night-db",
+          "case:K002-share-only",
+          "case:K003-shift-change",
+          "case:K004-first-word"
+        ]
+      },
       "tool": {
         "name": "topontology",
-        "version": "0.1.0"
+        "version": "0.9.0"
       },
       "unclassified_edges": 0
     }

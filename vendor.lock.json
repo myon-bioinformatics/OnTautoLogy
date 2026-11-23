@@ -30,17 +30,17 @@
     },
     {
       "repository": "myon-bioinformatics/ONTO",
-      "ref": "783143a33b651e8179b1ef30355c8d871d6acdf2",
-      "commit": "783143a33b651e8179b1ef30355c8d871d6acdf2",
+      "ref": "195e9f0913bd4fd66466b9fa55c8f20f3b5fafe4",
+      "commit": "195e9f0913bd4fd66466b9fa55c8f20f3b5fafe4",
       "source": "ontology.py",
       "destination": "ontautology_shared/_onto/ontology.py",
-      "blob_sha": "e6ceccd8a6852cb9f97ef80a50884c053ecbeae8",
-      "sha256": "5fa0fa46469636241f2af8d99d62b96bf61a6b9959c716dee7d079729821dd2a"
+      "blob_sha": "0333ac8c0cc104e6026df4408e0de405a122f799",
+      "sha256": "c4bcfdaf552d4dccc053d570efcecd66e6c0b374519153e5c6d60afc8361dba1"
     },
     {
       "repository": "myon-bioinformatics/ONTO",
-      "ref": "783143a33b651e8179b1ef30355c8d871d6acdf2",
-      "commit": "783143a33b651e8179b1ef30355c8d871d6acdf2",
+      "ref": "195e9f0913bd4fd66466b9fa55c8f20f3b5fafe4",
+      "commit": "195e9f0913bd4fd66466b9fa55c8f20f3b5fafe4",
       "source": "knowledgegraph.py",
       "destination": "ontautology_shared/_onto/knowledgegraph.py",
       "blob_sha": "51bad6b53fa1aef82b7cb0fe3d376834eedd7f55",
@@ -48,8 +48,8 @@
     },
     {
       "repository": "myon-bioinformatics/ONTO",
-      "ref": "783143a33b651e8179b1ef30355c8d871d6acdf2",
-      "commit": "783143a33b651e8179b1ef30355c8d871d6acdf2",
+      "ref": "195e9f0913bd4fd66466b9fa55c8f20f3b5fafe4",
+      "commit": "195e9f0913bd4fd66466b9fa55c8f20f3b5fafe4",
       "source": "LICENSE",
       "destination": "ontautology_shared/_onto/LICENSE",
       "blob_sha": "4ec4989b801bf1a3df6184d21f79e6e7ed5931f6",
@@ -57,17 +57,17 @@
     },
     {
       "repository": "myon-bioinformatics/PythDRagoras",
-      "ref": "0effb65a3c132b876336cc249bca5cb42d99159d",
-      "commit": "0effb65a3c132b876336cc249bca5cb42d99159d",
+      "ref": "999f98c61be6ecd9781b010461685da41c8f1246",
+      "commit": "999f98c61be6ecd9781b010461685da41c8f1246",
       "source": "pythdragoras.py",
       "destination": "vendor/pythdragoras.py",
-      "blob_sha": "2ea02982e606212eda027c91cbf24c3e4ea0f0fa",
-      "sha256": "e9070752956a1902ae95595cdbc5cfd4652c8e43c3ac302060b2e33a8cda324c"
+      "blob_sha": "8979a80c260941bf2c20f8087b361c6bfb164446",
+      "sha256": "9fcafe4a5b66c1c20f9018210c0dcede32efdabbc316d63ccfa4d7fe7e69e500"
     },
     {
       "repository": "myon-bioinformatics/PythDRagoras",
-      "ref": "0effb65a3c132b876336cc249bca5cb42d99159d",
-      "commit": "0effb65a3c132b876336cc249bca5cb42d99159d",
+      "ref": "999f98c61be6ecd9781b010461685da41c8f1246",
+      "commit": "999f98c61be6ecd9781b010461685da41c8f1246",
       "source": "LICENSE",
       "destination": "vendor/PythDRagoras-LICENSE",
       "blob_sha": "4ec4989b801bf1a3df6184d21f79e6e7ed5931f6",

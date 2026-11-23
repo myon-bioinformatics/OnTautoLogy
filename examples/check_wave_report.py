@@ -63,7 +63,7 @@ if report != published:
 assert waves["audit"]["classes"]["dependency"]["edges"] == 13
 concepts = waves["concepts"]["classes"]
 assert concepts["hierarchy"]["edges"] == 29 and not concepts["hierarchy"]["sample_cycles"]
-assert concepts["similarity"]["edges"] == 62 and concepts["similarity"]["sample_cycles"]
+assert concepts["similarity"]["edges"] == 31 and not concepts["similarity"]["sample_cycles"]
 assert {key: row["edges"] for key, row in waves["cases"]["classes"].items()} == {
     "affirmation": 3, "hypothesis": 3, "judgment-record": 3, "unknown-element": 1,
 }
