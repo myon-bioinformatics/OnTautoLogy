@@ -722,7 +722,7 @@ def main(argv=None, *, commands=(), load=None):
                                      + "".join(f" · {name}" for name, *_ in commands))
     sub = parser.add_subparsers(dest="command", required=True)
     for name, text in (("check", "shape, references, basis, duplicates"), ("ladder", "edges per basis")):
-        sub.add_parser(name, help=text).add_argument("graph", type=Path)
+        sub.add_parser(name, help=text).add_argument("graph", type=Path,help="graph JSON")
     for name, text, terms in (("reach", "what a change of these nodes touches", "node ids"), ("why", "what these nodes rest on", "node ids"),
                               ("order", "batches, sources first", "edge kinds that mean 'before' (default: all)"),
                               ("cycles", "representative cycles", "edge kinds to look at (default: all)"),
@@ -730,7 +730,7 @@ def main(argv=None, *, commands=(), load=None):
                               ("define", "derive genus + differentia definitions from similar concept pairs", "concept names (default: all)"),
                               ("roundtrip", "reverse-lookup concepts that satisfy all given elements", "elements")):
         add = sub.add_parser(name, help=text)
-        add.add_argument("graph", type=Path)
+        add.add_argument("graph", type=Path,help="graph JSON")
         add.add_argument("terms", nargs="*" if name in ("order", "cycles", "define") else "+", help=terms)
     sub.add_parser("exchange", help="import/export named RDF statements and query RDF files (optional exchange extra)")
     consequence = sub.add_parser("entails", help="check whether a conclusion follows from propositional premises")
