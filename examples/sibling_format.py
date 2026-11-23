@@ -2,23 +2,28 @@
 
 想定する版は両リポジトリの main のマージコミットです。
 
-- TOO ``8621f2261d694af0de35e103ad2387872ca10b99``（親は ``30c5ed689cb931bce3787e37056082ce8cb52b3d``
-  と ``8cfb0cab3a917ffe9b945fc0c6d4ee0e8edc7f04``、版 0.2.0）の ``taxontoy.py``。
-  ``taxonomy.py`` は無い。表は ``taxontoy-relations/2`` で、``taxontoy-relations/1`` も読む。
-  どちらも ``audit`` / ``concepts`` / ``cases`` が「関係名 → 分類名」、``direction`` が向き、
-  ``excluded`` がその弾では数えない関係名です。``/2`` はそれに ``properties`` を足す。
+- TOO ``c80f39cd9a5359403fdfce0fec9be4605594c8eb``（親は ``d6ab38ec14d5aa2cb06f304227bc22b791288fb0``
+  と ``7424da3f9a6747eddef2abe0cfec0475e8b47034``、版 0.6.0）の ``taxontoy.py``。
+  ``taxonomy.py`` は無い。表は ``taxontoy-relations/3`` で、``/2`` と ``/1`` も読む。
+  ``audit`` / ``concepts`` / ``cases`` が「関係名 → 分類名」、``direction`` が向き、
+  ``excluded`` がその弾では数えない関係です。``/2`` と ``/3`` は ``properties`` を足す。
+  ``/3`` の ``excluded`` は関係名の配列ではなく、``relation`` / ``kind`` / ``since`` /
+  ``reason`` を持つオブジェクトの配列です。任意の ``repos`` プロファイルも持てます。
   ``properties.classes`` は ``transitive`` / ``symmetric`` / ``acyclic``、
   ``properties.relations`` はそれらに ``inverse_of`` と ``disjoint_with`` を足した宣言です。
   各宣言は ``since``（ASCII の YYYY-MM-DD）と ``reason`` を持ち、相手を指す宣言は ``relation`` も持つ。
-  版ごとのトップレベルキーは過不足なく一致しなければならない。未知の schema は一行で失敗する。
+  版ごとの必須トップレベルキーは過不足なく一致し、``/3`` だけ ``repos`` を足せる。
+  未知の schema は一行で失敗する。
   ``holds false`` は固定例に辺が無いので表に無く、現れたら被覆の未分類になります。
   ``taxontoy coverage`` は分類済み・除外・未分類・表にあってグラフに無い名前が
   重ならず全体を覆うことを見ます。``taxontoy candidates`` は畳まずに候補を出します。
   CLI の JSON には版と入力の sha256 が入ります。
-- TOL ``d8880c9e55a0ce502dbf54a128bcaf471f0efc0e``（親は ``7bd70a45`` と ``3184b725``）の
-  ``topontology.py``。``from topology import summarize`` は互換のために残っている。
+- TOL ``d61c3fc6bc813966357dfc8f614217aaf50d2c15``（親は ``ec14e4daa2c7dd4c0a9e22d4c523722f6f6a5dd5``
+  と ``c3e9bffe689ae6ae7e96b407f142caab263f6fa7``、版 0.9.0）の ``topontology.py``。
+  ``from topology import summarize`` は互換のために残っている。
   ``graph["edges"]`` の各要素は ``source`` と ``target`` を持つ。
   関係名は ``kind`` があればそれ、無ければ ``relation``。
+  ``mutual`` / ``undirected`` は集計前に往復を畳む。``taxontoy-relations/3`` も読む。
   分類ごとの値は従来の ``edges`` / ``incident_nodes`` / ``multiple_sources`` /
   ``sample_cycles`` に加え、``degree`` / ``weakly_connected_components`` /
   ``independent_cycles`` / ``depth`` / ``order_cycle`` を持つ。
@@ -44,20 +49,25 @@ sys.path.insert(0, str(ROOT))
 
 SCHEMA = "otl-tol-graph/1"
 PROFILES = ("audit", "concepts", "cases")
-TOO_COMMIT = "8621f2261d694af0de35e103ad2387872ca10b99"
+TOO_COMMIT = "c80f39cd9a5359403fdfce0fec9be4605594c8eb"
 SCHEMA_V1 = "taxontoy-relations/1"
 SCHEMA_V2 = "taxontoy-relations/2"
-TOL_COMMIT = "d8880c9e55a0ce502dbf54a128bcaf471f0efc0e"
+SCHEMA_V3 = "taxontoy-relations/3"
+TOL_COMMIT = "d61c3fc6bc813966357dfc8f614217aaf50d2c15"
 _VERSION_KEYS = {
     SCHEMA_V1: frozenset({"schema", *PROFILES, "direction", "excluded"}),
     SCHEMA_V2: frozenset({"schema", *PROFILES, "direction", "excluded", "properties"}),
+    SCHEMA_V3: frozenset({"schema", *PROFILES, "direction", "excluded", "properties"}),
 }
+_V3_OPTIONAL = frozenset({"repos"})
 _CLASS_NAMES = frozenset({
     "affirmation", "dependency", "hierarchy", "hypothesis", "judgment-record",
     "negation", "overlap", "similarity", "unknown-element",
 })
 _CLASS_FLAGS = frozenset({"acyclic", "symmetric", "transitive"})
-_RELATION_FLAGS = frozenset({"acyclic", "disjoint_with", "inverse_of", "symmetric", "transitive"})
+_RELATION_FLAGS = frozenset({
+    "acyclic", "disjoint_with", "domain", "inverse_of", "range", "symmetric", "transitive",
+})
 _DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 WAVE_TITLES = {
     "audit": "第一弾　監査の依存と重複",
@@ -137,6 +147,45 @@ def _declaration(body, where, partner):
     return relation
 
 
+def _type_declaration(body, where):
+    """``/3`` の ``domain`` / ``range``：``types`` と ``since`` と ``reason``。"""
+    if not isinstance(body, dict):
+        raise ValueError(f"{where} must be an object")
+    unexpected = sorted(set(body) - {"reason", "since", "types"})
+    if unexpected:
+        raise ValueError(f"{where} has unexpected field {unexpected[0]}")
+    if "since" not in body:
+        raise ValueError(f"{where} missing since")
+    if not _since_ok(body["since"]):
+        raise ValueError(f"{where} invalid since")
+    reason = body.get("reason")
+    if not isinstance(reason, str) or reason == "" or reason != reason.strip():
+        raise ValueError(f"{where} missing reason")
+    types = body.get("types")
+    if not isinstance(types, list) or not types:
+        raise ValueError(f"{where} missing types")
+    seen = []
+    for index, name in enumerate(types):
+        seen.append(_text(name, f"{where}.types[{index}]"))
+    if seen != sorted(set(seen)):
+        raise ValueError(f"{where}.types must be sorted and unique")
+
+
+def _excluded_names(items, where):
+    """``/1``・``/2`` の関係名配列と、``/3`` の除外オブジェクト配列の両方から名前を取る。"""
+    if not isinstance(items, list):
+        raise ValueError(f"{where} must be an array")
+    names = []
+    for index, item in enumerate(items):
+        if isinstance(item, str):
+            names.append(_text(item, f"{where}[{index}]"))
+        elif isinstance(item, dict):
+            names.append(_text(item.get("relation"), f"{where}[{index}].relation"))
+        else:
+            raise ValueError(f"{where}[{index}] must be a string or object")
+    return names
+
+
 def _properties(document, table):
     props = document["properties"]
     if not isinstance(props, dict):
@@ -152,7 +201,11 @@ def _properties(document, table):
     known = set()
     for profile in PROFILES:
         known.update(table[profile])
-        known.update(document["excluded"][profile])
+        known.update(_excluded_names(document["excluded"][profile], f"excluded.{profile}"))
+    if "repos" in document:
+        known.update(_profile_map("repos", document["repos"]))
+        repos_excluded = document["excluded"].get("repos", [])
+        known.update(_excluded_names(repos_excluded, "excluded.repos"))
     class_flags = {}
     for name in sorted(classes):
         body = classes[name]
@@ -202,6 +255,8 @@ def _properties(document, table):
                     partners.append(partner)
                 if partners != sorted(set(partners)):
                     raise ValueError(f"{where}.disjoint_with must be sorted and unique")
+            elif key in ("domain", "range"):
+                _type_declaration(body[key], f"{where}.{key}")
             else:
                 _declaration(body[key], f"{where}.{key}", False)
             flags.add(key)
@@ -220,7 +275,13 @@ def _properties(document, table):
 
 
 def _read_version(document, schema):
-    if set(document) != _VERSION_KEYS[schema]:
+    keys = set(document)
+    expected = _VERSION_KEYS[schema]
+    extra = keys - expected
+    missing = expected - keys
+    if schema == SCHEMA_V3:
+        extra -= _V3_OPTIONAL
+    if extra or missing:
         raise ValueError(f"{schema} has unexpected keys")
     direction = document["direction"]
     excluded = document["excluded"]
@@ -229,18 +290,15 @@ def _read_version(document, schema):
     table = {}
     for profile in PROFILES:
         mapped = _profile_map(profile, document.get(profile))
-        names = excluded.get(profile)
-        if not isinstance(names, list):
-            raise ValueError(f"excluded.{profile} must be an array")
+        names = _excluded_names(excluded.get(profile), f"excluded.{profile}")
         for name in names:
-            _text(name, f"excluded.{profile}")
             if name in mapped:
                 raise ValueError(f"{profile}: {name} is both classified and excluded")
-        missing = [relation for relation in mapped if relation not in direction]
-        if missing:
-            raise ValueError("direction: missing " + ", ".join(missing))
+        missing_direction = [relation for relation in mapped if relation not in direction]
+        if missing_direction:
+            raise ValueError("direction: missing " + ", ".join(missing_direction))
         table[profile] = mapped
-    if schema == SCHEMA_V2:
+    if schema in (SCHEMA_V2, SCHEMA_V3):
         _properties(document, table)
     return table
 
@@ -255,8 +313,8 @@ def _schemaless(document):
 def classification(document):
     """TOO の分類表から、弾ごとの「関係名 → 分類名」だけを取り出す。
 
-    ``direction``、``excluded``、``/2`` の ``properties`` はプロファイルにしない。
-    性質の宣言はここで読み、被覆が閉じているかは ``taxontoy coverage`` が見る。
+    ``direction``、``excluded``、``/2``・``/3`` の ``properties``、``/3`` の ``repos`` は
+    プロファイルにしない。性質の宣言はここで読み、被覆が閉じているかは ``taxontoy coverage`` が見る。
     スキーマの無いオブジェクトは、テストが渡す弾だけの表として読む。
     """
     if not isinstance(document, dict) or not document:
@@ -267,6 +325,21 @@ def classification(document):
     if not isinstance(schema, str) or schema not in _VERSION_KEYS:
         _unsupported(schema)
     return _read_version(document, schema)
+
+
+def tol_table(document):
+    """TOL が読める ``taxontoy-relations/2`` に落とす。``/3`` 以外はそのまま返す。"""
+    if not isinstance(document, dict) or document.get("schema") != SCHEMA_V3:
+        return document
+    down = {key: value for key, value in document.items() if key != "repos"}
+    down["schema"] = SCHEMA_V2
+    excluded = {}
+    for profile, items in document["excluded"].items():
+        if profile == "repos":
+            continue
+        excluded[profile] = _excluded_names(items, f"excluded.{profile}")
+    down["excluded"] = excluded
+    return down
 
 
 def project(graph):
@@ -335,11 +408,18 @@ def export_graph(profile, document):
     return project(source_graph(profile, document))
 
 
-def relation_groups(graph, classes):
-    """TOL と同じ規則で、分類ごとの辺数と分類表に無い辺数だけを数える。"""
+def relation_groups(graph, classes, directions=None):
+    """TOL と同じ規則で、分類ごとの辺数と分類表に無い辺数だけを数える。
+
+    ``mutual`` / ``undirected`` は ``collapse_reciprocal`` で往復を畳んでから数える。
+    """
+    edges = graph["edges"]
+    if directions:
+        from ontautology_graphs import collapse_reciprocal
+        edges = collapse_reciprocal(edges, directions)["edges"]
     counts = {category: 0 for category in sorted(set(classes.values()))}
     unclassified = 0
-    for edge in graph["edges"]:
+    for edge in edges:
         relation = edge["kind"] if "kind" in edge else edge["relation"]
         if relation in classes:
             counts[classes[relation]] += 1
@@ -574,10 +654,12 @@ def main(argv=None):
             else:
                 args.o.write_text(document, encoding="utf-8")
             return 0
-        table = classification(_load(args.table))
+        document = _load(args.table)
+        table = classification(document)
         if args.profile not in table:
             raise ValueError(f"classification has no {args.profile!r} profile")
-        found = relation_groups(project(_load(args.graph)), table[args.profile])
+        directions = document.get("direction") if isinstance(document.get("direction"), dict) else None
+        found = relation_groups(project(_load(args.graph)), table[args.profile], directions)
     except (OSError, ValueError, json.JSONDecodeError, KeyError) as error:
         print(error, file=sys.stderr)
         return 1

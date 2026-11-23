@@ -106,6 +106,24 @@ def read_graph(path):
     return Graph().parse(path, format=formats[suffix])
 
 
+def _read_stdin_turtle():
+    from rdflib import Graph
+
+    stream = getattr(sys.stdin, "buffer", None)
+    if stream is None:
+        raise ValueError("Turtle stdin is unavailable")
+    try:
+        data = stream.read()
+    except (OSError, ValueError) as exc:
+        raise ValueError("Could not read Turtle from stdin") from exc
+    try:
+        return Graph().parse(data=data, format="turtle")
+    except UnicodeDecodeError as exc:
+        raise ValueError("Turtle on stdin must be valid UTF-8") from exc
+    except SyntaxError as exc:
+        raise ValueError("Invalid Turtle on stdin") from exc
+
+
 def statements(graph):
     """Encode terms with their RDF datatype or language intact."""
     from rdflib import BNode, URIRef
@@ -177,15 +195,15 @@ def main(argv=None, *, prog="ontautology exchange"):
     subs = parser.add_subparsers(dest="action", required=True)
     for action in ("import", "export"):
         sub = subs.add_parser(action)
-        sub.add_argument("backend", choices=("neo4j", "arcade"))
-        sub.add_argument("scope")
+        sub.add_argument("backend", choices=("neo4j", "arcade"),help="graph database")
+        sub.add_argument("scope",help="scope name that keeps these statements apart from others")
         if action == "export":
             sub.add_argument("file", nargs="?", type=Path, help="output file (default: stdout)")
             sub.add_argument("--format", choices=("ttl", "json"), help="stdout format (default: ttl)")
         else:
-            sub.add_argument("file", type=Path, help=".ttl, .nt, .rdf")
+            sub.add_argument("file", type=Path, help=".ttl, .nt, .rdf file or - for Turtle on stdin")
     query = subs.add_parser("query")
-    query.add_argument("file", type=Path, help=".ttl, .nt, .rdf")
+    query.add_argument("file", type=Path, help=".ttl, .nt, .rdf file or - for Turtle on stdin")
     query.add_argument("select", help="SPARQL SELECT")
     args = parser.parse_args(argv)
     if args.action == "export":
@@ -209,7 +227,10 @@ def main(argv=None, *, prog="ontautology exchange"):
             args.file.write_text(output, encoding="utf-8")
     else:
         try:
-            graph = read_graph(args.file)
+            if args.file == Path("-"):
+                graph = _read_stdin_turtle()
+            else:
+                graph = read_graph(args.file)
         except ValueError as exc:
             parser.error(str(exc))
         if args.action == "import":

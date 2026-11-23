@@ -85,7 +85,10 @@ def summarize_cli(classification_path, profile):
 
 def report(classification_path):
     classification_path = as_relative(classification_path)
-    table = classification(read(ROOT / classification_path if not Path(classification_path).is_absolute() else classification_path))
+    source = ROOT / classification_path if not Path(classification_path).is_absolute() else Path(classification_path)
+    document = read(source)
+    table = classification(document)
+    directions = document.get("direction") if isinstance(document.get("direction"), dict) else None
     examples = ROOT / "examples"
     corpus = read(examples / "concepts-20261115.json")
     graphs = {
@@ -101,7 +104,7 @@ def report(classification_path):
     covered = coverage_cli(classification_path)
     metrics = {}
     for wave, graph in graphs.items():
-        groups = relation_groups(graph, table[wave])
+        groups = relation_groups(graph, table[wave], directions)
         summary = summarize_cli(classification_path, wave)
         if not counts_agree(groups, summary):
             raise RuntimeError(f"{wave}: 投影の辺数 {groups} が TOL の集計 {summary} と一致しません")

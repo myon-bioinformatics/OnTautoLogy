@@ -152,8 +152,8 @@ class CheckWaveReportTests(unittest.TestCase):
 
 class PinnedTaxOntOyTests(unittest.TestCase):
     def test_wave_relations_runs_against_the_pinned_checkout(self):
-        too_sha = "8621f2261d694af0de35e103ad2387872ca10b99"
-        tol_sha = "d8880c9e55a0ce502dbf54a128bcaf471f0efc0e"
+        too_sha = "c80f39cd9a5359403fdfce0fec9be4605594c8eb"
+        tol_sha = "d61c3fc6bc813966357dfc8f614217aaf50d2c15"
         workflow = (ROOT / ".github/workflows/wave-relations.yml").read_text(encoding="utf-8")
         self.assertIn(too_sha, workflow)
         self.assertIn(tol_sha, workflow)
@@ -183,7 +183,8 @@ class PinnedTaxOntOyTests(unittest.TestCase):
                 link.symlink_to(repo, target_is_directory=True)
                 created.append(link)
             env = os.environ.copy()
-            env["PYTHONPATH"] = os.pathsep.join(["tol", "ontautology_shared/_onto"])
+            env["ONTO_ROOT"] = str(ROOT / "ontautology_shared" / "_onto")
+            env["OTL_ROOT"] = str(ROOT)
             result = subprocess.run(
                 [sys.executable, "-S", "examples/wave_relations.py", "too/otl-relations.json"],
                 cwd=ROOT, capture_output=True, text=True, encoding="utf-8", env=env,
@@ -191,7 +192,7 @@ class PinnedTaxOntOyTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
             report = json.loads(result.stdout)
             self.assertEqual(report["taxontoy"]["tool"], "taxontoy")
-            self.assertEqual(report["taxontoy"]["version"], "0.2.0")
+            self.assertEqual(report["taxontoy"]["version"], "0.6.0")
             self.assertTrue(report["taxontoy"]["ok"])
             self.assertEqual(report["taxontoy"]["errors"], [])
             published = json.loads((ROOT / "examples/wave-profiles.json").read_text(encoding="utf-8"))
