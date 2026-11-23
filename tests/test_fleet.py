@@ -41,6 +41,8 @@ class FleetContracts(unittest.TestCase):
             "vendor/py_launch.cjs": (fleet.PARENT, "py_launch.cjs"),
             "vendor/fleet_check.py": (fleet.PARENT, "fleet_check.py"),
             "vendor/myon-bioinformatics-LICENSE": (fleet.PARENT, "LICENSE"),
+            "vendor/cli_args.py": ("myon-bioinformatics/cli_args", "cli_args.py"),
+            "vendor/cli_args-LICENSE": ("myon-bioinformatics/cli_args", "LICENSE"),
         })
         self.assertEqual(sorted(set(rows) - set(onto_sources)), sorted(str(p.relative_to(ROOT).as_posix()) for p in (ROOT / "vendor").iterdir()
                                               if p.is_file()))

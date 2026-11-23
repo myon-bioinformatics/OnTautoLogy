@@ -13,12 +13,23 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import ontautology as ot  # noqa: E402
+from vendor.cli_args import run_cli as run_cli_command  # noqa: E402
 
 
 def run_cli(script, *args, data='{}', seed='1'):
     """``python -S script ARGS`` with ``data`` on stdin and a fixed hash seed; shared by every command-line test."""
-    return subprocess.run([sys.executable, '-S', str(script), *args], input=data.encode('utf-8'), capture_output=True,
-                          env={**os.environ, 'PYTHONHASHSEED': seed})
+    result = run_cli_command(
+        script, *args,
+        python_options=("-S",),
+        stdin=data,
+        env={**os.environ, "PYTHONHASHSEED": seed},
+    )
+    return subprocess.CompletedProcess(
+        args=list(result.argv),
+        returncode=result.returncode,
+        stdout=result.stdout.encode("utf-8"),
+        stderr=result.stderr.encode("utf-8"),
+    )
 
 
 class JsonTransport(unittest.TestCase):
