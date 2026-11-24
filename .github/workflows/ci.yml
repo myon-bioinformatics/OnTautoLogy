@@ -1,5 +1,8 @@
 name: CI
 on: [push, pull_request]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -7,7 +10,8 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        python: ['3.11', '3.15']
+        # PRs run the newest Python only; the full matrix runs on push.
+        python: ${{ github.event_name == 'pull_request' && fromJSON('["3.15"]') || fromJSON('["3.11", "3.15"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -26,6 +30,7 @@ jobs:
       - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
           version: latest
+          enable-cache: true
           python-version: ${{ matrix.python }}
       - name: Exercise installed shared API from outside the checkout
         run: |
@@ -42,6 +47,7 @@ jobs:
 
   # Outside modules for trying an idea first: Redis answers the same questions; here a skip is a failure.
   redis:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -55,6 +61,7 @@ jobs:
       - run: uv run --no-project --with redis python -m unittest discover -s tests -p test_tools.py -k RedisCrossCheck -v
 
   graph-exchange:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     services:
       neo4j:
