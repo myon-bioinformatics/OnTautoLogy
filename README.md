@@ -15,7 +15,7 @@
 
 ## 🧭 全体図（監視・中間・管理の3層）
 
-![OnTautoLogy の概念図: 主張がトートロジーに至るまでの段、2つの用途、監視・中間・管理の3層のナレッジグラフ](docs/concept.png)
+![OnTautoLogy の概念図: 主張がトートロジーに至るまでの段、2つの用途、監視・中間・管理の3層のナレッジグラフ](docs/repository-concept.png)
 
 画像は概観です。クラスと関係の正確な対応は下の Mermaid 図で、テストがコードの語彙と突き合わせています。
 
@@ -103,7 +103,7 @@ gh_audit/               🔭 第一弾だけのフォルダ（第一弾の enhan
 vendor/                 📦 親から借りるもの（vendor.lock.json で SHA 固定）: py_launch.cjs・fleet_check.py
 examples/               🌱 第二弾の類似コーパス、第一弾の監査スナップショット・移管台帳
 tests/                  🧪 unittest（Redis の答え合わせは任意）
-docs/                   🖼️ アイコン（icon.png）・ファビコン（favicon.png）・概念図（concept.png）、📝 方針メモ（policy-rules.md）
+docs/                   🖼️ アイコン（icon.png）・ファビコン（favicon.png）・概念図（repository-concept.png）、📝 方針メモ（policy-rules.md）
 ```
 
 | 🖼️ アイコン（512×512） | ファビコン（32×32、16×16 でも見分けられる） |
