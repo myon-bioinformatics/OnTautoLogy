@@ -441,8 +441,9 @@ def _static_arcs(code):
 
 
 _WRAPPER = r"""
-import dis, os, runpy, sys
+import dis, functools, os, runpy, sys
 from pathlib import Path
+realpath = functools.lru_cache(maxsize=None)(os.path.realpath)  # ⚡ one realpath per file, not one per traced call (the hook runs on every call of every test)
 script, dest, targets = sys.argv[1], sys.argv[2], sys.argv[3]
 sys.argv = [script, *sys.argv[4:]]
 wanted = {os.path.realpath(item) for item in targets.split(",")}
@@ -456,7 +457,7 @@ def qual(code):
     return f"{code.co_firstlineno}:{code.co_qualname}"
 
 def hook(frame, event, arg):
-    filename = os.path.realpath(frame.f_code.co_filename)
+    filename = realpath(frame.f_code.co_filename)
     if filename not in wanted:
         return None
     frame.f_trace_opcodes = True
