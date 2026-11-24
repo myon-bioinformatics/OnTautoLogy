@@ -1,13 +1,28 @@
 name: CI
-on: [push, pull_request]
+# ⏱ Pull requests get the quick gate: one Python (the newest), fail-fast, superseded runs cancelled, and nothing for
+# docs-only changes. main runs everything (both Pythons). A push to a PR branch no longer runs a second copy.
+on:
+  push:
+    branches: [main]
+  pull_request:
 permissions:
   contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
+  changes:
+    uses: myon-bioinformatics/myon-bioinformatics/.github/workflows/reusable-change-detection.yml@1368174821fb03be258ecf3312ce0ea809f6ea22
+
   test:
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     strategy:
+      fail-fast: ${{ github.event_name == 'pull_request' }}
       matrix:
-        python: ['3.11', '3.15']
+        python: ${{ fromJSON(github.event_name == 'pull_request' && '["3.15"]' || '["3.11", "3.15"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -42,7 +57,10 @@ jobs:
 
   # Outside modules for trying an idea first: Redis answers the same questions; here a skip is a failure.
   redis:
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -55,7 +73,10 @@ jobs:
       - run: uv run --no-project --with redis python -m unittest discover -s tests -p test_tools.py -k RedisCrossCheck -v
 
   graph-exchange:
+    needs: changes
+    if: needs.changes.outputs.docs_only != 'true'
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     services:
       neo4j:
         image: neo4j:5-community
