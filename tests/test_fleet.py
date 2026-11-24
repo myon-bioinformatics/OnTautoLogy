@@ -121,3 +121,7 @@ if __name__ == "__main__":
 class ScriptsDescribeThemselves(unittest.TestCase):
     def test_every_script_has_a_description_and_declared_arguments(self):
         fleet.check_scripts(fleet.repo_root(__file__))
+
+    def test_pull_request_ci_stays_quick(self):
+        # ⏱ push limited to branches, superseded PR runs cancelled, every job timed (fleet_check.check_ci)
+        fleet.check_ci(fleet.repo_root(__file__))
