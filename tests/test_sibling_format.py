@@ -209,7 +209,7 @@ class ProjectionTests(unittest.TestCase):
         self.assertIn("2,304", html)
         self.assertIn("K002-share-only", html)
         self.assertIn("食い違い", html)
-        self.assertIn('href="relations/"', (ROOT / "site/index.html").read_text(encoding="utf-8"))
+        self.assertIn('"href": "./relations/"', (ROOT / "docs/guide.page.json").read_text(encoding="utf-8"))
 
     def test_adapter_stays_out_of_the_core_and_pins_match_ci(self):
         for path in [ROOT / "ontautology.py", *(ROOT / "tools").glob("*.py"), *(ROOT / "gh_audit").glob("*.py")]:

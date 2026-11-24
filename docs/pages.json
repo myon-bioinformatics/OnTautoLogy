@@ -1,0 +1,206 @@
+{
+  "schema": "btk-evidence-gif/2",
+  "gif": "pages.gif",
+  "bytes": 263239,
+  "sha256": "5550d593d883a531a9fadc36ae26589be782bfac708c097de993a0ba30bfd56b",
+  "frames": 13,
+  "canvas": "720x512",
+  "browser": "chromium 153.0.8010.12",
+  "executable": {
+    "source": "given",
+    "path": "/opt/pw-browsers/chromium-1243/chrome-linux64/chrome"
+  },
+  "recorded": "2026-11-24",
+  "commit": "b13f8378616536075c37c1d59dcc5485be8b4f3e",
+  "stills": {
+    "dir": null,
+    "files": []
+  },
+  "encoder": {
+    "module": "PySaiyanWeBoo gif.js",
+    "web_ui": "bbe5c0b0087f40ff3fffd53bec5111c2ba2d747d",
+    "bytes": 263239,
+    "frames": 13,
+    "colors": 255,
+    "thin": 0,
+    "attempts": 1,
+    "stored": 13,
+    "merged": 0,
+    "buckets": 1644,
+    "overBudget": false,
+    "encodeMs": 180,
+    "images": 8,
+    "reused": 5,
+    "patches": 0,
+    "synthesized": 0,
+    "capture_s": 15.4
+  },
+  "limits": {
+    "colors": 255,
+    "max_bytes": null,
+    "max_frames": 300,
+    "last_hold_ms": 2000
+  },
+  "transfer": {
+    "screenshots": 13,
+    "png_bytes": 1311293,
+    "identical": 5,
+    "patches": 0,
+    "calls": 6,
+    "sent_bytes": 1118840,
+    "gif_bytes": 263239
+  },
+  "mapped": [
+    "https://cdn.jsdelivr.net/npm/mermaid@11.12.1/dist/"
+  ],
+  "summary": {
+    "pass": 6,
+    "fail": 0
+  },
+  "shots": [
+    {
+      "label": "🕸 知識グラフの図鑑（第一弾〜第三弾）",
+      "url": "/atlas/",
+      "viewport": "1280x800",
+      "steps": [
+        "wait 1500",
+        "scroll 600"
+      ],
+      "status": "pass",
+      "errors": [],
+      "allowed": [],
+      "external": [],
+      "generator": null
+    },
+    {
+      "label": "🔎 1つのグラフを開く",
+      "url": "/atlas/view.html?set=audit-20261114",
+      "viewport": "1280x800",
+      "steps": [
+        "wait 3000"
+      ],
+      "status": "pass",
+      "errors": [],
+      "allowed": [],
+      "external": [],
+      "generator": null
+    },
+    {
+      "label": "📊 TOO の分類で見た構造集計",
+      "url": "/relations/",
+      "viewport": "1280x800",
+      "steps": [
+        "scroll 500"
+      ],
+      "status": "pass",
+      "errors": [],
+      "allowed": [],
+      "external": [],
+      "generator": null
+    },
+    {
+      "label": "🤖 第二弾 AI搭載botの関係候補",
+      "url": "/concepts/",
+      "viewport": "1280x800",
+      "steps": [
+        "wait 1500"
+      ],
+      "status": "pass",
+      "errors": [],
+      "allowed": [],
+      "external": [],
+      "generator": null
+    },
+    {
+      "label": "🧭 第三弾 設計・評価ワークボード",
+      "url": "/third-design/",
+      "viewport": "1280x800",
+      "steps": [
+        "wait 800"
+      ],
+      "status": "pass",
+      "errors": [],
+      "allowed": [],
+      "external": [],
+      "generator": null
+    },
+    {
+      "label": "📱 図鑑（スマホ幅）",
+      "url": "/atlas/",
+      "viewport": "392x848",
+      "steps": [
+        "wait 1200"
+      ],
+      "status": "pass",
+      "errors": [],
+      "allowed": [],
+      "external": [],
+      "generator": null
+    }
+  ],
+  "plan": [
+    {
+      "label": "🕸 知識グラフの図鑑（第一弾〜第三弾）",
+      "url": "/atlas/",
+      "viewport": "1280x800",
+      "steps": [
+        {
+          "wait": 1500
+        },
+        {
+          "scroll": 600
+        }
+      ]
+    },
+    {
+      "label": "🔎 1つのグラフを開く",
+      "url": "/atlas/view.html?set=audit-20261114",
+      "viewport": "1280x800",
+      "steps": [
+        {
+          "wait": 3000
+        }
+      ]
+    },
+    {
+      "label": "📊 TOO の分類で見た構造集計",
+      "url": "/relations/",
+      "viewport": "1280x800",
+      "steps": [
+        {
+          "scroll": 500
+        }
+      ]
+    },
+    {
+      "label": "🤖 第二弾 AI搭載botの関係候補",
+      "url": "/concepts/",
+      "viewport": "1280x800",
+      "steps": [
+        {
+          "wait": 1500
+        }
+      ]
+    },
+    {
+      "label": "🧭 第三弾 設計・評価ワークボード",
+      "url": "/third-design/",
+      "viewport": "1280x800",
+      "steps": [
+        {
+          "wait": 800
+        }
+      ]
+    },
+    {
+      "label": "📱 図鑑（スマホ幅）",
+      "url": "/atlas/",
+      "viewport": "392x848",
+      "steps": [
+        {
+          "wait": 1200
+        }
+      ]
+    }
+  ]
+}
