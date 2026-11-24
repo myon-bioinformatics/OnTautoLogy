@@ -1,6 +1,6 @@
 # OnTautoLogy
 
-<p align="center"><img src="docs/icon.png" alt="OnTautoLogy のアイコン（開いた本から伸びるナレッジグラフと王冠）" width="160"></p>
+<p align="center"><img src="https://myon-bioinformatics.github.io/OnTautoLogy/icon.png" alt="OnTautoLogy のアイコン（開いた本から伸びるナレッジグラフと王冠）" width="160"></p>
 
 オントロジーをトートロジーの水準まで持っていく、小さなナレッジグラフです。主張は 🤔 候補 → 🧮 規則で導出 → 👀 観測 → ✅ 証明 の段を上り、最上段は「見ていない場合も含めて常に成り立つ」＝トートロジーです。Python 3.11 以降の標準ライブラリだけで動き、取得・書き込み・マージ・CI 起動・LLM 呼び出しは行いません。
 
@@ -103,12 +103,12 @@ gh_audit/               🔭 第一弾だけのフォルダ（第一弾の enhan
 vendor/                 📦 親から借りるもの（vendor.lock.json で SHA 固定）: py_launch.cjs・fleet_check.py
 examples/               🌱 第二弾の類似コーパス、第一弾の監査スナップショット・移管台帳
 tests/                  🧪 unittest（Redis の答え合わせは任意）
-docs/                   🖼️ アイコン（icon.png）・ファビコン（favicon.png）・概念図（repository-concept.png）、📝 方針メモ（policy-rules.md）
+docs/                   🖼️ 概念図（repository-concept.png）、📝 方針メモ（policy-rules.md）。♻️ アイコン・ファビコンは CaChereCyCle（OnTautoLogy.icon / .favicon）
 ```
 
 | 🖼️ アイコン（512×512） | ファビコン（32×32、16×16 でも見分けられる） |
 | :---: | :---: |
-| <img src="docs/icon.png" alt="アイコン" width="96"> | <img src="docs/favicon.png" alt="ファビコン" width="32"> |
+| <img src="https://myon-bioinformatics.github.io/OnTautoLogy/icon.png" alt="アイコン" width="96"> | <img src="https://myon-bioinformatics.github.io/OnTautoLogy/favicon.png" alt="ファビコン" width="32"> |
 
 依存は 🔭 第一弾（gh_audit）→ 🧰 tools → 🧠 本体 の一方向です。🔭 第一弾は `gh_audit/` に閉じていて、本体と tools は gh_audit を読みません（テストで固定）。🧩 第二弾は汎用なので本体と `tools/tautology.py` にあります。
 
