@@ -1,5 +1,6 @@
 """TOO の分類表と TOL のグラフ入力へ渡す投影。閉路検出は呼ばない。"""
 import dis
+import functools
 import io
 import json
 import os
@@ -26,6 +27,7 @@ _JUMP_PREFIXES = (
     "JUMP_IF_",
 )
 _UNTRACED_OPS = {"CACHE", "END_FOR", "EXTENDED_ARG", "RESUME"}
+_realpath = functools.lru_cache(maxsize=None)(os.path.realpath)  # ⚡ one realpath per file, not one per traced call (the hook runs on every call of every test)
 
 
 def _conditional(opname):
@@ -37,7 +39,7 @@ def _qual(code):
 
 
 def _hook(frame, event, arg):
-    if os.path.realpath(frame.f_code.co_filename) != _TARGET:
+    if _realpath(frame.f_code.co_filename) != _TARGET:
         return None
     frame.f_trace_opcodes = True
     if event == "line":
@@ -764,8 +766,9 @@ class RelationTableV2Tests(unittest.TestCase):
 
 
 _WRAPPER = r"""
-import dis, os, runpy, sys
+import dis, functools, os, runpy, sys
 from pathlib import Path
+realpath = functools.lru_cache(maxsize=None)(os.path.realpath)  # ⚡ one realpath per file, not one per traced call (the hook runs on every call of every test)
 script, dest = sys.argv[1], sys.argv[2]
 sys.argv = [script, *sys.argv[3:]]
 target = os.path.realpath(script)
@@ -779,7 +782,7 @@ def qual(code):
     return f"{code.co_firstlineno}:{code.co_qualname}"
 
 def hook(frame, event, arg):
-    if os.path.realpath(frame.f_code.co_filename) != target:
+    if realpath(frame.f_code.co_filename) != target:
         return None
     frame.f_trace_opcodes = True
     if event == "line":
