@@ -10,12 +10,13 @@ permissions:
   id-token: write
 jobs:
   deploy:
-    uses: myon-bioinformatics/myon-bioinformatics/.github/workflows/reusable-pages-static.yml@1368174821fb03be258ecf3312ce0ea809f6ea22
+    uses: myon-bioinformatics/myon-bioinformatics/.github/workflows/reusable-pages-static.yml@0778ede0c872d609bb2dc590f9f9898a39a18668
     with:
       artifact_path: site
       # 📘 site/index.html is the usage guide (🎞 GIF demo / 🧩 features), rendered from data by the pinned renderer.
       guide_page: docs/guide.page.json
-      guide_assets: docs/icon.png=icon.png docs/favicon.png=favicon.png docs/pages.gif=demos/pages.gif
+      guide_assets: docs/pages.gif=demos/pages.gif
+      guide_brand: OnTautoLogy   # ♻️ icon and favicon from CaChereCyCle (OnTautoLogy.icon / OnTautoLogy.favicon)
       build: |
         set -eu
         python3 -m venv "$RUNNER_TEMP/otl-pages"
