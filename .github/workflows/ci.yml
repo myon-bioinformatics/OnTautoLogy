@@ -41,6 +41,7 @@ jobs:
       - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
         with:
           version: latest
+          enable-cache: true
           python-version: ${{ matrix.python }}
       - name: Exercise installed shared API from outside the checkout
         run: |
@@ -58,7 +59,8 @@ jobs:
   # Outside modules for trying an idea first: Redis answers the same questions; here a skip is a failure.
   redis:
     needs: changes
-    if: needs.changes.outputs.docs_only != 'true'
+    # ⏱ the heavy lanes run on main only; nothing for docs-only changes
+    if: github.event_name != 'pull_request' && needs.changes.outputs.docs_only != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -74,7 +76,8 @@ jobs:
 
   graph-exchange:
     needs: changes
-    if: needs.changes.outputs.docs_only != 'true'
+    # ⏱ the heavy lanes run on main only; nothing for docs-only changes
+    if: github.event_name != 'pull_request' && needs.changes.outputs.docs_only != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     services:

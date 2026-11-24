@@ -724,12 +724,12 @@ python -I -S gh_audit/gh_audit.py audit examples/audit-20261114.json | python -I
 ### 🐍 Python・Node から呼ぶ
 
 ```python
-import ontautology as ot
+import ontautology as OTL
 from tools import tautology
 from gh_audit import gh_audit
 
 tautology.rules(corpus, "ギター")["definition"]       # 🧩 第二弾: 可逆な最初の規則
-ot.define_concepts(corpus, ["ギター"])                 # 🧩 第二弾: 類と種差
+OTL.define_concepts(corpus, ["ギター"])                 # 🧩 第二弾: 類と種差
 gh_audit.plan(gh_audit.audit([snapshot]))             # 🔭 第一弾: 監査グラフ → 依存順
 ```
 
