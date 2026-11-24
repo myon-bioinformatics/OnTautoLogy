@@ -1,0 +1,136 @@
+{
+  "schema": "web-ui-page/1",
+  "title": "🧮 OnTautoLogy 利用ガイド",
+  "theme": "auto",
+  "description": "オントロジーをトートロジーの水準まで持っていく、小さなナレッジグラフ。主張を 🤔 候補 → 🧮 規則で導出 → 👀 観測 → ✅ 証明 の段で積みます。",
+  "icon": "./icon.png",
+  "favicon": "./favicon.png",
+  "blocks": [
+    {
+      "type": "badges",
+      "items": [
+        "🕸 ナレッジグラフ",
+        "🧰 python -S で動く",
+        "🔭 第一弾〜🧭 第三弾"
+      ]
+    },
+    {
+      "type": "tabs",
+      "id": "guide",
+      "tabs": [
+        {
+          "label": "🎞 GIF デモ",
+          "blocks": [
+            {
+              "type": "card",
+              "title": "🕸 図鑑・📊 構造集計・🤖 bot・🧭 ワークボード",
+              "text": "各弾の知識グラフを開き、1つのグラフを Mermaid で描きます（PC 幅とスマホ幅）。",
+              "blocks": [
+                {
+                  "type": "image",
+                  "src": "./demos/pages.gif",
+                  "alt": "OnTautoLogy Pages: the knowledge-graph atlas, one graph drawn with Mermaid, the structure counts, the bot relation candidates, the third design board and the phone width"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "🧩 機能一覧",
+          "blocks": [
+            {
+              "type": "section",
+              "title": "🧭 ブラウザで開く",
+              "blocks": [
+                {
+                  "type": "links",
+                  "items": [
+                    {
+                      "label": "🕸 第一弾〜第三弾の知識グラフ（図・TTL）",
+                      "href": "./atlas/"
+                    },
+                    {
+                      "label": "📊 TOO の分類で見た構造集計",
+                      "href": "./relations/"
+                    },
+                    {
+                      "label": "🤖 第二弾 AI搭載botの関係候補",
+                      "href": "./concepts/"
+                    },
+                    {
+                      "label": "🧭 第三弾 設計・評価ワークボード",
+                      "href": "./third-design/"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "section",
+              "title": "▶️ 手元で動かす",
+              "blocks": [
+                {
+                  "type": "card",
+                  "title": "🧪 グラフを検査",
+                  "text": "形・参照・根拠・重複を確かめます。",
+                  "blocks": [
+                    {
+                      "type": "output",
+                      "text": "python -S ontautology.py check examples/concepts-20261120.json"
+                    }
+                  ]
+                },
+                {
+                  "type": "card",
+                  "title": "💥 変更の届く先 / 🔎 根拠",
+                  "text": "ノードを変えると何に届くか、何に支えられているか。",
+                  "blocks": [
+                    {
+                      "type": "output",
+                      "text": "python -S ontautology.py reach --help\npython -S ontautology.py why --help"
+                    }
+                  ]
+                },
+                {
+                  "type": "card",
+                  "title": "🔁 循環 · 🪜 順序 · 🔑 鍵",
+                  "text": "代表的な循環、根拠の段ごとの順序、主キーになれる項目の組。",
+                  "blocks": [
+                    {
+                      "type": "output",
+                      "text": "python -S ontautology.py cycles --help\npython -S ontautology.py order --help\npython -S ontautology.py keys --help"
+                    }
+                  ]
+                },
+                {
+                  "type": "card",
+                  "title": "🧩 類似から定義",
+                  "text": "「〇〇は🔳🔳の類似」を集め、共通項と見分けから定義を作ります（第二弾）。",
+                  "blocks": [
+                    {
+                      "type": "output",
+                      "text": "python -S ontautology.py define --help"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "links",
+      "items": [
+        {
+          "label": "📦 リポジトリ",
+          "href": "https://github.com/myon-bioinformatics/OnTautoLogy"
+        },
+        {
+          "label": "📝 設計・実装・評価の記録",
+          "href": "https://github.com/myon-bioinformatics/OnTautoLogy#readme"
+        }
+      ]
+    }
+  ]
+}
