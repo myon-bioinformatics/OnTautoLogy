@@ -19,23 +19,6 @@
       "id": "guide",
       "tabs": [
         {
-          "label": "🎞 GIF デモ",
-          "blocks": [
-            {
-              "type": "card",
-              "title": "🕸 図鑑・📊 構造集計・🤖 bot・🧭 ワークボード",
-              "text": "各弾の知識グラフを開き、1つのグラフを Mermaid で描きます（PC 幅とスマホ幅）。",
-              "blocks": [
-                {
-                  "type": "image",
-                  "src": "./demos/pages.gif",
-                  "alt": "OnTautoLogy Pages: the knowledge-graph atlas, one graph drawn with Mermaid, the structure counts, the bot relation candidates, the third design board and the phone width"
-                }
-              ]
-            }
-          ]
-        },
-        {
           "label": "🧩 機能一覧",
           "blocks": [
             {
@@ -112,6 +95,23 @@
                       "text": "python -S ontautology.py define --help"
                     }
                   ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "🎞 GIF デモ",
+          "blocks": [
+            {
+              "type": "card",
+              "title": "🕸 図鑑・📊 構造集計・🤖 bot・🧭 ワークボード",
+              "text": "各弾の知識グラフを開き、1つのグラフを Mermaid で描きます（PC 幅とスマホ幅）。",
+              "blocks": [
+                {
+                  "type": "image",
+                  "src": "./demos/pages.gif",
+                  "alt": "OnTautoLogy Pages: the knowledge-graph atlas, one graph drawn with Mermaid, the structure counts, the bot relation candidates, the third design board and the phone width"
                 }
               ]
             }
