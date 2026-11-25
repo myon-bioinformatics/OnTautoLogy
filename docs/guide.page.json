@@ -118,6 +118,7 @@
                         "title": "🧪 例の概念を検査",
                         "command": "python3 -S ontautology.py check examples/concepts-20261120.json",
                         "expect": "[]",
+                        "expect_stdout_contains": "[]",
                         "run": true
                       },
                       {
