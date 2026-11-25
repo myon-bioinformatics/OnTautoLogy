@@ -2,19 +2,31 @@ name: Pages
 on:
   push:
     branches: [main]
-  pull_request:                # the guide is built (not deployed) when it changes
-    paths: ["docs/guide.page.json", "docs/pages.gif", ".github/workflows/pages.yml"]
+  pull_request:
+    paths:
+      - "docs/guide.page.json"
+      - "docs/guide.features.json"
+      - "docs/pages.gif"
+      - ".github/workflows/pages.yml"
+      - "ontautology.py"
+      - "ontautology_graphs.py"
+      - "gh_audit/gh_audit.py"
+      - "tools/tautology.py"
+      - "tools/knowledgegraph.py"
+      - "ontautology_shared/**"
+      - "vendor/cli_args.py"
 permissions:
   contents: read
   pages: write
   id-token: write
 jobs:
   deploy:
-    uses: myon-bioinformatics/myon-bioinformatics/.github/workflows/reusable-pages-static.yml@0778ede0c872d609bb2dc590f9f9898a39a18668
+    uses: myon-bioinformatics/myon-bioinformatics/.github/workflows/reusable-pages-static.yml@a6996161eb1e8509a1673f68dd66f0e83efbada0
     with:
       artifact_path: site
-      # 📘 site/index.html is the usage guide (🎞 GIF demo / 🧩 features), rendered from data by the pinned renderer.
+      # 📘 site/index.html is the usage guide (🎞 GIF demo / 🧭 examples / 📚 feature reference), rendered from data by the pinned renderer.
       guide_page: docs/guide.page.json
+      guide_features_config: docs/guide.features.json
       guide_assets: docs/pages.gif=demos/pages.gif
       guide_brand: OnTautoLogy   # ♻️ icon and favicon from CaChereCyCle (OnTautoLogy.icon / OnTautoLogy.favicon)
       build: |

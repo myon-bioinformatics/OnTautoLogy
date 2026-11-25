@@ -1,0 +1,8 @@
+[
+  {"source": "ontautology.py", "cli": [[]]},
+  {"source": "ontautology_graphs.py", "cli": [[]]},
+  {"source": "gh_audit/gh_audit.py", "cli": [[]]},
+  {"source": "tools/tautology.py", "cli": [[]]},
+  {"source": "ontautology_shared/knowledgegraph.py", "entry": "tools/knowledgegraph.py", "cli": [[]]},
+  {"source": "ontautology_shared/ontology.py"}
+]
