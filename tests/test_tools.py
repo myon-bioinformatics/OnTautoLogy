@@ -83,6 +83,9 @@ class OneWayDependency(unittest.TestCase):
                     self.assertIn("from ontautology_shared.", imports)
                 elif path == ROOT / "ontautology_shared/ontology.py":
                     self.assertIn("from ._onto.ontology import", imports)
+                elif path == ROOT / "ontautology_shared/predicate_logic.py":
+                    # Finite first-order logic is independent of the graph core.
+                    self.assertNotRegex(imports, r"\bontautology(?:_shared)?\b")
                 elif path.name != "__init__.py" and path != ROOT / "ontautology.py":
                     self.assertIn("import ontautology as ot", imports)
         audit = "\n".join(re.findall(r"(?m)^(?:from|import) .*", (ROOT / "gh_audit/gh_audit.py").read_text(encoding="utf-8")))
