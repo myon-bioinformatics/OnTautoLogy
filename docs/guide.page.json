@@ -1,7 +1,7 @@
 {
   "schema": "web-ui-page/1",
   "title": "🧮 OnTautoLogy 利用ガイド",
-  "theme": "auto",
+  "theme": "modern",
   "description": "オントロジーをトートロジーの水準まで持っていく、小さなナレッジグラフ。主張を 🤔 候補 → 🧮 規則で導出 → 👀 観測 → ✅ 証明 の段で積みます。",
   "icon": "./icon.png",
   "favicon": "./favicon.png",
