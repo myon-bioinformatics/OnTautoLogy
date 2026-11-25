@@ -19,7 +19,7 @@
       "id": "guide",
       "tabs": [
         {
-          "label": "🧭 使い方",
+          "label": "🧩 機能一覧",
           "blocks": [
             {
               "type": "section",
@@ -95,6 +95,39 @@
                       "text": "python -S ontautology.py define --help"
                     }
                   ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "🔬 検証ガイド",
+          "blocks": [
+            {
+              "type": "runbook",
+              "id": "verify",
+              "books": [
+                {
+                  "label": "⚡ そのまま",
+                  "intro": "📋 コピーして手元で試し、結果を記録できます。🤖 の手順は、Pages の公開で実際に動かした結果も載ります。",
+                  "runbook": {
+                    "key": "ontautology/verify",
+                    "steps": [
+                      {
+                        "id": "check",
+                        "title": "🧪 例の概念を検査",
+                        "command": "python3 -S ontautology.py check examples/concepts-20261120.json",
+                        "expect": "[]",
+                        "run": true
+                      },
+                      {
+                        "id": "help",
+                        "title": "❓ ヘルプ",
+                        "command": "python3 -S ontautology.py --help",
+                        "run": true
+                      }
+                    ]
+                  }
                 }
               ]
             }
