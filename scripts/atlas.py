@@ -99,7 +99,7 @@ def datasets():
     for path in sorted((ROOT / "examples").glob("concepts-*.json")):
         source = path.relative_to(ROOT).as_posix()
         data = read(source)
-        title = "概念・名前・階層" if source == CORPUS else "ポリゴン2・人間・AI"
+        title = "概念・名前・階層" if source == CORPUS else data.get("title", "ポリゴン2・人間・AI")
         graph = domain_graph(concept_edges(data))
         # Keep attributes outside the graph projection, including citation URLs.
         record(graph, resource(path.stem), {k: v for k, v in data.items() if k not in ("cases", "judgments")})
