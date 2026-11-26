@@ -1,7 +1,7 @@
 {
   "schema": "ontautology-concepts/1",
   "title": "身近なもの（麺とご飯・動物・プロ野球12球団）",
-  "note": "第二弾の比較教材（身近な語）。横断チャットの /onto・/guess でも当てっこに使う。プロ野球は2026年の12球団で、本拠地は都道府県、本拠地球場は屋根の有無だけ（球場名は命名権で変わるので持たない）、愛称は名前の由来の大まかな分類。",
+  "note": "第二弾の比較教材（身近な語）。横断チャットの /onto・/guess でも当てっこに使う。プロ野球は2026年の12球団で、本拠地は都道府県、本拠地球場は屋根の有無だけ（球場名は命名権で変わるので持たない）、愛称は名前の由来の大まかな分類。絵文字略称は公式ではなくファンの慣習で、人によって揺れる（先頭が代表。🦅 は楽天とソフトバンクで重なる）ので要素ではなく names に置く。",
   "seeds": [
     "ラーメン",
     "イルカ",
@@ -357,51 +357,68 @@
   "names": {
     "中日ドラゴンズ": [
       "略称:中日",
-      "英名:Chunichi Dragons"
+      "英名:Chunichi Dragons",
+      "絵文字略称:🐲",
+      "絵文字略称:🐉"
     ],
     "阪神タイガース": [
       "略称:阪神",
-      "英名:Hanshin Tigers"
+      "英名:Hanshin Tigers",
+      "絵文字略称:🐯"
     ],
     "読売ジャイアンツ": [
       "略称:巨人",
-      "英名:Yomiuri Giants"
+      "英名:Yomiuri Giants",
+      "絵文字略称:🐰"
     ],
     "横浜DeNAベイスターズ": [
       "略称:DeNA",
-      "英名:Yokohama DeNA BayStars"
+      "英名:Yokohama DeNA BayStars",
+      "絵文字略称:⭐",
+      "絵文字略称:🐹"
     ],
     "広島東洋カープ": [
       "略称:広島",
-      "英名:Hiroshima Toyo Carp"
+      "英名:Hiroshima Toyo Carp",
+      "絵文字略称:🎏"
     ],
     "東京ヤクルトスワローズ": [
       "略称:ヤクルト",
-      "英名:Tokyo Yakult Swallows"
+      "英名:Tokyo Yakult Swallows",
+      "絵文字略称:🐧"
     ],
     "福岡ソフトバンクホークス": [
       "略称:ソフトバンク",
-      "英名:Fukuoka SoftBank Hawks"
+      "英名:Fukuoka SoftBank Hawks",
+      "絵文字略称:🐶",
+      "絵文字略称:🦅"
     ],
     "北海道日本ハムファイターズ": [
       "略称:日本ハム",
-      "英名:Hokkaido Nippon-Ham Fighters"
+      "英名:Hokkaido Nippon-Ham Fighters",
+      "絵文字略称:🦊"
     ],
     "千葉ロッテマリーンズ": [
       "略称:ロッテ",
-      "英名:Chiba Lotte Marines"
+      "英名:Chiba Lotte Marines",
+      "絵文字略称:🐟",
+      "絵文字略称:🦆"
     ],
     "埼玉西武ライオンズ": [
       "略称:西武",
-      "英名:Saitama Seibu Lions"
+      "英名:Saitama Seibu Lions",
+      "絵文字略称:🦁"
     ],
     "東北楽天ゴールデンイーグルス": [
       "略称:楽天",
-      "英名:Tohoku Rakuten Golden Eagles"
+      "英名:Tohoku Rakuten Golden Eagles",
+      "絵文字略称:🦅"
     ],
     "オリックス・バファローズ": [
       "略称:オリックス",
-      "英名:ORIX Buffaloes"
+      "英名:ORIX Buffaloes",
+      "絵文字略称:🐮",
+      "絵文字略称:🦬"
     ],
     "犬": [
       "別名:イヌ",
@@ -569,6 +586,7 @@
     }
   ],
   "sources": {
-    "プロ野球": "https://npb.jp/teams/"
+    "プロ野球": "https://npb.jp/teams/",
+    "絵文字略称": "https://note.com/remsylong/n/n3c53a0c4d137"
   }
 }
