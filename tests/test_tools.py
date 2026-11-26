@@ -650,6 +650,28 @@ class GuessTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             tautology.guess({**corpus, "maybe": {"ghost": ["y"]}}, "a")
 
+    def test_binary_game_requires_a_positive_name_confirmation(self):
+        corpus = {"concepts": {"known": ["x", "kind:y"], "hidden": ["x", "kind:y"]}}
+        for response in (True, False, None):
+            with self.subTest(response=response):
+                game = ot.GuessGame(corpus, binary=True, confirm_name=True, exclude="hidden")
+                self.assertEqual(game.question, ("element", "kind:y"))
+                game.answer(None)
+                self.assertEqual(game.question, ("element", "x"))
+                game.answer(True)
+                self.assertEqual(game.question, ("name", "known"))
+                self.assertIsNone(game.guess)
+                game.answer(response)
+                self.assertIsNone(game.question)
+                self.assertEqual(game.guess, "known" if response is True else None)
+        withheld = tautology.guess(corpus, "hidden", known=False, binary=True, confirm_name=True)
+        self.assertTrue(withheld["reached"])
+        self.assertEqual(withheld["questions"][-1],
+                         {"ask": "known", "answer": False, "left": 0, "identity": True})
+        ambiguous = ot.GuessGame(corpus, confirm_name=True)
+        self.assertIsNone(ambiguous.question)
+        self.assertIsNone(ambiguous.guess)
+
     def test_maybe_links_are_hypotheses_in_the_graph_and_change_no_definition(self):
         corpus = concepts()
         graph = ot.concept_edges(corpus)
@@ -674,6 +696,12 @@ class GuessTests(unittest.TestCase):
         self.assertEqual((answer["lies"], answer["sure"], sorted(answer["honest"])), (1, 1.0, ["ギター", "ピカチュウ"]))
         sure = json.loads(run_cli(script, "guess", corpus_path, "ルイージ", "--sure", "2").stdout)
         self.assertEqual((sure["sure"], len([q for q in sure["honest"]["ルイージ"]["questions"] if q.get("confirm")])), (2.0, 2))
+        guarded = run_cli(script, "guess", corpus_path, "ギター", "--binary", "--confirm-name", "--lies", "1")
+        self.assertEqual(guarded.returncode, 0, guarded.stderr)
+        result = json.loads(guarded.stdout)
+        self.assertTrue(result["binary"] and result["confirm_name"])
+        self.assertEqual(result["honest"]["ギター"]["questions"][-1],
+                         {"ask": "ギター", "answer": True, "left": 1, "identity": True})
         self.assertEqual(run_cli(script, "guess", corpus_path, "存在しない").returncode, 1)
 
     def test_the_upper_layer_splits_the_groups_in_one_question(self):
