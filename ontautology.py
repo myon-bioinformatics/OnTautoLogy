@@ -29,6 +29,7 @@ import argparse
 import hashlib
 import itertools
 import json
+import math
 import sys
 from datetime import datetime
 from graphlib import CycleError, TopologicalSorter
@@ -38,7 +39,7 @@ from pathlib import Path
 
 BASIS = ("hypothesis", "derived", "observed", "proof")
 __all__ = ["BASIS", "check", "reach", "why", "cycles", "order", "ladder", "key_report",
-           "entailment", "digest", "timestamp", "define_concepts", "roundtrip_elements", "concept_edges", "exchange", "main"]
+           "entailment", "digest", "timestamp", "define_concepts", "roundtrip_elements", "concept_edges", "GuessGame", "exchange", "main"]
 
 
 def digest(value):
@@ -385,6 +386,169 @@ def _above(broader, elements):
             seen.add(el)
             todo += broader.get(el, ())
     return seen
+
+
+def _guess_attribute(elements, name):
+    """The values an element set gives for one attribute (属性:値)."""
+    return tuple(sorted(e.split(":", 1)[1] for e in elements if e.startswith(name + ":")))
+
+
+class GuessGame:
+    """One guessing session with a caller supplying each answer.
+
+    The next question is a (kind, text) tuple: "element" takes a bool,
+    "attribute" a tuple of values, and "name" an explicit bool confirmation.
+    None skips any question. Once question is None, guess is the result.
+    """
+
+    def __init__(self, corpus, *, lies=0, sure=1, binary=False, confirm_name=False, exclude=None):
+        self.concepts, _, _, _ = _normalize_corpus(corpus)
+        maybe, self.broader = _beside(corpus, self.concepts, "maybe"), _broader(corpus)
+        self.book, self.holders = {}, {}
+        for name, elements in self.concepts.items():
+            if elements is None or name == exclude:
+                continue
+            found = self.expanded(name)
+            may = set(maybe.get(name, ()))
+            self.book[name] = found, (may | _above(self.broader, may)) - found
+            for side, features in enumerate(self.book[name]):
+                for element in features:
+                    self.holders.setdefault(element, (set(), set()))[side].add(name)
+        self.attributes = {
+            name: tuple({a: _guess_attribute(elements, a) for a in
+                         {e.split(":", 1)[0] for e in elements if ":" in e}} for elements in sides)
+            for name, sides in self.book.items()
+        } if not binary else {}
+        self.lies, self.sure = lies, sure
+        self.binary, self.confirm_name = binary, confirm_name
+        self.strikes = dict.fromkeys(self.book, 0)
+        self.missed = {name: [] for name in self.book}
+        self.asked, self.log = set(), []
+        self.candidates = sorted(self.book)
+        self.estimate = math.ceil(math.log2(len(self.book))) if self.book else 0
+        self.confidence = 0.0
+        self.guess = self.question = self._candidate = None
+        self._checks = []
+        self._advance()
+
+    def expanded(self, name):
+        elements = self.concepts.get(name)
+        if elements is None:
+            raise ValueError(f"unknown or unobserved concept: {name!r}")
+        return set(elements) | _above(self.broader, elements)
+
+    def _attribute(self, name, side, question):
+        return self.attributes[name][side].get(question, ())
+
+    def _split(self):
+        live, options = set(self.candidates), []
+        for question in {e for n in live for side in self.book[n] for e in side} - self.asked:
+            has, may = self.holders[question]
+            yes, no = len(live & (has | may)), len(live) - len(live & (has - may))
+            if yes < len(live) and no < len(live):
+                options.append((max(yes, no), "element", question))
+        if not self.binary:
+            for question in {a for n in live for a in self.attributes[n][0]} - self.asked:
+                groups = {}
+                for name in live:
+                    value = self._attribute(name, 0, question)
+                    groups[value] = groups.get(value, 0) + 1
+                if len(groups) > 1:
+                    options.append((max(groups.values()), "attribute", question))
+        return min(options)[1:] if options else None
+
+    def _sharers(self, candidate, kind, question):
+        if kind == "element":
+            return sum((question in found) == (question in self.book[candidate][0])
+                       for found, _ in self.book.values())
+        expected = self._attribute(candidate, 0, question)
+        return sum(self._attribute(name, 0, question) == expected for name in self.book)
+
+    def _weight(self, kind, question):
+        size = len(self.book)
+        return math.log2(size / self._sharers(self._candidate, kind, question)) / math.log2(size) if size > 1 else 1.0
+
+    def _advance(self):
+        self.question = None
+        if self._candidate is None:
+            if len(self.candidates) > 1:
+                self.question = self._split()
+                if self.question is not None:
+                    return
+            if not self.candidates:
+                return
+            fewest = min(self.strikes[n] for n in self.candidates)
+            best = [n for n in self.candidates if self.strikes[n] == fewest]
+            if len(best) != 1:
+                return
+            self._candidate = best[0]
+            self.confidence = -sum(self._weight(kind, q) for kind, q in self.missed[self._candidate])
+            features = self.book[self._candidate][0]
+            checks = [("element", e) for e in features if self.binary or ":" not in e]
+            if not self.binary:
+                checks += [("attribute", a) for a in self.attributes[self._candidate][0]]
+            self._checks = sorted(
+                (self._sharers(self._candidate, kind, q), kind, q)
+                for kind, q in checks if q not in self.asked
+            )
+        if self._candidate not in self.candidates:
+            return
+        if self.confidence < self.sure and self._checks:
+            self.question = self._checks.pop(0)[1:]
+        elif self.confidence >= self.sure or self.confidence >= 0:
+            if self.confirm_name:
+                self.question = "name", self._candidate
+            else:
+                self.guess = self._candidate
+
+    def answer(self, value):
+        """Record one answer and advance to the next question or result."""
+        if self.question is None:
+            raise ValueError("the guessing game has ended")
+        kind, question = self.question
+        if kind == "name":
+            self.log.append({"ask": question, "answer": value, "left": int(value is True), "identity": True})
+            if value is True:
+                self.guess = question
+            self.question = None
+            return
+
+        self.asked.add(question)
+        against = []
+        if value is not None:
+            if kind == "element":
+                against = [name for name, (found, may) in self.book.items()
+                           if question not in may and (question in found) != value]
+            else:
+                against = [name for name in self.book if not self._attribute(name, 1, question)
+                           and self._attribute(name, 0, question) != value]
+        for name in against:
+            self.strikes[name] += 1
+            self.missed[name].append((kind, question))
+        self.candidates = [name for name in self.candidates if self.strikes[name] <= self.lies]
+        row = {"ask": f"{question}:?" if kind == "attribute" else question,
+               "answer": list(value) if kind == "attribute" and value is not None else value,
+               "left": len(self.candidates)}
+        if self._candidate is not None:
+            row["confirm"] = True
+            if value is not None:
+                weight = self._weight(kind, question)
+                self.confidence += -weight if self._candidate in against else weight
+        self.log.append(row)
+        self._advance()
+
+    def play(self, target, *, forget=()):
+        """Supply corpus-backed answers for the CLI simulation."""
+        truth = self.expanded(target) - set(forget)
+        while self.question is not None:
+            kind, question = self.question
+            if kind == "name":
+                value = target == question
+            elif kind == "attribute":
+                value = _guess_attribute(truth, question)
+            else:
+                value = question in truth
+            self.answer(value)
 
 
 def _minimal_hitting_sets(requirements, *, max_keys=5, max_key_size=5):
