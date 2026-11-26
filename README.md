@@ -1010,3 +1010,26 @@ python -S examples/wave_relations.py
 ```
 
 `too/` と `tol/` という短いディレクトリ名に置いた固定 checkout では、そちらが先に使われます。分類表のパスを渡せば、そのファイルを使います。
+
+### KG-P01-v1 比較台帳の再現
+
+Sites「知識グラフ PoC 調査ワークボード」のコミット
+`0b7a85dc0ed810c46ba34139b84c170157e5e172` から
+`fixtures/kg-p01.json` をバイト単位で回収した。
+[共通fixture](examples/kg-p01.json) のSHA-256は
+[移管時の台帳](examples/knowledge-graph-poc-board-20261120.json) の protocol と一致する。
+
+```sh
+python -S -m examples.kg_poc
+python -S -m unittest discover -s tests -p test_kg_poc.py -v
+```
+
+基準実装をPython 3.12.14で実測し、Q01〜Q06の6件で期待JSONと完全一致した。
+Q06の測定範囲は根拠付き引用と未承認候補の分離。LLM生成、Neo4j、RDF、
+cold/warmの速度・容量は未実測。実行時のJSONに実際の応答、期待値、合否、入力ハッシュが出る。
+
+Neo4j・RDFの比較器は `examples.kg_poc.evaluate(fixture, adapter)` に渡せる。
+adapterの引数は初期ノード、初期関係、Q番号、ケースのinput。各回空のストアに初期グラフを取り込み、
+inputの追加・更新・削除を適用して応答を返す。配列はfixtureのID順に正規化する
+（Q05のissuesは判断ID順で根拠切れ、confidence欠落の順）。
+ノード・関係の同一性にはidを使う。Q04の反対結論はv1の語彙「対象」「対象外」に限定する。
