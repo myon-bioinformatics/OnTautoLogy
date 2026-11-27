@@ -1,0 +1,32 @@
+{
+  "source": "https://github.com/myon-bioinformatics/myon-bioinformatics.github.io/pull/188",
+  "question": "戦闘中、今のターンに探索の巻物で薬草を探すことを勧められるか",
+  "rule": ["AND", "巻物を所持", "薬草を補充したい", "次の攻撃を受けても余裕がある", ["NOT", "次が強攻撃"]],
+  "nodes": [
+    {
+      "id": "forage",
+      "巻物を所持": true,
+      "薬草を補充したい": true,
+      "次の攻撃を受けても余裕がある": true,
+      "次が強攻撃": false
+    },
+    {
+      "id": "guard",
+      "巻物を所持": true,
+      "薬草を補充したい": true,
+      "次の攻撃を受けても余裕がある": true,
+      "次が強攻撃": true
+    },
+    {
+      "id": "check-intent",
+      "巻物を所持": true,
+      "薬草を補充したい": true,
+      "次の攻撃を受けても余裕がある": true
+    }
+  ],
+  "expected": {
+    "forage": "holds",
+    "guard": "violated",
+    "check-intent": "unknown"
+  }
+}
