@@ -741,6 +741,10 @@ Node からは `vendor/py_launch.cjs` の `--call 関数名` で、`if __name__ 
 
 ## 🧪 テスト
 
+[真理値表の形式検証](docs/formal-verification.md)では、全割当の網羅、等価性、
+反例、前提の矛盾と含意成立の区別を Lean で証明し、実際の Python 判定を独立した
+集合の意味論と比較します。Lean は専用 CI で実行し、通常の実行には要求しません。
+
 ```sh
 python -S -m unittest discover -s tests                     # 標準ライブラリだけ（Node 26+ があれば Node 経由も）
 uv run --no-project --with redis python -m unittest discover -s tests -p test_tools.py -k RedisCrossCheck -v   # 🧱 Redis で答え合わせ
