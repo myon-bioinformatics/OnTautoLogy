@@ -21,7 +21,7 @@ permissions:
   id-token: write
 jobs:
   deploy:
-    uses: myon-bioinformatics/myon-bioinformatics/.github/workflows/reusable-pages-static.yml@dccd07ea5c9820764e99d77251e9490afa77fe6e
+    uses: myon-bioinformatics/myon-bioinformatics/.github/workflows/reusable-pages-static.yml@a71fa423f7e0357398abf8a00743cbe6b6bfc670
     with:
       artifact_path: site
       # 📘 site/index.html is the usage guide (🎞 GIF demo / 🧭 examples / 📚 feature reference), rendered from data by the pinned renderer.

@@ -518,3 +518,24 @@ class TransferLedgerTests(unittest.TestCase):
                               input=json.dumps(self.example()),text=True,capture_output=True)
         self.assertEqual(result.returncode,2,result.stderr)
         self.assertEqual(len(json.loads(result.stdout)['pending']),14)
+
+
+class InventoryEvidenceTests(unittest.TestCase):
+    def test_repository_observation_keeps_corpus_reference_separate_from_evidence_gaps(self):
+        doc = snapshot()
+        ref = {'run_id': 10, 'kind': 'errorr-corpus-reference', 'scope': 'run-reference-only',
+               'evidence_url': 'https://github.com/myon-bioinformatics/demo/actions/runs/10'}
+        doc['inventory'] = [{'repo': 'myon-bioinformatics/demo',
+                             'main_runs': [dict(id=10, run_attempt=2, conclusion='success')],
+                             'evidence': [ref],
+                             'gaps': [dict(run_id=10, reason=kind)
+                                      for kind in ('unavailable-endpoint', 'unlinked')]}]
+        graph = ga.audit([doc])
+        evidence, = (n for n in graph['nodes'] if n['type'] == 'Evidence')
+        self.assertEqual(json.loads(evidence['detail']), ref)
+        self.assertEqual({n['reason'] for n in graph['nodes'] if n['type'] == 'EvidenceGap'},
+                         {'unavailable-endpoint', 'unlinked'})
+        relation, = (e for e in graph['edges'] if e['target'] == evidence['id'])
+        self.assertTrue(relation['source'].startswith('repository-observation:'))
+        self.assertEqual(relation['relation'], 'hasEvidence')
+        self.assertEqual([e['conclusion'] for e in graph['edges'] if e['relation'] == 'hasRun'], ['success'])

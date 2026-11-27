@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   changes:
-    uses: myon-bioinformatics/myon-bioinformatics/.github/workflows/reusable-change-detection.yml@1cd621c8a46d18611a9135bdc8a0e9d46013d58d
+    uses: myon-bioinformatics/myon-bioinformatics/.github/workflows/reusable-change-detection.yml@a71fa423f7e0357398abf8a00743cbe6b6bfc670
 
   test:
     needs: changes

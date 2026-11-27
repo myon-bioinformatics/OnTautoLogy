@@ -251,6 +251,7 @@ def enrich(value, documents, owner):
             runs = inv.get('main_runs', [])
             audit_runs(graph, runs, obs, name, doc['captured_at'], 'main')
             row = {'issues': inv.get('issues', []),
+                   'evidence': inv.get('evidence', []),
                    'pins': [dict(repository=p.get('repository', name), sha=p['commit'],
                                  destination=p.get('destination'))
                             for p in inv.get('pin_records', []) if p.get('commit')],
