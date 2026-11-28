@@ -19,13 +19,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: myon-bioinformatics/TaxOntOy
-          ref: c80f39cd9a5359403fdfce0fec9be4605594c8eb # main
+          ref: c80f39cd9a5359403fdfce0fec9be4605594c8eb # 📌 TOO_COMMIT: the sibling-format snapshot
           path: too
           persist-credentials: false
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: myon-bioinformatics/TopOntoLogy
-          ref: d61c3fc6bc813966357dfc8f614217aaf50d2c15 # main
+          ref: d61c3fc6bc813966357dfc8f614217aaf50d2c15 # 📌 TOL_COMMIT: the sibling-format snapshot
           path: tol
           persist-credentials: false
       - run: |
