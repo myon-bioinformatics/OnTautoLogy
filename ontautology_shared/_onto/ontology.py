@@ -159,10 +159,37 @@ def arcade(language, command, params):
         return json.load(response)["result"]
 
 
+def _statement_from_row(row):
+    """Parse one stored N3 statement without normalizing literal spellings."""
+    from rdflib import Graph, Literal
+    from rdflib.plugins.parsers.notation3 import RDFSink, SinkParser
+
+    class LexicalSink(RDFSink):
+        statement_count = 0
+
+        def newLiteral(self, value, datatype, language):
+            return Literal(value, lang=language, datatype=datatype, normalize=False)
+
+        def makeStatement(self, *args, **kwargs):
+            self.statement_count += 1
+            return super().makeStatement(*args, **kwargs)
+
+    graph = Graph()
+    sink = LexicalSink(graph)
+    parser = SinkParser(sink, turtle=True)
+    source = " ".join(row[key] for key in ("subject", "predicate", "object")) + " ."
+    try:
+        parser.loadBuf(source)
+    except (SyntaxError, AssertionError) as exc:
+        raise ValueError("Invalid stored RDF statement") from exc
+    if sink.statement_count != 1 or len(graph) != 1:
+        raise ValueError("Expected one RDF statement per database row")
+    return next(iter(graph))
+
+
 def transfer(backend, scope, graph=None):
     """Append idempotently to a scope, or export it when graph is omitted."""
     from rdflib import Graph
-    from rdflib.util import from_n3
 
     rows = statements(graph) if graph is not None else None
     if backend == "neo4j":
@@ -183,7 +210,7 @@ def transfer(backend, scope, graph=None):
         raise ValueError(f"Unknown backend {backend}")
     output = Graph()
     for row in result:
-        triple = tuple(from_n3(row[key]) for key in ("subject", "predicate", "object"))
+        triple = _statement_from_row(row)
         if triple in output:
             raise ValueError("Duplicate database relationship for RDF triple")
         output.add(triple)
