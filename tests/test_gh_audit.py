@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import ontautology as ot  # noqa: E402
 from gh_audit import gh_audit as ga  # noqa: E402
 from test_ontautology import run_cli  # noqa: E402
+from vendor.cli_args import run_cli as run_cli_command  # noqa: E402
 
 
 class AuditTransport(unittest.TestCase):
@@ -39,7 +40,7 @@ class AuditTransport(unittest.TestCase):
             p = self.run_cli('reach', str(graph), 'file:myon-bioinformatics/Aoi:README.md')
             self.assertEqual(p.returncode, 0, p.stderr)
             self.assertTrue(json.loads(p.stdout)['rows'])
-            core = subprocess.run([sys.executable, '-S', str(self.script.parents[1] / 'ontautology.py'), 'reach', str(graph), 'x'], capture_output=True)
+            core = run_cli_command(self.script.parents[1] / 'ontautology.py', 'reach', str(graph), 'x', python_options=('-S',))
             self.assertEqual(core.returncode, 1, 'the core alone does not know audit graphs')
 
 
@@ -130,8 +131,8 @@ class OpenInventoryTests(unittest.TestCase):
         line = next(line for line in ga.turtle(graph).splitlines() if " ot:open_pr_inventory " in line)
         literal = line.split(" ot:open_pr_inventory ", 1)[1].removesuffix(" .")
         self.assertEqual(json.loads(json.loads(literal)), doc["open_pr_inventory"])
-        p = subprocess.run([sys.executable, "-S", str(AuditTransport.script), "plan", "-"],
-                           input=json.dumps(graph).encode(), capture_output=True)
+        p = run_cli_command(AuditTransport.script, "plan", "-",
+                            python_options=("-S",), stdin=json.dumps(graph))
         self.assertEqual(p.returncode, 2, p.stderr)
         self.assertEqual(json.loads(p.stdout)["inventory_uncertainty"][self.repo]["complete"], False)
 
@@ -358,7 +359,7 @@ class ExtendedAuditTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path=Path(tmp)/'graph.json';path.write_text(json.dumps(ga.audit([snapshot(row(1))])))
             script=str(Path(__file__).resolve().parent.parent / 'gh_audit/gh_audit.py')
-            result=subprocess.run([sys.executable,'-S',script,'diff',str(path),str(path)],capture_output=True)
+            result=run_cli_command(script,'diff',str(path),str(path),python_options=('-S',))
             self.assertEqual(result.returncode,0,result.stderr)
             self.assertEqual(json.loads(result.stdout)['changed'],[])
 
@@ -514,8 +515,8 @@ class TransferLedgerTests(unittest.TestCase):
         with self.assertRaises(ValueError):ga.transfer_report(doc)
 
     def test_transfers_cli_works_on_stdin_and_signals_pending(self):
-        result=subprocess.run([sys.executable,'-S',str(Path(ga.__file__)),'transfers','-'],
-                              input=json.dumps(self.example()),text=True,capture_output=True)
+        result=run_cli_command(Path(ga.__file__),'transfers','-',
+                              python_options=('-S',),stdin=json.dumps(self.example()))
         self.assertEqual(result.returncode,2,result.stderr)
         self.assertEqual(len(json.loads(result.stdout)['pending']),14)
 
