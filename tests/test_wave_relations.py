@@ -6,6 +6,8 @@ CLI の失敗、辺数が合わないときの停止、公開 JSON の回帰を�
 import importlib.util
 import json
 import os
+import shutil
+from concurrent.futures import ThreadPoolExecutor
 import subprocess
 import sys
 import tempfile
@@ -126,7 +128,7 @@ class WaveRelationTests(unittest.TestCase):
             "concepts": {"narrower": "hierarchy"},
             "cases": {"candidate": "hypothesis"},
         }
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory() as directory, patch.object(wr, "EXPORTS", Path(directory) / "exports"):
             path = Path(directory) / "table.json"
             path.write_text(json.dumps(table), encoding="utf-8")
 
@@ -171,37 +173,40 @@ class PinnedTaxOntOyTests(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/wave-relations.yml").read_text(encoding="utf-8")
         self.assertIn(too_sha, workflow)
         self.assertIn(tol_sha, workflow)
-        created = []
-        try:
-            for name, url, sha in (
-                ("too", "https://github.com/myon-bioinformatics/TaxOntOy.git", too_sha),
-                ("tol", "https://github.com/myon-bioinformatics/TopOntoLogy.git", tol_sha),
-            ):
-                link = ROOT / name
-                if link.exists() or link.is_symlink():
+        with tempfile.TemporaryDirectory(prefix="otl-wave-") as directory:
+            workspace = Path(directory)
+            shutil.copytree(ROOT / "examples", workspace / "examples",
+                            ignore=shutil.ignore_patterns("tol-export", "__pycache__"))
+            shutil.copytree(ROOT / "ontautology_shared", workspace / "ontautology_shared",
+                            ignore=shutil.ignore_patterns("__pycache__"))
+
+            def checkout(name, repository, sha):
+                destination = workspace / name
+                existing = ROOT / name
+                if existing.exists() or existing.is_symlink():
                     head = subprocess.check_output(
-                        ["git", "-C", str(link), "rev-parse", "HEAD"], text=True).strip()
+                        ["git", "-C", str(existing), "rev-parse", "HEAD"], text=True).strip()
                     self.assertEqual(head, sha, name)
-                    continue
-                repo = Path(tempfile.mkdtemp(prefix=f"otl-{name}-")) / name
-                subprocess.run(["git", "init", str(repo)], check=True, capture_output=True, text=True)
-                subprocess.run(
-                    ["git", "-C", str(repo), "remote", "add", "origin", url],
-                    check=True, capture_output=True, text=True)
-                subprocess.run(
-                    ["git", "-C", str(repo), "fetch", "--depth", "1", "origin", sha],
-                    check=True, capture_output=True, text=True)
-                subprocess.run(
-                    ["git", "-C", str(repo), "checkout", "--detach", "FETCH_HEAD"],
-                    check=True, capture_output=True, text=True)
-                link.symlink_to(repo, target_is_directory=True)
-                created.append(link)
+                    destination.symlink_to(existing, target_is_directory=True)
+                    return
+                subprocess.run(["git", "init", "--quiet", str(destination)], check=True)
+                subprocess.run(["git", "fetch", "--quiet", "--depth=1",
+                                f"https://github.com/myon-bioinformatics/{repository}.git", sha],
+                               cwd=destination, check=True)
+                subprocess.run(["git", "checkout", "--quiet", "--detach", sha], cwd=destination, check=True)
+
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                too = pool.submit(checkout, "too", "TaxOntOy", too_sha)
+                tol = pool.submit(checkout, "tol", "TopOntoLogy", tol_sha)
+                too.result()
+                tol.result()
             env = os.environ.copy()
-            env["ONTO_ROOT"] = str(ROOT / "ontautology_shared" / "_onto")
+            env["PYTHONPATH"] = os.pathsep.join(filter(None, (str(ROOT), env.get("PYTHONPATH"))))
+            env["ONTO_ROOT"] = str(workspace / "ontautology_shared" / "_onto")
             env["OTL_ROOT"] = str(ROOT)
             result = run_cli(
-                "examples/wave_relations.py", "too/otl-relations.json",
-                python_options=("-S",), cwd=ROOT, env=env,
+                workspace / "examples/wave_relations.py", "too/otl-relations.json",
+                python_options=("-S",), cwd=workspace, env=env,
             )
             self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
             report = json.loads(result.stdout)
@@ -211,18 +216,13 @@ class PinnedTaxOntOyTests(unittest.TestCase):
             self.assertEqual(report["taxontoy"]["errors"], [])
             published = json.loads((ROOT / "examples/wave-profiles.json").read_text(encoding="utf-8"))
             self.assertEqual(report, published)
-            with tempfile.TemporaryDirectory() as directory:
-                path = Path(directory) / "report.json"
-                path.write_text(result.stdout, encoding="utf-8")
-                checked = run_cli(
-                    ROOT / "examples/check_wave_report.py", str(path),
-                    python_options=("-S",), cwd=ROOT,
-                )
+            path = workspace / "report.json"
+            path.write_text(result.stdout, encoding="utf-8")
+            checked = run_cli(
+                ROOT / "examples/check_wave_report.py", str(path),
+                python_options=("-S",), cwd=workspace,
+            )
             self.assertEqual(checked.returncode, 0, checked.stderr + checked.stdout)
-        finally:
-            for link in created:
-                if link.is_symlink():
-                    link.unlink()
 
 
 if __name__ == "__main__":
