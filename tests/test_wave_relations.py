@@ -3,6 +3,7 @@
 実物の CLI は CI の examples ジョブが固定コミットで実行する。ここはパスの切り方、
 CLI の失敗、辺数が合わないときの停止、公開 JSON の回帰を見る。
 """
+import importlib.util
 import json
 import os
 import subprocess
@@ -15,8 +16,20 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from examples import wave_relations as wr  # noqa: E402
-from vendor.cli_args import run_cli  # noqa: E402
 from examples.sibling_format import classification, relation_groups  # noqa: E402
+
+
+def load_vendored(name, relpath):
+    """Load a vendored file by path under a repo-unique name (cli_args README: Loading a vendored copy)."""
+    if name not in sys.modules:
+        spec = importlib.util.spec_from_file_location(name, Path(__file__).resolve().parents[1] / relpath)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[name] = module
+        spec.loader.exec_module(module)
+    return sys.modules[name]
+
+
+run_cli = load_vendored("ontautology_cli_args", "vendor/cli_args.py").run_cli
 
 
 class WaveRelationTests(unittest.TestCase):

@@ -4,6 +4,7 @@ Standard library only, except RedisCrossCheck: an independent answer from Redis 
 try an idea with an outside module first. It is skipped without the redis package and a redis-server binary,
 and fails instead of skipping in the CI job named redis.
 """
+import importlib.util
 import json
 import os
 import random
@@ -21,7 +22,21 @@ sys.path.insert(0, str(ROOT))
 import ontautology as ot  # noqa: E402
 from gh_audit import gh_audit as ga  # noqa: E402
 from tools import knowledgegraph, ontology, tautology  # noqa: E402
-from vendor.cli_args import Command, run_command  # noqa: E402
+
+
+def load_vendored(name, relpath):
+    """Load a vendored file by path under a repo-unique name (cli_args README: Loading a vendored copy)."""
+    if name not in sys.modules:
+        spec = importlib.util.spec_from_file_location(name, Path(__file__).resolve().parents[1] / relpath)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[name] = module
+        spec.loader.exec_module(module)
+    return sys.modules[name]
+
+
+_cli_args = load_vendored("ontautology_cli_args", "vendor/cli_args.py")
+Command = _cli_args.Command
+run_command = _cli_args.run_command
 
 
 def edge(source, target, basis="observed", kind="dependsOn"):
