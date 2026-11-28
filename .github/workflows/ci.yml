@@ -15,11 +15,15 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   changes:
+    if: github.event_name != 'pull_request'
     uses: myon-bioinformatics/myon-bioinformatics/.github/workflows/reusable-change-detection.yml@main
 
   test:
     needs: changes
-    if: needs.changes.outputs.docs_only != 'true'
+    # PRs classify paths on the test runner to avoid queuing a second job.
+    if: >-
+      !cancelled() && (github.event_name == 'pull_request' ||
+      (needs.changes.result == 'success' && needs.changes.outputs.docs_only != 'true'))
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
@@ -30,10 +34,16 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: ${{ github.event_name == 'pull_request' && '0' || '1' }}
+      - id: paths
+        if: github.event_name == 'pull_request'
+        uses: myon-bioinformatics/myon-bioinformatics/.github/actions/classify-changes@main
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: steps.paths.outputs.docs_only != 'true'
         with:
           node-version: '26'
       - name: Verify Node major
+        if: steps.paths.outputs.docs_only != 'true'
         shell: bash
         run: |
           node_major=$(node -p "process.versions.node.split('.')[0]")
@@ -42,11 +52,13 @@ jobs:
             exit 1
           fi
       - uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        if: steps.paths.outputs.docs_only != 'true'
         with:
           version: latest
           enable-cache: true
           python-version: ${{ matrix.python }}
       - name: Exercise installed shared API from outside the checkout
+        if: steps.paths.outputs.docs_only != 'true'
         run: |
           uv build --wheel --out-dir "$RUNNER_TEMP/wheels"
           cd "$RUNNER_TEMP"
@@ -54,10 +66,14 @@ jobs:
           uv pip install --python consumer/bin/python --no-deps wheels/*.whl
           consumer/bin/python -I "$GITHUB_WORKSPACE/examples/shared_taxonomy.py"
       - run: uv run --no-project python -S -m unittest discover -s tests -v
+        if: steps.paths.outputs.docs_only != 'true'
       - run: uv run --no-project python -S gh_audit/gh_audit.py audit examples/audit-20261114.json -o /tmp/graph.json
+        if: steps.paths.outputs.docs_only != 'true'
       - run: uv run --no-project python -S gh_audit/gh_audit.py check /tmp/graph.json
+        if: steps.paths.outputs.docs_only != 'true'
       # plan exits 2 when something is blocked; that is an answer about the snapshot, not a failure of the tool
       - run: uv run --no-project python -S gh_audit/gh_audit.py plan /tmp/graph.json || [ $? -eq 2 ]
+        if: steps.paths.outputs.docs_only != 'true'
 
   # Outside modules for trying an idea first: Redis answers the same questions; here a skip is a failure.
   redis:
