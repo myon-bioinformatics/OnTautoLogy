@@ -22,6 +22,7 @@ commands and exit codes come along).
 Dependency goes one way: tools/ import the core, the core never imports tools/.
 Every function is callable by name from Python, and from Node through vendor/py_launch.cjs (--call).
 """
+import importlib.util
 import collections
 import itertools
 import json
@@ -34,7 +35,19 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import ontautology as ot  # noqa: E402
 from ontautology import OPS, _assignments, atoms, classify, holds  # noqa: E402
 from ontautology_shared.markers import MARKERS, marker_slots
-from vendor.pythdragoras import classification_metrics  # noqa: E402
+
+
+def load_vendored(name, relpath):
+    """Load a vendored file by path under a repo-unique name (cli_args README: Loading a vendored copy)."""
+    if name not in sys.modules:
+        spec = importlib.util.spec_from_file_location(name, Path(__file__).resolve().parents[1] / relpath)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[name] = module
+        spec.loader.exec_module(module)
+    return sys.modules[name]
+
+
+classification_metrics = load_vendored("ontautology_pythdragoras", "vendor/pythdragoras.py").classification_metrics
 
 __all__ = ["standing", "gaps", "entailed", "holds", "atoms", "judge", "rules", "holdout", "guess", "guess_report", "wobble", "cases", "edition_narrative", "equivalent", "classify", "evaluate_nodes", "main"]
 

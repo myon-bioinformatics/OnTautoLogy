@@ -2,6 +2,7 @@
 
 Node runs every tool through vendor/py_launch.cjs, so no per-tool .mjs/.cjs wrapper is kept here.
 """
+import importlib.util
 import inspect
 import json
 import os
@@ -14,7 +15,19 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 import ontautology as ot  # noqa: E402
 from gh_audit import gh_audit as ga  # noqa: E402
-from vendor import fleet_check as fleet  # noqa: E402
+
+
+def load_vendored(name, relpath):
+    """Load a vendored file by path under a repo-unique name (cli_args README: Loading a vendored copy)."""
+    if name not in sys.modules:
+        spec = importlib.util.spec_from_file_location(name, Path(__file__).resolve().parents[1] / relpath)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[name] = module
+        spec.loader.exec_module(module)
+    return sys.modules[name]
+
+
+fleet = load_vendored("ontautology_fleet_check", "vendor/fleet_check.py")
 
 EXAMPLE = ROOT / "examples/audit-20261114.json"
 needs_node = unittest.skipIf(fleet.node() is None, "Node 26+ not available (set NODE)")
