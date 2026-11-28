@@ -14,6 +14,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+from vendor.cli_args import run_cli  # noqa: E402
 
 _TARGET = str((ROOT / "examples" / "sibling_format.py").resolve())
 _SEEN_LINES = set()
@@ -230,9 +231,9 @@ class ProjectionTests(unittest.TestCase):
 
     def test_cli_exports_and_rejects_a_broken_graph(self):
         script = str(ROOT / "examples/sibling_format.py")
-        exported = subprocess.run(
-            [sys.executable, "-S", script, "export", "cases", str(ROOT / "examples/concepts-20261115.json")],
-            cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+        exported = run_cli(
+            script, "export", "cases", str(ROOT / "examples/concepts-20261115.json"),
+            python_options=("-S",), cwd=ROOT,
         )
         self.assertEqual(exported.returncode, 0, exported.stderr)
         graph = json.loads(exported.stdout)
@@ -242,16 +243,16 @@ class ProjectionTests(unittest.TestCase):
             folder = Path(directory)
             (folder / "graph.json").write_text(exported.stdout, encoding="utf-8")
             (folder / "table.json").write_text(json.dumps({"cases": ASSUMED["cases"]}), encoding="utf-8")
-            checked = subprocess.run(
-                [sys.executable, "-S", script, "check", str(folder / "graph.json"), str(folder / "table.json"), "cases"],
-                cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+            checked = run_cli(
+                script, "check", str(folder / "graph.json"), str(folder / "table.json"), "cases",
+                python_options=("-S",), cwd=ROOT,
             )
             self.assertEqual(checked.returncode, 0, checked.stderr)
             self.assertEqual(json.loads(checked.stdout)["classes"]["affirmation"], 3)
             self.assertNotIn("negation", json.loads(checked.stdout)["classes"])
-            broken = subprocess.run(
-                [sys.executable, "-S", script, "check", str(folder / "table.json"), str(folder / "table.json"), "cases"],
-                cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+            broken = run_cli(
+                script, "check", str(folder / "table.json"), str(folder / "table.json"), "cases",
+                python_options=("-S",), cwd=ROOT,
             )
             self.assertEqual(broken.returncode, 1)
             write_relations_site(ROOT / "examples/wave-profiles.json", folder / "site")
@@ -670,9 +671,9 @@ class RelationTableV2Tests(unittest.TestCase):
             (folder / "graph.json").write_text(json.dumps(graph), encoding="utf-8")
             table = folder / "table.json"
             table.write_text(json.dumps(_version(SCHEMA_V2)), encoding="utf-8")
-            checked = subprocess.run(
-                [sys.executable, "-S", script, "check", str(folder / "graph.json"), str(table), "audit"],
-                cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+            checked = run_cli(
+                script, "check", str(folder / "graph.json"), str(table), "audit",
+                python_options=("-S",), cwd=ROOT,
             )
             self.assertEqual(checked.returncode, 0, checked.stderr)
             self.assertEqual(json.loads(checked.stdout)["classes"]["dependency"], 1)
@@ -686,9 +687,9 @@ class RelationTableV2Tests(unittest.TestCase):
                 self.assertEqual(main(["check", str(folder / "graph.json"), str(schemaless), "audit"]), 0)
             self.assertEqual(json.loads(out.getvalue())["classes"]["dependency"], 1)
             table.write_text(json.dumps(_version("taxontoy-relations/9")), encoding="utf-8")
-            rejected = subprocess.run(
-                [sys.executable, "-S", script, "check", str(folder / "graph.json"), str(table), "audit"],
-                cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+            rejected = run_cli(
+                script, "check", str(folder / "graph.json"), str(table), "audit",
+                python_options=("-S",), cwd=ROOT,
             )
         self.assertEqual(rejected.returncode, 1)
         self.assertEqual(rejected.stderr.splitlines(), ["unsupported table schema: taxontoy-relations/9"])

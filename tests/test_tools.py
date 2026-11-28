@@ -21,6 +21,7 @@ sys.path.insert(0, str(ROOT))
 import ontautology as ot  # noqa: E402
 from gh_audit import gh_audit as ga  # noqa: E402
 from tools import knowledgegraph, ontology, tautology  # noqa: E402
+from vendor.cli_args import Command, run_command  # noqa: E402
 
 
 def edge(source, target, basis="observed", kind="dependsOn"):
@@ -547,8 +548,7 @@ class JudgeTests(unittest.TestCase):
             cmd = [sys.executable, "-I", "-S", str(ROOT / "tools/tautology.py"), "evaluate"]
             options = ["--type", "Observation", "--rule", "NOT", "draft"]
             for source in ("audit.json", "-"):
-                run = subprocess.run([*cmd, source, *options], cwd=cwd, input=json.dumps(graph),
-                                     capture_output=True, text=True)
+                run = run_command(Command([*cmd, source, *options]), cwd=cwd, stdin=json.dumps(graph))
                 self.assertEqual(run.returncode, 2, run.stderr)
                 result = json.loads(run.stdout)
                 self.assertEqual(result["counts"], {"holds": 1, "violated": 1, "unknown": 1})

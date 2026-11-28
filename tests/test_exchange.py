@@ -1,6 +1,5 @@
 import json
 import os
-import subprocess
 import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -8,6 +7,8 @@ import unittest
 from uuid import uuid4
 
 import onto_path
+
+from vendor.cli_args import run_cli
 
 try:
     from rdflib import BNode, Graph, Literal, Namespace, RDF
@@ -77,8 +78,9 @@ class Exchange(unittest.TestCase):
         for rule, verdict, value in ((["OR", "p", ["NOT", "p"]], "tautology", True),
                                      (["AND", "p", ["NOT", "p"]], "contradiction", False),
                                      ("p", "contingent", None)):
-            done = subprocess.run([sys.executable, str(ROOT / "tools/tautology.py"), "classify",
-                                   "--ttl", json.dumps(rule)], capture_output=True, text=True, check=True)
+            done = run_cli(ROOT / "tools/tautology.py", "classify",
+                           "--ttl", json.dumps(rule))
+            self.assertEqual(done.returncode, 0, done.stderr)
             graph = Graph().parse(data=done.stdout, format="turtle")
             prop, = graph.subjects(RDF.type, OTL.Proposition)
             self.assertEqual(graph.value(prop, OTL.classification), OTL[verdict])
@@ -87,9 +89,8 @@ class Exchange(unittest.TestCase):
     def test_entailment_turtle_keeps_the_result_scoped(self):
         for premises, conclusion, verdict in [(["p"], "p", "entailed"), ([], "p", "counterexample"),
                                               (["p", ["NOT", "p"]], "q", "inconsistent-premises")]:
-            done = subprocess.run([sys.executable, str(ROOT / "ontautology.py"), "entails", "-", "--ttl"],
-                                  input=json.dumps(dict(premises=premises, conclusion=conclusion)),
-                                  text=True, capture_output=True)
+            done = run_cli(ROOT / "ontautology.py", "entails", "-", "--ttl",
+                           stdin=json.dumps(dict(premises=premises, conclusion=conclusion)))
             self.assertEqual(done.returncode, 0 if verdict == "entailed" else 2, done.stderr)
             graph = Graph().parse(data=done.stdout, format="turtle")
             check, = graph.subjects(RDF.type, OTL.InferenceCheck)
@@ -104,8 +105,8 @@ class Exchange(unittest.TestCase):
         corpus = json.loads((ROOT / "examples/concepts-20261115.json").read_text())
         first = corpus["judgments"][0]
         corpus["judgments"].append({**first, "actor": "再確認者", "holds": False, "evidence": "追試記録"})
-        done = subprocess.run([sys.executable, str(ROOT / "tools/tautology.py"), "cases", "-", "--ttl"],
-                              input=json.dumps(corpus), capture_output=True, text=True)
+        done = run_cli(ROOT / "tools/tautology.py", "cases", "-", "--ttl",
+                       stdin=json.dumps(corpus))
         self.assertEqual(done.returncode, 2, done.stderr)
         graph = Graph().parse(data=done.stdout, format="turtle")
         case = OTL["case:" + first["case"]]

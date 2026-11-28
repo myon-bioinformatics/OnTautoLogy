@@ -16,6 +16,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+from vendor.cli_args import run_cli  # noqa: E402
 
 _TARGET = str((ROOT / "ontautology_graphs.py").resolve())
 _SEEN_LINES = set()
@@ -863,16 +864,16 @@ class CliTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("OTL_GIT_REPO", err)
         script = str(ROOT / "ontautology_graphs.py")
-        done = subprocess.run(
-            [sys.executable, "-S", script, "basis", str(repo / "a.txt")],
-            capture_output=True, text=True, encoding="utf-8",
+        done = run_cli(
+            script, "basis", str(repo / "a.txt"),
+            python_options=("-S",),
         )
         self.assertEqual(done.returncode, 1)
         self.assertIn("ontautology-graphs:", done.stderr)
         payload = graph_of([edge("k", "a", "b")])
-        shown = subprocess.run(
-            [sys.executable, "-S", script, "basis", "-", "--json"],
-            input=json.dumps(payload).encode(), capture_output=True,
+        shown = run_cli(
+            script, "basis", "-", "--json",
+            python_options=("-S",), stdin=json.dumps(payload),
         )
         self.assertEqual(shown.returncode, 0, shown.stderr)
         self.assertEqual(json.loads(shown.stdout)["result"]["independent_cycles"], 0)

@@ -15,6 +15,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 from examples import wave_relations as wr  # noqa: E402
+from vendor.cli_args import run_cli  # noqa: E402
 from examples.sibling_format import classification, relation_groups  # noqa: E402
 
 
@@ -48,9 +49,9 @@ class WaveRelationTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn('"ok": true', stdout.getvalue())
         script = ROOT / "examples" / "wave_relations.py"
-        missing = subprocess.run(
-            [sys.executable, "-S", str(script), "missing-classification.json"],
-            cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+        missing = run_cli(
+            script, "missing-classification.json",
+            python_options=("-S",), cwd=ROOT,
         )
         self.assertEqual(missing.returncode, 1)
         self.assertNotIn("Traceback", missing.stderr)
@@ -138,14 +139,14 @@ class CheckWaveReportTests(unittest.TestCase):
     def test_published_profile_passes_and_a_changed_count_fails(self):
         script = ROOT / "examples/check_wave_report.py"
         published = ROOT / "examples/wave-profiles.json"
-        ok = subprocess.run([sys.executable, "-S", str(script), str(published)], capture_output=True, text=True)
+        ok = run_cli(script, str(published), python_options=("-S",))
         self.assertEqual(ok.returncode, 0, ok.stderr)
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "report.json"
             report = json.loads(published.read_text(encoding="utf-8"))
             report["waves"]["audit"]["classes"]["dependency"]["edges"] = 0
             path.write_text(json.dumps(report), encoding="utf-8")
-            bad = subprocess.run([sys.executable, "-S", str(script), str(path)], capture_output=True, text=True)
+            bad = run_cli(script, str(path), python_options=("-S",))
         self.assertNotEqual(bad.returncode, 0)
         self.assertIn("一致しません", bad.stderr + bad.stdout)
 
@@ -185,9 +186,9 @@ class PinnedTaxOntOyTests(unittest.TestCase):
             env = os.environ.copy()
             env["ONTO_ROOT"] = str(ROOT / "ontautology_shared" / "_onto")
             env["OTL_ROOT"] = str(ROOT)
-            result = subprocess.run(
-                [sys.executable, "-S", "examples/wave_relations.py", "too/otl-relations.json"],
-                cwd=ROOT, capture_output=True, text=True, encoding="utf-8", env=env,
+            result = run_cli(
+                "examples/wave_relations.py", "too/otl-relations.json",
+                python_options=("-S",), cwd=ROOT, env=env,
             )
             self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
             report = json.loads(result.stdout)
@@ -200,9 +201,9 @@ class PinnedTaxOntOyTests(unittest.TestCase):
             with tempfile.TemporaryDirectory() as directory:
                 path = Path(directory) / "report.json"
                 path.write_text(result.stdout, encoding="utf-8")
-                checked = subprocess.run(
-                    [sys.executable, "-S", str(ROOT / "examples/check_wave_report.py"), str(path)],
-                    cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                checked = run_cli(
+                    ROOT / "examples/check_wave_report.py", str(path),
+                    python_options=("-S",), cwd=ROOT,
                 )
             self.assertEqual(checked.returncode, 0, checked.stderr + checked.stdout)
         finally:
