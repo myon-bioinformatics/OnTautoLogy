@@ -448,13 +448,17 @@ class GuessGame:
             if yes < len(live) and no < len(live):
                 options.append((max(yes, no), "element", question))
         if not self.binary:
-            for question in {a for n in live for a in self.attributes[n][0]} - self.asked:
-                groups = {}
-                for name in live:
-                    value = self._attribute(name, 0, question)
-                    groups[value] = groups.get(value, 0) + 1
-                if len(groups) > 1:
-                    options.append((max(groups.values()), "attribute", question))
+            # Count populated answers once. All remaining candidates give the empty tuple.
+            groups_by_question = {}
+            for name in live:
+                for question, answer in self.attributes[name][0].items():
+                    if question not in self.asked:
+                        groups = groups_by_question.setdefault(question, {})
+                        groups[answer] = groups.get(answer, 0) + 1
+            for question, groups in groups_by_question.items():
+                missing = len(live) - sum(groups.values())
+                if missing or len(groups) > 1:
+                    options.append((max(missing, max(groups.values())), "attribute", question))
         return min(options)[1:] if options else None
 
     def _sharers(self, candidate, kind, question):
