@@ -37,7 +37,7 @@ jobs:
           fetch-depth: ${{ github.event_name == 'pull_request' && '0' || '1' }}
       - id: paths
         if: github.event_name == 'pull_request'
-        uses: myon-bioinformatics/myon-bioinformatics/.github/actions/classify-changes@9d39adca921c233bb65b4a0cf80c61b7f7e00b5b
+        uses: myon-bioinformatics/myon-bioinformatics/.github/actions/classify-changes@main
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         if: steps.paths.outputs.docs_only != 'true'
         with:
